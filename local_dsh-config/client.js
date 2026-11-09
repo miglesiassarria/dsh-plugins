@@ -67,6 +67,7 @@ window.__ModuleLoader__.load({
         background: var(--dsw-alias-brand-primary, #4d6bfe);
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-brand-primary, #4d6bfe) 24%, transparent);
       }
+      .dshc-hide-caption { display: none !important; }
       .dshc-sr {
         position: absolute !important;
         width: 1px;
@@ -396,6 +397,108 @@ window.__ModuleLoader__.load({
             }, 'dsh-config GitHub folder installs');
           });
         }
+
+        // ------------------------------------------------------------------
+        // Composer model caption: next to the model name the composer repeats the
+        // reasoning effort, which reads "Predeterminado" for the provider
+        // default. That adds nothing to the box where we write, so it is hidden
+        // while the choice stays available in the model menu.
+        // ------------------------------------------------------------------
+        ctx.effect(() => {
+          const HIDE = 'dshc-hide-caption';
+          const tModel = ctx.locale.bind('model');
+          let bar = null;
+          let bodyObserver = null;
+          let barObserver = null;
+          let scheduled = false;
+          let caption = null;
+
+          /** Undo the caption override. */
+          function restore() {
+            if (caption !== null) {
+              caption.classList.remove(HIDE);
+              caption = null;
+            }
+          }
+
+          /** Coalesce the frequent composer mutations into one check per frame. */
+          function schedule() {
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(() => {
+              scheduled = false;
+              sync();
+            });
+          }
+
+          /** Hide the caption only while it carries the provider-default name. */
+          function sync() {
+            if (bar !== null && !bar.isConnected) {
+              barObserver?.disconnect();
+              barObserver = null;
+              bar = null;
+            }
+            if (bar === null) {
+              attachBar();
+              return;
+            }
+            const slot = bar.querySelector('[data-slot="conversation.input.model"]');
+            const next = slot === null ? null : slot.querySelector('[class*="triggerEffort"]');
+            const defaultLabel = tModel('effort.providerDefault').trim();
+            const isDefault = next !== null
+              && defaultLabel !== ''
+              && defaultLabel !== 'effort.providerDefault'
+              && next.textContent?.trim() === defaultLabel;
+            if (!isDefault) {
+              restore();
+              return;
+            }
+            if (caption !== next) {
+              restore();
+              caption = next;
+              next.classList.add(HIDE);
+            }
+          }
+
+          /** Watch the resident composer bar, waiting for it when it is not mounted yet. */
+          function attachBar() {
+            const next = document.querySelector('[data-slot="conversation.composer.bar"]');
+            if (next === null) {
+              if (bodyObserver === null) {
+                bodyObserver = new MutationObserver(() => {
+                  if (document.querySelector('[data-slot="conversation.composer.bar"]') !== null) {
+                    bodyObserver?.disconnect();
+                    bodyObserver = null;
+                    attachBar();
+                  }
+                });
+                bodyObserver.observe(document.body, { childList: true, subtree: true });
+              }
+              return;
+            }
+            bodyObserver?.disconnect();
+            bodyObserver = null;
+            bar = next;
+            barObserver = new MutationObserver(schedule);
+            barObserver.observe(bar, {
+              childList: true,
+              subtree: true,
+              characterData: true,
+              attributes: true,
+              attributeFilter: ['class'],
+            });
+            sync();
+          }
+
+          const offLocale = ctx.locale.subscribe(schedule);
+          attachBar();
+          return () => {
+            offLocale();
+            bodyObserver?.disconnect();
+            barObserver?.disconnect();
+            restore();
+          };
+        }, 'dsh-config composer default effort');
 
         /**
          * @param {HTMLElement} dialog

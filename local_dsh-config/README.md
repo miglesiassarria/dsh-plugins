@@ -1,9 +1,10 @@
 # DSH Config
 
 Complemento para ajustar el comportamiento por defecto del Harness. Ahora
-mismo ofrece dos cosas: reordenar las categorías de la barra izquierda de
-**Ajustes** arrastrándolas y permitir que **Agregar un complemento** acepte una
-URL de GitHub que apunte a una carpeta dentro de un repositorio.
+mismo ofrece tres cosas: reordenar las categorías de la barra izquierda de
+**Ajustes** arrastrándolas, permitir que **Agregar un complemento** acepte una
+URL de GitHub que apunte a una carpeta dentro de un repositorio y limpiar la
+etiqueta de esfuerzo predeterminado del selector de modelo del compositor.
 
 | Elemento | Valor |
 |---|---|
@@ -36,6 +37,15 @@ URL de GitHub que apunte a una carpeta dentro de un repositorio.
 El orden vive en el Host, no en `localStorage`: sobrevive a recargas, cambios de
 navegador y reinicios. El documento no contiene secretos.
 
+### Selector de modelo del compositor
+
+- El selector de modelo del compositor muestra el nombre del modelo y, detrás,
+  el esfuerzo de razonamiento. Cuando el esfuerzo vale el valor predeterminado
+  del proveedor, esa etiqueta («Predeterminado» / «Default») se oculta.
+- Los esfuerzos no predeterminados («Alto», «Bajo»…) siguen visibles, y la
+  opción de volver al predeterminado sigue en el menú del modelo.
+- La etiqueta accesible del control conserva la selección completa.
+
 ### Instalar desde una carpeta de GitHub
 
 En **Complementos → Agregar complemento** puedes pegar una URL de carpeta, por
@@ -61,6 +71,41 @@ instalado" es el de siempre.
   o rama inexistente, carpeta sin `package.json`, límite de la API de GitHub,
   carpeta demasiado grande, enlaces simbólicos o submódulos.
 
+## Qué modifica
+
+Todo lo que el complemento toca en el Harness, superficie por superficie:
+
+| Superficie | Cambio |
+|---|---|
+| Barra de categorías de Ajustes | Reordena las entradas reales del slot `settings.section` cambiando su `options.order`; el orden se aplica al instante y al volver a cargar la página. |
+| Arrastre en la barra | Añade arrastre con puntero (ratón o dedo, umbral de 5 px), línea de inserción, copia flotante, auto-scroll cerca de los bordes y cancelación con Escape. |
+| Teclado | `Alt+↑` y `Alt+↓` mueven la categoría enfocada; se anuncia la nueva posición por `aria-live`. |
+| Puntero | Fuerza la flecha sobre las categorías (sin mano ni `grab`), también durante el arrastre. |
+| Persistencia del orden | Escribe `$DSH_HOME/dsh-config/settings.json` con permisos `0600` mediante `POST /dsh-config/settings`, y lo lee al arrancar. |
+| Categorías nuevas | Las que se registren después de guardar el orden se añaden al final. |
+| Aviso al shell | Registra y retira una entrada temporal en `settings.section` para que el shell recalcule la barra con el orden nuevo. |
+| Diálogo Agregar complemento | Envuelve `inspect` e `installBundle` del namespace remoto `remote.pluginManager`; solo cambia los specs que son URLs de carpeta de GitHub, el resto pasa intacto. |
+| Instalación desde GitHub | Descarga solo la carpeta, la fija al commit y la guarda en `$DSH_HOME/dsh-config/github/...`; el diálogo instala esa ruta local como cualquier paquete local, con su progreso y sus errores. |
+| Errores del diálogo | Traduce los fallos del resolutor a los mensajes del propio diálogo: URL no válida, repositorio/rama/carpeta inexistente, carpeta sin `package.json`, límite de la API, tamaño excesivo, symlinks o submódulos. |
+| Selector de modelo del compositor | Oculta el sufijo de esfuerzo solo cuando vale el valor predeterminado del proveedor; los demás esfuerzos y el menú no cambian. |
+| Textos | Registra el namespace de locale `dsh-config` (inglés y español) para los avisos del arrastre y los errores de GitHub. |
+| Recursos de página | Añade un `<style>` en `head`, una región `aria-live` y los nodos de línea de inserción y copia flotante en `body`; todo se retira al descargar el complemento. |
+| Host | Registra las rutas de mismo origen `/dsh-config/settings` y `/dsh-config/github`, ambas con la cabecera `x-dsh-config: 1`. |
+| Composición | La fila `dsh-config` entra en el perfil y el cliente declara dependencia de `@deepseek-ai/dsh-client-locale` y `@deepseek-ai/dsh-client-ui-settings-general`. |
+
+### Lo que no modifica
+
+- No reimplementa el panel de Ajustes ni sustituye sus componentes de React:
+  usa los slots existentes y escucha el DOM de la barra y del compositor.
+- No cambia el modelo ni el esfuerzo seleccionados, ni las opciones del menú del
+  selector; solo oculta la etiqueta visible del esfuerzo predeterminado.
+- No altera ninguna instalación que no sea una URL de carpeta de GitHub: nombres
+  de paquete, repositorios completos, tarballs y rutas locales siguen igual.
+- No modifica el orden de otros slots ni el de otras listas del Harness.
+- No escribe fuera de `$DSH_HOME/dsh-config` y no guarda secretos. La
+  instalación de paquetes la ejecuta el gestor de complementos del Harness,
+  que actualiza el perfil como con cualquier otra instalación.
+
 ## Cómo está hecho
 
 - **Host (`index.js`)**: servicio `webServer` con dos rutas de mismo origen.
@@ -77,7 +122,9 @@ instalado" es el de siempre.
   toca nada. Para el orden, escucha el puntero sobre la barra que ya renderiza el
   Harness, pinta la línea de inserción y la copia flotante en `body`, y al soltar
   reordena las entradas reales del slot `settings.section` (`options.order`) y
-  avisa al shell con una mutación de versión del slot.
+  avisa al shell con una mutación de versión del slot. También vigila el
+  selector de modelo del compositor y oculta el sufijo de esfuerzo cuando vale
+  el valor predeterminado del proveedor; el resto de esfuerzos sigue visible.
 - **Textos**: `locale/en.json` y `locale/es.json` (incluye `meta.title` y
   `meta.description` para la ficha del complemento).
 
