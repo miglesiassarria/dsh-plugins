@@ -320,6 +320,17 @@ const fakeContext = {
     },
   },
   modelDirectories: {
+    catalog: {
+      async load() {},
+      store: {
+        getSnapshot: () => ({
+          value: {
+            default: { provider: 'provider-a', model: 'model-1' },
+            groups: modelSnapshot.groups,
+          },
+        }),
+      },
+    },
     directoryFor(sessionId) {
       return sessionId === 's9' ? modelDirectory : undefined
     },
@@ -649,6 +660,8 @@ for (const fragment of [
   'project',
   'First chat',
   'Second chat',
+  'Model One',
+  'Predeterminado',
 ]) {
   if (!text.includes(fragment)) {
     console.error('Rendered overview: ' + text)

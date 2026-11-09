@@ -82,6 +82,7 @@ window.__ModuleLoader__.load({
         composer: {
           model: 'Model',
           defaultModel: 'Default model',
+          defaultBadge: 'Default',
           selectModel: 'Select model',
           modelLoading: 'Loading models…',
           modelEmpty: 'No models available.',
@@ -204,6 +205,7 @@ window.__ModuleLoader__.load({
         composer: {
           model: 'Modelo',
           defaultModel: 'Modelo predeterminado',
+          defaultBadge: 'Predeterminado',
           selectModel: 'Seleccionar modelo',
           modelLoading: 'Cargando modelos…',
           modelEmpty: 'No hay modelos disponibles.',
@@ -374,6 +376,7 @@ window.__ModuleLoader__.load({
 .wsc-project-tool{position:relative;min-width:0;}
 .wsc-project-trigger{display:inline-flex;align-items:center;gap:4px;max-width:240px;height:28px;padding:0 7px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;line-height:1;cursor:pointer;}
 .wsc-project-trigger:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);}
+.wsc-project-defaultbadge{flex:none;padding:1px 5px;border-radius:4px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:9px;line-height:1.35;}
 .wsc-project-triggericon{flex:none;display:inline-flex;color:var(--dsw-alias-label-caption);}
 .wsc-project-triggerlabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wsc-project-triggerchevron{flex:none;font-size:10px;line-height:1;color:var(--dsw-alias-label-caption);}
@@ -1008,6 +1011,7 @@ window.__ModuleLoader__.load({
         const modelSnapshot = useSnapshot(modelDirectory?.store ?? EMPTY_MODEL_STORE);
         const [modelLoading, setModelLoading] = React.useState(false);
         const [modelError, setModelError] = React.useState(null);
+        const [defaultModel, setDefaultModel] = React.useState(null);
         const [permissionOpen, setPermissionOpen] = React.useState(false);
         const [permissionOptions, setPermissionOptions] = React.useState([]);
         const [permissionCurrent, setPermissionCurrent] = React.useState(null);
@@ -1039,6 +1043,7 @@ window.__ModuleLoader__.load({
           setModelDirectory(null);
           setModelError(null);
           setModelLoading(false);
+          setDefaultModel(null);
           setPermissionOpen(false);
           setPermissionOptions([]);
           setPermissionCurrent(null);
@@ -1075,6 +1080,11 @@ window.__ModuleLoader__.load({
             if (fallback !== null) setModeCurrent((current) => (current === null ? fallback : current));
           }).catch(() => {
             // The mode menu reports a failure when opened; the label stays generic.
+          });
+          composer.defaultModelInfo().then((info) => {
+            if (!cancelled && info !== null) setDefaultModel(info);
+          }).catch(() => {
+            // The model menu reports a failure when opened; the label stays generic.
           });
           return () => {
             cancelled = true;
@@ -1354,7 +1364,8 @@ window.__ModuleLoader__.load({
         const selectedModel = modelSnapshot.current;
         const selectedGroup = modelSnapshot.groups.find((group) => group.id === selectedModel?.provider);
         const selectedEntry = selectedGroup?.models?.find((model) => model.id === selectedModel?.model);
-        const modelLabel = selectedEntry?.name ?? (modelLoading ? t('composer.modelLoading') : t('composer.defaultModel'));
+        const isDefaultModel = defaultModel !== null && (selectedModel === null || (selectedModel.provider === defaultModel.provider && selectedModel.model === defaultModel.model));
+        const modelLabel = selectedEntry?.name ?? defaultModel?.name ?? (modelLoading ? t('composer.modelLoading') : t('composer.defaultModel'));
         const modelErrorText = modelError ?? (modelSnapshot.status === 'error' ? modelSnapshot.error : null);
         const permissionText = permissionCurrent === null
           ? t('composer.permissionDefault')
@@ -1488,6 +1499,7 @@ window.__ModuleLoader__.load({
                         title: t('composer.model'),
                       },
                       h('span', { className: 'wsc-project-triggerlabel' }, modelLabel),
+                      isDefaultModel ? h('span', { className: 'wsc-project-defaultbadge' }, t('composer.defaultBadge')) : null,
                       h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
                       modelOpen ? h('div', { className: 'wsc-project-menu wsc-project-menu-right' },
                         modelLoading || modelSnapshot.status === 'loading' ? h('div', { className: 'wsc-project-menunote' }, t('composer.modelLoading')) : null,
@@ -1680,6 +1692,21 @@ window.__ModuleLoader__.load({
           agentPresetsList: () => ctx.get('remote')?.agentPresets?.list?.(),
           selectAgentPreset: (sessionId, presetId) => ctx.get('remote')?.agentPresets?.select?.(sessionId, presetId),
           sessionSummary: (sessionId) => ctx.get('sessions')?.list?.getSnapshot?.()?.byId?.[sessionId],
+          defaultModelInfo: async () => {
+            const catalog = ctx.get('modelDirectories')?.catalog;
+            if (catalog === undefined) return null;
+            try {
+              await catalog.load?.();
+            } catch {
+              return null;
+            }
+            const value = catalog.store?.getSnapshot?.()?.value;
+            const selection = value?.default;
+            if (selection === undefined || selection === null) return null;
+            const group = Array.isArray(value.groups) ? value.groups.find((entry) => entry.id === selection.provider) : undefined;
+            const model = Array.isArray(group?.models) ? group.models.find((entry) => entry.id === selection.model) : undefined;
+            return { provider: selection.provider, model: selection.model, name: model?.name ?? selection.model };
+          },
           notify: (text, success) => api.notify(text, success),
         };
 
