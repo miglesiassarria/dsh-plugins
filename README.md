@@ -16,6 +16,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
 | [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. |
 | [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → barra lateral de categorías (arrastrar); Complementos → Agregar complemento | Reordena las categorías de Ajustes arrastrándolas (también con `Alt+↑`/`Alt+↓`) y guarda ese orden en el Host. Además, **Agregar complemento** acepta URLs de carpeta de GitHub (`.../tree/rama/carpeta`) y las instala como paquete local. |
+| [`local_dsh-mobile`](local_dsh-mobile/) | `@local/dsh-mobile` | Ajustes → **Acceso desde el móvil** | Control remoto por QR: acceso desde la red local o por internet (túnel de Cloudflare), con la misma interfaz del ordenador sincronizada en tiempo real. Traducción al español de DSH Pocket. |
 
 ## Requisitos
 
@@ -25,8 +26,9 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   espacios de trabajo y conversación; el de dictado inyecta conversación,
   ajustes e idioma y usa una ruta del Host para llamar a Groq; el de DSH Config
   inyecta el shell de Ajustes y el idioma y usa una ruta del Host para guardar
-  el orden). El de DeepSeek es solo un parche de composición y no necesita
-  cliente.
+  el orden; el de móvil inyecta conexión, slots, layout, idioma y exportación
+  del registro de sesión, y levanta un proxy en el puerto 3081). El de
+  DeepSeek es solo un parche de composición y no necesita cliente.
 - Node.js y pnpm, los mismos que usa tu instalación de Harness.
 
 ## Instalación
@@ -35,7 +37,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config local_dsh-mobile ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -51,7 +53,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
        "@local/retro-ai-os": "link:/Users/tu-usuario/.dsh/local-plugins/local_retro-ai-os",
        "@local/groq-dictation": "link:/Users/tu-usuario/.dsh/local-plugins/local_groq-dictation",
        "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model",
-       "@local/dsh-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-config"
+       "@local/dsh-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-config",
+       "@local/dsh-mobile": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-mobile"
      },
      "dsh": {
        "profile": {
@@ -65,7 +68,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
            "@local/retro-ai-os",
            "@local/groq-dictation",
            "@local/default-model",
-           "@local/dsh-config"
+           "@local/dsh-config",
+           "@local/dsh-mobile"
          ]
        }
      }
@@ -80,6 +84,13 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 
    También puedes activarlos desde el gestor de plugins de la GUI, que escribe
    esas entradas por ti.
+
+   `local_dsh-mobile` usa `qrcode` y `qrcode-terminal` en el Host. Si copias la
+   carpeta sin su `node_modules`, instala esas dependencias antes de reiniciar:
+
+   ```bash
+   cd local_dsh-mobile && npm install --omit=dev --no-audit --no-fund
+   ```
 
 ## Uso rápido
 
@@ -123,6 +134,13 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   de una sesión no modifica este valor; las conversaciones ya empezadas
   conservan el suyo. La elección se guarda en
   `$DSH_HOME/default-model/settings.json` (permisos `0600`).
+- **Acceso desde el móvil**: en **Ajustes → Acceso desde el móvil** escanea el
+  QR de **Red local** con el móvil en la misma Wi-Fi (o activa el **Acceso
+  público** para entrar desde cualquier red). La pantalla del móvil es la misma
+  que la del ordenador y se sincroniza en tiempo real. El acceso público pide
+  aceptar el aviso de seguridad y usa una contraseña de 8 caracteres que se
+  renueva en cada activación (o una personalizada). Los datos se guardan en
+  `$DSH_HOME/dsh-mobile/` (permisos `0600`).
 - **DSH Config**: abre **Ajustes** y arrastra cualquier categoría de la barra
   izquierda hacia arriba o hacia abajo; una línea marca dónde caerá. Al soltar,
   el orden se aplica al momento y se guarda en
@@ -152,7 +170,10 @@ de `local_hide-deepseek-defaults` valida su parche y sus recursos, la de
 con `fetch` simulado, la fila de Ajustes y el micrófono del compositor, y la de
 `local_default-model` prueba el catálogo, la persistencia del pin, la ruta HTTP,
 la preparación de sesiones nuevas y vacías (sin tocar subagentes, forks ni
-conversaciones empezadas) y el selector de la cabecera de Modelos.
+conversaciones empezadas) y el selector de la cabecera de Modelos. El de móvil
+no incluye una suite propia: su mitad de host se verificó contra el proxy real
+(login, QR, conmutador de red local y RPC) y su mitad de cliente se sirve como
+bundle `@local/dsh-mobile`.
 
 ```bash
 node local_dsh-backups/test/host-check.mjs
@@ -211,6 +232,16 @@ local_default-model/
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
   test/               comprobaciones de host y de render
+local_dsh-mobile/
+  lib/index.js        mitad de host: proxy, RPC, contraseñas y ajustes
+  lib/proxy.mjs       proxy inverso con autenticación y páginas de acceso
+  lib/service.mjs     estado, códigos QR y túnel de Cloudflare
+  lib/tunnel.mjs      descarga, arranque y resolución de cloudflared
+  client/client.js    mitad de cliente compilada (panel y móvil)
+  client/index.jsx    panel «Acceso desde el móvil»
+  client/mobile/      adaptación móvil (dsh-web-mobile, MIT)
+  cordis.patch.yml    entrada de bundle
+  locale/{en,es}.json textos e icono
 ```
 
 ## Seguridad
@@ -241,6 +272,11 @@ Lo que sí puede contener secretos son tus **datos**, que nunca entran aquí:
 - **Modelo predeterminado** guarda en `$DSH_HOME/default-model/settings.json`
   solo el proveedor y el identificador del modelo elegidos, con permisos `0600`.
   No contiene claves ni credenciales.
+- **Acceso desde el móvil** guarda en `$DSH_HOME/dsh-mobile/` las contraseñas de
+  acceso (`token`, `token-lan`), los interruptores y el token del túnel de
+  Cloudflare si usas dominio fijo, con permisos `0600`. El token del túnel no se
+  devuelve nunca al navegador. No compartas el QR ni la contraseña de red local:
+  quien los tenga puede controlar el Harness de este equipo.
 - `.gitignore` bloquea `.env`, claves privadas, `servers.json`, credenciales y
   archivos `.zip` para que no se suban por descuido.
 

@@ -1,0 +1,5 @@
+# Bundle de dsh Mobile: acceso remoto desde el móvil a DeepSeek Harness.
+# Traducción al español del plugin original DSH Pocket (GPL-2.0).
+- insert:
+    - id: dsh-mobile
+      name: '@local/dsh-mobile'
