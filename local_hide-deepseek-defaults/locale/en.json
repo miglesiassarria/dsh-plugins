@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Hide DeepSeek defaults",
+    "description": "Removes the built-in DeepSeek account and API-key providers from the model picker and Models settings, and hides the Account page."
+  }
+}

@@ -1,0 +1,24 @@
+# Hide the two built-in DeepSeek model providers.
+#
+# `llm-deepseek` is the official API-key route ("DeepSeek" in Models and in the
+# chat picker) and `llm-deepseek-account` is the signed-in account route
+# ("Cuenta DeepSeek"). Disabling the rows unregisters both routes, so neither
+# appears in the Models list nor contributes models to the chat selector.
+#
+# `ui-settings-account` is the Account settings page and sidebar account
+# launcher. Without the account route they have nothing to configure, so the
+# bundle hides them too and leaves the Settings navigation to the pages you use.
+# Remove that third entry if you want to keep the Account page while hiding only
+# the model providers.
+#
+# Your own providers (`llm-pi-ai` routes such as Nexo or opencode-go) are not
+# touched.
+
+- id: llm-deepseek
+  disabled: true
+
+- id: llm-deepseek-account
+  disabled: true
+
+- id: ui-settings-account
+  disabled: true

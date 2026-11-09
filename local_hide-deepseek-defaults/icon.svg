@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" role="img" aria-label="Hide DeepSeek defaults">
+  <path d="M3.25 12s3.15-5.25 8.75-5.25S20.75 12 20.75 12s-3.15 5.25-8.75 5.25S3.25 12 3.25 12Z" stroke="#3B6FE0" stroke-width="1.6" stroke-linejoin="round"/>
+  <circle cx="12" cy="12" r="2.5" stroke="#3B6FE0" stroke-width="1.6"/>
+  <path d="M4.5 4.5 19.5 19.5" stroke="#3B6FE0" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Ocultar los modelos por defecto de DeepSeek",
+    "description": "Elimina de la lista de modelos y de Ajustes los proveedores integrados de DeepSeek (cuenta y clave API) y oculta la página Cuenta."
+  }
+}
