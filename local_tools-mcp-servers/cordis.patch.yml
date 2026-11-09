@@ -1,0 +1,3 @@
+- insert:
+    - id: tools-mcp-servers
+      name: '@local/tools-mcp-servers'

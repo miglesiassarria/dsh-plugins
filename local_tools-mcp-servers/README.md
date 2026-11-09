@@ -1,0 +1,66 @@
+# Tool servers
+
+A Settings → **Tools** page for the DeepSeek Harness Web GUI. It manages MCP
+(Model Context Protocol) servers and registers their tools on `ctx.tools`, so
+agents can call them as `mcp__<server>__<tool>`.
+
+## What it does
+
+- Lists every configured server with its live status, protocol revision, target,
+  tool count, and per-server error.
+- Adds, edits, connects, disconnects, and deletes servers from the page.
+- Reveals or masks environment values and Bearer tokens while editing.
+- Sets a per-tool permission — **always allow**, **requires approval**, or
+  **deny** — grouped into read-only, write/delete, and other tools, with a
+  block-level selector that applies to a whole group at once.
+- Speaks two transports:
+  - **Local command** — spawns the program and exchanges newline-delimited
+    JSON-RPC over stdio.
+  - **Remote URL** — MCP Streamable HTTP, with optional Bearer authentication.
+- Auto-connects selected servers when the Harness starts.
+- Persists the server list and permissions in `$DSH_HOME/mcp-tools/servers.json`
+  (mode `0600`).
+
+## Permissions
+
+Every discovered tool defaults to **always allow**. Changing it takes effect
+immediately:
+
+- **Always allow** — the tool is registered and runs without asking.
+- **Requires approval** — the tool stays registered, but the Host answers the
+  `tools/pre-execute` waterfall with an approval request before dispatch. It
+  never weakens a stronger decision taken elsewhere in the chain.
+- **Deny** — the tool is removed from `ctx.tools`, so the model does not see it
+  and cannot call it. Re-allowing registers it again.
+
+## Layout
+
+| File | Role |
+|---|---|
+| `index.js` | Host half: MCP client, connection manager, tool registration, settings route. |
+| `client.js` | Browser half: the Settings section and its add/edit form. |
+| `cordis.patch.yml` | Loader row inserted by the bundle. |
+| `locale/*.json` | Plugin title and description for the inventory. |
+| `test/fixtures/demo-mcp-server.mjs` | A tiny stdio MCP server used to verify a connection. |
+| `test/fixtures/http-mcp-server.mjs` | A Streamable HTTP MCP server with optional Bearer auth. |
+| `test/render-check.mjs` | Executes the browser half under a minimal React runtime: list, add form, submit. |
+
+## Try it
+
+Add a **Local command** server:
+
+- Name: `Demo`
+- Command: `node`
+- Arguments: `<absolute path>/test/fixtures/demo-mcp-server.mjs`
+
+The card turns green with `3 herramientas`; the agent can then call
+`mcp__demo__echo`, `mcp__demo__add`, and `mcp__demo__server_info`.
+
+## Notes
+
+- Stdio children inherit a scrubbed environment: credential-shaped names
+  (`KEY`, `PASSWORD`, `SECRET`, `TOKEN`) and `DSH_*` are removed before the
+  server's own environment merges on top, so pass a token explicitly when a
+  server needs one.
+- The settings route only answers requests carrying the page's custom header,
+  and it is served on the local listener only.
