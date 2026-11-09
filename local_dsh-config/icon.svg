@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="DSH Config">
+  <defs>
+    <linearGradient id="dsh-config-bg" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4338ca"/>
+      <stop offset="1" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dsh-config-bg)"/>
+  <g fill="none" stroke="#c7d2fe" stroke-width="2.4" stroke-linecap="round">
+    <path d="M12 20h32"/>
+    <path d="M12 32h32"/>
+    <path d="M12 44h32"/>
+  </g>
+  <g fill="#eef2ff">
+    <circle cx="24" cy="20" r="4.4"/>
+    <circle cx="38" cy="32" r="4.4"/>
+    <circle cx="18" cy="44" r="4.4"/>
+  </g>
+  <g fill="#a5b4fc">
+    <circle cx="52" cy="21" r="1.7"/>
+    <circle cx="56" cy="21" r="1.7"/>
+    <circle cx="52" cy="29" r="1.7"/>
+    <circle cx="56" cy="29" r="1.7"/>
+    <circle cx="52" cy="37" r="1.7"/>
+    <circle cx="56" cy="37" r="1.7"/>
+    <circle cx="52" cy="45" r="1.7"/>
+    <circle cx="56" cy="45" r="1.7"/>
+  </g>
+</svg>

@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "title": "DSH Config",
+    "description": "Reorder the Settings categories by dragging them, and keep that order in the Harness configuration."
+  },
+  "moved": "Category moved to position {position} of {total}.",
+  "saveError": "The new category order could not be saved.",
+  "loadError": "The saved category order could not be loaded."
+}

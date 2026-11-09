@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "title": "DSH Config",
+    "description": "Reordena las categorías de Ajustes arrastrándolas y guarda ese orden en la configuración del Harness."
+  },
+  "moved": "Categoría movida a la posición {position} de {total}.",
+  "saveError": "No se pudo guardar el nuevo orden de categorías.",
+  "loadError": "No se pudo cargar el orden de categorías guardado."
+}

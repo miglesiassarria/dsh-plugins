@@ -15,6 +15,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Clic en el espacio → página de proyecto; menú del espacio → **Configurar espacio**; tarjeta y pestaña **Contexto** de la barra derecha; menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. La página de proyecto muestra esos datos y sus chats. |
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
 | [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. |
+| [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → barra lateral de categorías (arrastrar) | Reordena las categorías de Ajustes arrastrándolas y guarda ese orden como configuración del Host. También admite `Alt+↑`/`Alt+↓` con el teclado. |
 
 ## Requisitos
 
@@ -22,8 +23,10 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   `@deepseek-ai/dsh-client-ui-settings` y `@deepseek-ai/dsh-client-locale`; el
   de espacios de trabajo inyecta los paquetes de menú contextual, comandos,
   espacios de trabajo y conversación; el de dictado inyecta conversación,
-  ajustes e idioma y usa una ruta del Host para llamar a Groq). El de DeepSeek
-  es solo un parche de composición y no necesita cliente.
+  ajustes e idioma y usa una ruta del Host para llamar a Groq; el de DSH Config
+  inyecta el shell de Ajustes y el idioma y usa una ruta del Host para guardar
+  el orden). El de DeepSeek es solo un parche de composición y no necesita
+  cliente.
 - Node.js y pnpm, los mismos que usa tu instalación de Harness.
 
 ## Instalación
@@ -32,7 +35,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -47,7 +50,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
        "@local/hide-deepseek-defaults": "link:/Users/tu-usuario/.dsh/local-plugins/local_hide-deepseek-defaults",
        "@local/retro-ai-os": "link:/Users/tu-usuario/.dsh/local-plugins/local_retro-ai-os",
        "@local/groq-dictation": "link:/Users/tu-usuario/.dsh/local-plugins/local_groq-dictation",
-       "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model"
+       "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model",
+       "@local/dsh-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-config"
      },
      "dsh": {
        "profile": {
@@ -60,7 +64,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
            "@local/hide-deepseek-defaults",
            "@local/retro-ai-os",
            "@local/groq-dictation",
-           "@local/default-model"
+           "@local/default-model",
+           "@local/dsh-config"
          ]
        }
      }
@@ -118,6 +123,12 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   de una sesión no modifica este valor; las conversaciones ya empezadas
   conservan el suyo. La elección se guarda en
   `$DSH_HOME/default-model/settings.json` (permisos `0600`).
+- **DSH Config**: abre **Ajustes** y arrastra cualquier categoría de la barra
+  izquierda hacia arriba o hacia abajo; una línea marca dónde caerá. Al soltar,
+  el orden se aplica al momento y se guarda en
+  `$DSH_HOME/dsh-config/settings.json` (permisos `0600`). También puedes mover
+  la categoría enfocada con `Alt+↑` y `Alt+↓`. Recarga la pestaña tras
+  instalarlo para que cargue la mitad de cliente.
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
