@@ -8,21 +8,38 @@ window.__ModuleLoader__.load({
     const STYLE_ID = 'dsh-config-style';
     const DRAG_THRESHOLD = 5;
     const DIALOG = '[data-shortcut-modal="settings"]';
+    const GITHUB_SPEC = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[^/\s]+\/[^/\s]+\/(?:tree|blob)\//i;
 
     const DICTS = {
       en: {
         'meta.title': 'DSH Config',
-        'meta.description': 'Reorder the Settings categories by dragging them, and keep that order in the Harness configuration.',
+        'meta.description': 'Reorder the Settings categories by dragging them, and install plugins from a folder in a public GitHub repository.',
         'moved': 'Category moved to position {position} of {total}.',
         'saveError': 'The new category order could not be saved.',
         'loadError': 'The saved category order could not be loaded.',
+        'github.invalid': 'The URL must point to a GitHub folder, for example https://github.com/owner/repo/tree/main/folder.',
+        'github.notFound': 'The repository, branch or folder was not found on GitHub.',
+        'github.notPackage': 'The GitHub folder has no valid package.json.',
+        'github.rateLimited': 'GitHub limited the anonymous requests. Wait a few minutes and try again.',
+        'github.tooLarge': 'The GitHub folder is too large to install.',
+        'github.unsupported': 'The folder contains symlinks or submodules, which cannot be copied.',
+        'github.network': 'The folder could not be downloaded from GitHub. Check the connection.',
+        'github.cancelled': 'The check was cancelled.',
       },
       es: {
         'meta.title': 'DSH Config',
-        'meta.description': 'Reordena las categorías de Ajustes arrastrándolas y guarda ese orden en la configuración del Harness.',
+        'meta.description': 'Reordena las categorías de Ajustes arrastrándolas e instala complementos desde una carpeta de un repositorio público de GitHub.',
         'moved': 'Categoría movida a la posición {position} de {total}.',
         'saveError': 'No se pudo guardar el nuevo orden de categorías.',
         'loadError': 'No se pudo cargar el orden de categorías guardado.',
+        'github.invalid': 'La URL debe apuntar a una carpeta de GitHub, por ejemplo https://github.com/usuario/repositorio/tree/main/carpeta.',
+        'github.notFound': 'No se encontró el repositorio, la rama o la carpeta en GitHub.',
+        'github.notPackage': 'La carpeta de GitHub no contiene un package.json válido.',
+        'github.rateLimited': 'GitHub ha limitado las peticiones anónimas. Espera unos minutos y vuelve a intentarlo.',
+        'github.tooLarge': 'La carpeta de GitHub es demasiado grande para instalarla.',
+        'github.unsupported': 'La carpeta contiene enlaces simbólicos o submódulos, que no se pueden copiar.',
+        'github.network': 'No se pudo descargar la carpeta desde GitHub. Comprueba la conexión.',
+        'github.cancelled': 'La comprobación se canceló.',
       },
     };
 
@@ -237,6 +254,147 @@ window.__ModuleLoader__.load({
           } catch (error) {
             console.warn(`[dsh-config] ${t('loadError')}`, error);
           }
+        }
+
+        // ------------------------------------------------------------------
+        // GitHub folder installs: the shipped Add plugin dialog only accepts a
+        // repository or a tarball. A tree URL naming a folder is resolved by the
+        // Host into a local package directory, then handed to the same install
+        // pipeline, so the dialog keeps its progress and error screens.
+        // ------------------------------------------------------------------
+
+        /** One failed Host resolve, with the code the route answered. */
+        class GithubSpecError extends Error {
+          constructor(code) {
+            super(code);
+            this.code = code;
+          }
+        }
+
+        /** Resolved folder paths by URL, shared by the inspect and install calls. */
+        const githubPaths = new Map();
+
+        /** @param {unknown} error @returns {{ aborted?: true, problem?: string, reason?: string }} */
+        function describeGithubFailure(error) {
+          if (error?.name === 'AbortError') return { aborted: true };
+          const code = typeof error?.code === 'string' ? error.code : 'network';
+          if (code === 'invalid-url') return { problem: 'invalid-spec', reason: t('github.invalid') };
+          if (code === 'not-found') return { problem: 'not-found', reason: t('github.notFound') };
+          if (code === 'not-a-package') return { problem: 'not-a-package', reason: t('github.notPackage') };
+          if (code === 'rate-limited') return { problem: 'unknown', reason: t('github.rateLimited') };
+          if (code === 'too-large') return { problem: 'unknown', reason: t('github.tooLarge') };
+          if (code === 'unsupported-entry') return { problem: 'unknown', reason: t('github.unsupported') };
+          return { problem: 'unknown', reason: t('github.network') };
+        }
+
+        /**
+         * Ask the Host to materialize a GitHub folder.
+         * @param {string} url Folder URL.
+         * @param {AbortSignal} [signal] Caller cancellation.
+         * @returns {Promise<string>} Local package path.
+         */
+        async function downloadGithubFolder(url, signal) {
+          const response = await fetch(`${ROUTE}/github`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', [HEADER]: '1' },
+            body: JSON.stringify({ url }),
+            signal,
+          });
+          let payload = null;
+          try {
+            payload = await response.json();
+          } catch {
+            payload = null;
+          }
+          if (!response.ok || payload?.ok !== true || typeof payload?.data?.path !== 'string') {
+            const code = typeof payload?.error === 'string'
+              ? payload.error
+              : response.status === 404 ? 'not-found' : 'network';
+            throw new GithubSpecError(code);
+          }
+          return payload.data.path;
+        }
+
+        /**
+         * Translate a GitHub folder URL into the local path the manager installs.
+         * Any other spec passes through untouched.
+         * @param {unknown} spec The spec as typed.
+         * @param {AbortSignal} [signal] Caller cancellation.
+         * @returns {Promise<{ installSpec?: string, aborted?: true, problem?: string, reason?: string }>}
+         */
+        async function resolveGithubSpec(spec, signal) {
+          if (typeof spec !== 'string' || !GITHUB_SPEC.test(spec.trim())) return { installSpec: spec };
+          const key = spec.trim();
+          let pending = githubPaths.get(key);
+          if (pending === undefined) {
+            pending = downloadGithubFolder(key, signal);
+            githubPaths.set(key, pending);
+            pending.catch(() => {
+              if (githubPaths.get(key) === pending) githubPaths.delete(key);
+            });
+          }
+          try {
+            return { installSpec: await pending };
+          } catch (error) {
+            return describeGithubFailure(error);
+          }
+        }
+
+        if (typeof ctx.inject === 'function') {
+          ctx.inject(['remote', 'remote.pluginManager'], (scope) => {
+            const service = scope.remote?.pluginManager;
+            if (service === undefined || service === null) return;
+            scope.effect(() => {
+              const restores = [];
+              /** Replace one namespace method getter, preserving the caller binding. */
+              const wrap = (method, build) => {
+                const descriptor = Object.getOwnPropertyDescriptor(service, method);
+                if (descriptor === undefined || typeof descriptor.get !== 'function') return;
+                const originalGet = descriptor.get;
+                const getter = function wrappedRemoteMethod() {
+                  return build(originalGet.call(this));
+                };
+                Object.defineProperty(service, method, {
+                  configurable: true,
+                  enumerable: descriptor.enumerable ?? true,
+                  get: getter,
+                });
+                restores.push(() => {
+                  const current = Object.getOwnPropertyDescriptor(service, method);
+                  if (current?.get === getter) Object.defineProperty(service, method, descriptor);
+                });
+              };
+
+              wrap('inspect', (invoke) => async (spec, options, signal) => {
+                const resolved = await resolveGithubSpec(spec, signal);
+                if (resolved.installSpec === undefined) {
+                  if (resolved.aborted) {
+                    return { ok: false, error: { code: 'cancelled', message: t('github.cancelled') } };
+                  }
+                  return {
+                    ok: true,
+                    value: { status: 'refused', problem: resolved.problem, reason: resolved.reason },
+                  };
+                }
+                return invoke(resolved.installSpec, options, signal);
+              });
+
+              wrap('installBundle', (invoke) => async (spec, options) => {
+                const resolved = await resolveGithubSpec(spec);
+                if (resolved.installSpec === undefined) {
+                  return {
+                    ok: false,
+                    error: { code: resolved.problem ?? 'invalid-spec', message: resolved.reason ?? t('github.network') },
+                  };
+                }
+                return invoke(resolved.installSpec, options);
+              });
+
+              return () => {
+                for (const restore of restores.reverse()) restore();
+              };
+            }, 'dsh-config GitHub folder installs');
+          });
         }
 
         /**

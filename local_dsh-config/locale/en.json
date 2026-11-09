@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "DSH Config",
-    "description": "Reorder the Settings categories by dragging them, and keep that order in the Harness configuration."
+    "description": "Reorder the Settings categories by dragging them, and install plugins from a folder in a public GitHub repository."
   },
   "moved": "Category moved to position {position} of {total}.",
   "saveError": "The new category order could not be saved.",

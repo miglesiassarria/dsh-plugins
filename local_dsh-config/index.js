@@ -16,6 +16,8 @@ import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'n
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+import { GithubError, resolveGithubFolder } from './github.js'
+
 /** Services this plugin cannot work without. */
 export const inject = ['webServer']
 
@@ -202,10 +204,27 @@ export async function handleRequest(request, response) {
       return
     }
 
+    if (path === '/github' && method === 'POST') {
+      const body = await readJsonBody(request)
+      if (typeof body.url !== 'string' || body.url.trim() === '') {
+        throw new GithubError('invalid-url', 400, 'The GitHub folder URL is required.')
+      }
+      const folder = await resolveGithubFolder({
+        url: body.url,
+        cacheRoot: join(storeDirectory(), 'github'),
+      })
+      reply(200, { ok: true, data: folder })
+      return
+    }
+
     reply(404, { ok: false, error: 'not-found' })
   } catch (error) {
     const status = typeof error?.status === 'number' ? error.status : 500
-    reply(status, { ok: false, error: typeof error?.code === 'string' ? error.code : 'request-failed' })
+    reply(status, {
+      ok: false,
+      error: typeof error?.code === 'string' ? error.code : 'request-failed',
+      ...(typeof error?.detail === 'string' ? { detail: error.detail } : {}),
+    })
   }
 }
 
@@ -226,3 +245,5 @@ export function apply(ctx) {
     return () => disposeRoute()
   }, 'dsh-config settings route')
 }
+
+// Route map: settings and GitHub folder resolution.

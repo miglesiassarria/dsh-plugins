@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "DSH Config",
-    "description": "Reordena las categorías de Ajustes arrastrándolas y guarda ese orden en la configuración del Harness."
+    "description": "Reordena las categorías de Ajustes arrastrándolas e instala complementos desde una carpeta de un repositorio público de GitHub."
   },
   "moved": "Categoría movida a la posición {position} de {total}.",
   "saveError": "No se pudo guardar el nuevo orden de categorías.",

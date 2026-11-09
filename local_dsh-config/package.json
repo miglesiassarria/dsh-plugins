@@ -1,8 +1,8 @@
 {
   "name": "@local/dsh-config",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Reorder the Settings categories by dragging them, and keep that order in the Harness configuration.",
+  "description": "Reorder the Settings categories by dragging them, and install plugins from a folder in a public GitHub repository.",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -12,6 +12,7 @@
   },
   "files": [
     "index.js",
+    "github.js",
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
@@ -19,7 +20,9 @@
     "README.md"
   ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true,

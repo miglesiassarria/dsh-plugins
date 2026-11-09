@@ -15,7 +15,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Clic en el espacio → página de proyecto; menú del espacio → **Configurar espacio**; tarjeta y pestaña **Contexto** de la barra derecha; menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. La página de proyecto muestra esos datos y sus chats. |
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
 | [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. |
-| [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → barra lateral de categorías (arrastrar) | Reordena las categorías de Ajustes arrastrándolas y guarda ese orden como configuración del Host. También admite `Alt+↑`/`Alt+↓` con el teclado. |
+| [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → barra lateral de categorías (arrastrar); Complementos → Agregar complemento | Reordena las categorías de Ajustes arrastrándolas (también con `Alt+↑`/`Alt+↓`) y guarda ese orden en el Host. Además, **Agregar complemento** acepta URLs de carpeta de GitHub (`.../tree/rama/carpeta`) y las instala como paquete local. |
 
 ## Requisitos
 
@@ -127,8 +127,15 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   izquierda hacia arriba o hacia abajo; una línea marca dónde caerá. Al soltar,
   el orden se aplica al momento y se guarda en
   `$DSH_HOME/dsh-config/settings.json` (permisos `0600`). También puedes mover
-  la categoría enfocada con `Alt+↑` y `Alt+↓`. Recarga la pestaña tras
-  instalarlo para que cargue la mitad de cliente.
+  la categoría enfocada con `Alt+↑` y `Alt+↓`.
+  En **Complementos → Agregar complemento** puedes pegar una URL de carpeta de
+  GitHub, por ejemplo
+  `https://github.com/miglesiassarria/dsh-plugins/tree/main/local_retro-ai-os`:
+  el Host descarga solo esa carpeta, fijada al commit, en
+  `$DSH_HOME/dsh-config/github`, y el diálogo normal la instala como paquete
+  local. Solo repositorios públicos y sujeto al límite anónimo de la API de
+  GitHub. Recarga la pestaña tras instalarlo para que cargue la mitad de
+  cliente.
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
