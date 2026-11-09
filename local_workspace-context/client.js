@@ -1064,6 +1064,24 @@ window.__ModuleLoader__.load({
         }, []);
 
         React.useEffect(() => {
+          if (workspaceId === undefined) return undefined;
+          let cancelled = false;
+          composer.agentPresetsList().then((result) => {
+            if (cancelled || !result?.ok) return;
+            const presets = Array.isArray(result.value?.presets) ? result.value.presets : [];
+            const healthy = presets.filter((preset) => preset.broken === undefined);
+            const fallback = presets.find((preset) => preset.isDefault === true)?.id ?? presets[0]?.id ?? null;
+            setModeRoster(healthy);
+            if (fallback !== null) setModeCurrent((current) => (current === null ? fallback : current));
+          }).catch(() => {
+            // The mode menu reports a failure when opened; the label stays generic.
+          });
+          return () => {
+            cancelled = true;
+          };
+        }, [workspaceId]);
+
+        React.useEffect(() => {
           if (!modelOpen && !permissionOpen && !modeOpen) return undefined;
           const onDown = (event) => {
             if (menusRef.current !== null && menusRef.current.contains(event.target)) return;
