@@ -951,6 +951,7 @@ window.__ModuleLoader__.load({
         const [composerError, setComposerError] = React.useState(null);
         const sessionRef = React.useRef(null);
         const sessionPromise = React.useRef(null);
+        const draftRef = React.useRef(null);
         const workspaceToken = React.useRef(0);
         const menusRef = React.useRef(null);
         const [modelOpen, setModelOpen] = React.useState(false);
@@ -967,6 +968,14 @@ window.__ModuleLoader__.load({
 
         React.useEffect(() => {
           workspaceToken.current += 1;
+          if (draftRef.current !== null) {
+            try {
+              draftRef.current.release();
+            } catch {
+              // The scope may already have been dropped by a workspace switch.
+            }
+            draftRef.current = null;
+          }
           sessionRef.current = null;
           sessionPromise.current = null;
           setDraft('');
@@ -983,6 +992,17 @@ window.__ModuleLoader__.load({
           setPermissionLoading(false);
           setPermissionConfirm(null);
         }, [workspaceId]);
+
+        React.useEffect(() => () => {
+          if (draftRef.current !== null) {
+            try {
+              draftRef.current.release();
+            } catch {
+              // The session scope may already be gone.
+            }
+            draftRef.current = null;
+          }
+        }, []);
 
         React.useEffect(() => {
           if (!modelOpen && !permissionOpen) return undefined;
@@ -1044,7 +1064,19 @@ window.__ModuleLoader__.load({
           if (sessionRef.current !== null) return Promise.resolve(sessionRef.current);
           if (sessionPromise.current === null) {
             const token = workspaceToken.current;
-            sessionPromise.current = composer.connectWorkspace(workspaceId).then((id) => {
+            sessionPromise.current = composer.connectWorkspace(workspaceId).then(async (id) => {
+              if (workspaceToken.current !== token) return id;
+              const reference = composer.retain(id);
+              if (reference !== undefined) {
+                draftRef.current = reference;
+                try {
+                  await reference.ready;
+                } catch (error) {
+                  reference.release();
+                  draftRef.current = null;
+                  throw error;
+                }
+              }
               if (workspaceToken.current === token) sessionRef.current = id;
               return id;
             }).finally(() => {
@@ -1095,6 +1127,20 @@ window.__ModuleLoader__.load({
           }
         };
 
+        const readPermissionProjection = async (binding) => {
+          const deadline = Date.now() + 2_000;
+          while (Date.now() < deadline) {
+            try {
+              const projection = binding?.session?.projections?.faceOf?.('permissions')?.getSnapshot?.();
+              if (projection !== undefined) return projection;
+            } catch {
+              // The projection may still be registering on a just-opened session.
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          return undefined;
+        };
+
         const openPermissionMenu = async () => {
           if (permissionOpen) {
             setPermissionOpen(false);
@@ -1110,7 +1156,8 @@ window.__ModuleLoader__.load({
             const sessionId = await ensureSession();
             if (workspaceToken.current !== token) return;
             const binding = composer.binding(sessionId);
-            const projection = binding?.session?.projections?.faceOf?.('permissions')?.getSnapshot?.();
+            const projection = await readPermissionProjection(binding);
+            if (workspaceToken.current !== token) return;
             if (projection === undefined) throw new Error(t('composer.permissionUnavailable'));
             const result = await composer.permissionCatalog();
             if (!result?.ok) {
@@ -1448,6 +1495,7 @@ window.__ModuleLoader__.load({
         const composerTools = {
           connectWorkspace: (workspaceId) => ctx.uiWorkspace.connectWorkspace(workspaceId),
           binding: (sessionId) => ctx.get('sessions')?.binding?.(sessionId),
+          retain: (sessionId) => ctx.get('sessions')?.retain?.(sessionId, { source: 'workspaceContextDraft' }),
           modelDirectory: (sessionId) => ctx.get('modelDirectories')?.directoryFor?.(sessionId),
           permissionCatalog: () => ctx.get('remote')?.permissionPresets?.catalog?.(),
           notify: (text, success) => api.notify(text, success),

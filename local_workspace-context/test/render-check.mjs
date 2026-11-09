@@ -300,6 +300,14 @@ const fakeContext = {
     binding(sessionId) {
       return sessionId === 's9' ? { session: fakeSession } : undefined
     },
+    retain(sessionId) {
+      if (sessionId !== 's9') throw new Error(`unexpected retain ${sessionId}`)
+      return {
+        session: fakeSession,
+        ready: Promise.resolve(),
+        release() {},
+      }
+    },
   },
   conversation: {
     sendSession(session, text, attachments, mode) {
