@@ -1,0 +1,3 @@
+- insert:
+    - id: retro-ai-os
+      name: '@local/retro-ai-os'

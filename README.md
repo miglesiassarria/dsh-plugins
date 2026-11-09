@@ -12,6 +12,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
 | [`local_hide-deepseek-defaults`](local_hide-deepseek-defaults/) | `@local/hide-deepseek-defaults` | — | Desactiva los proveedores integrados de DeepSeek (cuenta y clave API) para que no aparezcan ni en el selector de modelos del chat ni en **Ajustes → Modelos**. |
 | [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Menú del espacio → **Configurar espacio**, tarjeta y pestaña **Contexto** de la barra lateral derecha, y menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión; el apartado **Contexto** muestra la suma de ambos. |
+| [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
 
 ## Requisitos
 
@@ -28,7 +29,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -40,7 +41,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
        "@local/dsh-backups": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-backups",
        "@local/tools-mcp-servers": "link:/Users/tu-usuario/.dsh/local-plugins/local_tools-mcp-servers",
        "@local/workspace-context": "link:/Users/tu-usuario/.dsh/local-plugins/local_workspace-context",
-       "@local/hide-deepseek-defaults": "link:/Users/tu-usuario/.dsh/local-plugins/local_hide-deepseek-defaults"
+       "@local/hide-deepseek-defaults": "link:/Users/tu-usuario/.dsh/local-plugins/local_hide-deepseek-defaults",
+       "@local/retro-ai-os": "link:/Users/tu-usuario/.dsh/local-plugins/local_retro-ai-os"
      },
      "dsh": {
        "profile": {
@@ -50,7 +52,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
            "@local/tools-mcp-servers",
            "@local/dsh-backups",
            "@local/workspace-context",
-           "@local/hide-deepseek-defaults"
+           "@local/hide-deepseek-defaults",
+           "@local/retro-ai-os"
          ]
        }
      }
@@ -86,6 +89,12 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   muestra una tarjeta **Contexto** en *Empezar* y una pestaña completa con la
   suma del contexto del espacio y el de la sesión. La configuración se guarda
   en `$DSH_HOME/workspace-context/context.json` (permisos `0600`).
+- **Retro AI OS**: elige *Menta clásica*, *CRT ámbar*, *Vaporwave* o *Azul
+  medianoche* y activa el interruptor. La barra bajo el compositor muestra el
+  estado real de la sesión (trabajando, esperando respuesta o turno terminado).
+  Desactivar el interruptor retira la capa de tokens y devuelve el aspecto
+  original; las preferencias se guardan en
+  `$DSH_HOME/retro-ai-os/preferences.json`.
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
@@ -106,6 +115,7 @@ node local_tools-mcp-servers/test/render-check.mjs
 node local_workspace-context/test/host-check.mjs
 node local_workspace-context/test/render-check.mjs
 node local_hide-deepseek-defaults/test/check.mjs
+node local_retro-ai-os/test/host-check.mjs
 ```
 
 ## Estructura
@@ -133,6 +143,12 @@ local_hide-deepseek-defaults/
   cordis.patch.yml    desactiva llm-deepseek, llm-deepseek-account y ui-settings-account
   locale/{en,es}.json textos
   test/check.mjs      validación del parche y de los recursos
+local_retro-ai-os/
+  index.js            mitad de host: preferencias y ruta HTTP
+  client.js           mitad de cliente: estilos, capa de tokens, mascota y estado
+  cordis.patch.yml    entrada de bundle
+  locale/{en,es}.json textos
+  test/host-check.mjs persistencia y validación de la ruta
 ```
 
 ## Seguridad
