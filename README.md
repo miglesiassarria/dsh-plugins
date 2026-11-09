@@ -11,16 +11,19 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_dsh-backups`](local_dsh-backups/) | `@local/dsh-backups` | Ajustes → **Copias de seguridad** | Exporta a un ZIP las sesiones, la configuración del perfil y los plugins locales, y los restaura en otro equipo. |
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
 | [`local_hide-deepseek-defaults`](local_hide-deepseek-defaults/) | `@local/hide-deepseek-defaults` | — | Desactiva los proveedores integrados de DeepSeek (cuenta y clave API) para que no aparezcan ni en el selector de modelos del chat ni en **Ajustes → Modelos**. |
+| [`local_default-model`](local_default-model/) | `@local/default-model` | Ajustes → **Modelos** (arriba del todo) | Elige el modelo con el que empiezan los chats nuevos. Cada sesión puede cambiar de modelo después sin alterar el predeterminado. |
 | [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Clic en el espacio → página de proyecto; menú del espacio → **Configurar espacio**; tarjeta y pestaña **Contexto** de la barra derecha; menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. La página de proyecto muestra esos datos y sus chats. |
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
+| [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. |
 
 ## Requisitos
 
 - DeepSeek Harness con la GUI web (los plugins de Ajustes inyectan
   `@deepseek-ai/dsh-client-ui-settings` y `@deepseek-ai/dsh-client-locale`; el
   de espacios de trabajo inyecta los paquetes de menú contextual, comandos,
-  espacios de trabajo y conversación). El de DeepSeek es solo un parche de
-  composición y no necesita cliente.
+  espacios de trabajo y conversación; el de dictado inyecta conversación,
+  ajustes e idioma y usa una ruta del Host para llamar a Groq). El de DeepSeek
+  es solo un parche de composición y no necesita cliente.
 - Node.js y pnpm, los mismos que usa tu instalación de Harness.
 
 ## Instalación
@@ -29,7 +32,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -42,7 +45,9 @@ autocontenido con sus textos (`locale/`) y su parche de composición
        "@local/tools-mcp-servers": "link:/Users/tu-usuario/.dsh/local-plugins/local_tools-mcp-servers",
        "@local/workspace-context": "link:/Users/tu-usuario/.dsh/local-plugins/local_workspace-context",
        "@local/hide-deepseek-defaults": "link:/Users/tu-usuario/.dsh/local-plugins/local_hide-deepseek-defaults",
-       "@local/retro-ai-os": "link:/Users/tu-usuario/.dsh/local-plugins/local_retro-ai-os"
+       "@local/retro-ai-os": "link:/Users/tu-usuario/.dsh/local-plugins/local_retro-ai-os",
+       "@local/groq-dictation": "link:/Users/tu-usuario/.dsh/local-plugins/local_groq-dictation",
+       "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model"
      },
      "dsh": {
        "profile": {
@@ -53,7 +58,9 @@ autocontenido con sus textos (`locale/`) y su parche de composición
            "@local/dsh-backups",
            "@local/workspace-context",
            "@local/hide-deepseek-defaults",
-           "@local/retro-ai-os"
+           "@local/retro-ai-os",
+           "@local/groq-dictation",
+           "@local/default-model"
          ]
        }
      }
@@ -99,6 +106,18 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   Desactivar el interruptor retira la capa de tokens y devuelve el aspecto
   original; las preferencias se guardan en
   `$DSH_HOME/retro-ai-os/preferences.json`.
+- **Dictado con Groq**: en **Ajustes → General → Dictado con Groq**, pega tu
+  clave de Groq, elige el modelo de Whisper y guarda. En el compositor aparece
+  un micrófono entre el selector de modelo y Enviar: pulsa para grabar, habla
+  y vuelve a pulsar para que Groq transcriba y escriba el texto en el borrador.
+  La clave se guarda en `$DSH_HOME/groq-dictation/settings.json` (permisos
+  `0600`); el audio solo sale del equipo al detener la grabación.
+- **Modelo predeterminado**: abre **Ajustes → Modelos**. Arriba del todo, junto
+  a *Abrir archivo de configuración*, elige el modelo con el que empiezan los
+  chats nuevos. El control solo aparece en esa página. Cambiar el modelo dentro
+  de una sesión no modifica este valor; las conversaciones ya empezadas
+  conservan el suyo. La elección se guarda en
+  `$DSH_HOME/default-model/settings.json` (permisos `0600`).
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
@@ -109,8 +128,13 @@ la de `local_dsh-backups` construye un Harness desechable en un directorio
 temporal, la de `local_tools-mcp-servers` monta el árbol de React en una VM, la
 de `local_workspace-context` prueba el store, el filtrado de carpetas, la ruta
 HTTP, la herencia por ruta canónica, la tarjeta y la pestaña **Contexto**, la
-página de proyecto con clic, flecha y caja de chat, y el diálogo del cliente, y
-la de `local_hide-deepseek-defaults` valida su parche y sus recursos.
+página de proyecto con clic, flecha y caja de chat, y el diálogo del cliente, la
+de `local_hide-deepseek-defaults` valida su parche y sus recursos, la de
+`local_groq-dictation` prueba el store de la clave, la ruta de transcripción
+con `fetch` simulado, la fila de Ajustes y el micrófono del compositor, y la de
+`local_default-model` prueba el catálogo, la persistencia del pin, la ruta HTTP,
+la preparación de sesiones nuevas y vacías (sin tocar subagentes, forks ni
+conversaciones empezadas) y el selector de la cabecera de Modelos.
 
 ```bash
 node local_dsh-backups/test/host-check.mjs
@@ -120,6 +144,10 @@ node local_workspace-context/test/host-check.mjs
 node local_workspace-context/test/render-check.mjs
 node local_hide-deepseek-defaults/test/check.mjs
 node local_retro-ai-os/test/host-check.mjs
+node local_groq-dictation/test/host-check.mjs
+node local_groq-dictation/test/render-check.mjs
+node local_default-model/test/host-check.mjs
+node local_default-model/test/render-check.mjs
 ```
 
 ## Estructura
@@ -153,6 +181,18 @@ local_retro-ai-os/
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
   test/host-check.mjs persistencia y validación de la ruta
+local_groq-dictation/
+  index.js            mitad de host: clave, ajustes y proxy a Groq
+  client.js           mitad de cliente: fila de Ajustes y micrófono del compositor
+  cordis.patch.yml    entrada de bundle
+  locale/{en,es}.json textos
+  test/               comprobaciones de host y de render
+local_default-model/
+  index.js            mitad de host: pin, catálogo, ruta y preparación de sesiones
+  client.js           mitad de cliente: selector en la cabecera de Modelos
+  cordis.patch.yml    entrada de bundle
+  locale/{en,es}.json textos
+  test/               comprobaciones de host y de render
 ```
 
 ## Seguridad
@@ -174,6 +214,15 @@ Lo que sí puede contener secretos son tus **datos**, que nunca entran aquí:
   carpetas se leen en el momento de componer el prompt, omitiendo archivos
   ocultos y con nombre de credencial, pero un archivo de texto elegido a mano
   puede contener secretos: revísalo antes de compartir una copia del perfil.
+- **Dictado con Groq** guarda la clave API en
+  `$DSH_HOME/groq-dictation/settings.json` con permisos `0600`. La página solo
+  recibe si hay clave y sus últimos cuatro caracteres; el audio se reenvía a
+  Groq únicamente al detener la grabación y no se guarda en disco. La copia de
+  seguridad del plugin de copias no incluye este archivo; si copias el perfil a
+  mano, contiene una credencial: trátalo como material sensible.
+- **Modelo predeterminado** guarda en `$DSH_HOME/default-model/settings.json`
+  solo el proveedor y el identificador del modelo elegidos, con permisos `0600`.
+  No contiene claves ni credenciales.
 - `.gitignore` bloquea `.env`, claves privadas, `servers.json`, credenciales y
   archivos `.zip` para que no se suban por descuido.
 

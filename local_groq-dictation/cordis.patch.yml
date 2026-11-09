@@ -1,0 +1,3 @@
+- insert:
+    - id: groq-dictation
+      name: '@local/groq-dictation'

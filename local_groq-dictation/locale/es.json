@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "title": "Dictado con Groq",
+    "description": "Graba desde el compositor con un botón de micrófono y deja que Groq Whisper lo transcriba al borrador."
+  },
+  "settings": {
+    "title": "Dictado con Groq",
+    "desc": "Graba con el botón de micrófono del compositor y deja que Whisper escriba lo que dices. La clave se queda en este equipo y nunca se envía al navegador.",
+    "configured": "Clave guardada ···· {hint}",
+    "loading": "Cargando…",
+    "loadError": "No se pudo leer la configuración del dictado.",
+    "apiKeyLabel": "Clave API de Groq",
+    "apiKeyPlaceholder": "gsk_…",
+    "apiKeyPlaceholderSaved": "Escribe una clave nueva para sustituir la guardada",
+    "modelLabel": "Modelo de Whisper",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "clear": "Borrar clave",
+    "saved": "Guardado.",
+    "clearDone": "Clave borrada.",
+    "needKey": "Introduce una clave para activar el dictado.",
+    "privacy": "El audio solo se envía a Groq cuando detienes la grabación."
+  },
+  "model": {
+    "whisper-large-v3-turbo": "Whisper Large v3 Turbo · el más rápido",
+    "whisper-large-v3": "Whisper Large v3 · el más preciso",
+    "distil-whisper-large-v3-en": "Distil Whisper Large v3 · solo inglés"
+  },
+  "mic": {
+    "idle": "Dictar con Groq",
+    "recording": "Detener dictado",
+    "requesting": "Pidiendo permiso al micrófono…",
+    "transcribing": "Transcribiendo…",
+    "notConfigured": "Añade tu clave API de Groq en Ajustes → General para usar el dictado.",
+    "recordingAria": "Grabando, {time}"
+  },
+  "error": {
+    "generic": "La petición de dictado falló.",
+    "missing-api-key": "No hay ninguna clave API de Groq configurada.",
+    "invalid-key": "Groq ha rechazado la clave API. Revísala en Ajustes → General.",
+    "rate-limited": "Groq está recibiendo demasiadas peticiones. Inténtalo en un momento.",
+    "audio-too-large": "La grabación es demasiado larga para Groq.",
+    "empty-transcript": "No se ha detectado voz en la grabación.",
+    "empty-audio": "La grabación está vacía.",
+    "unsupported-audio": "Este navegador ha generado un formato de audio que Groq no acepta.",
+    "bad-request": "Groq no pudo procesar la grabación.",
+    "upstream-error": "Groq devolvió un error inesperado.",
+    "network-error": "No se pudo conectar con Groq.",
+    "timeout": "Groq ha tardado demasiado en responder.",
+    "invalid-api-key": "Esa clave API no parece válida.",
+    "invalid-model": "El modelo de Whisper seleccionado no está disponible.",
+    "invalid-json": "La petición de configuración no es JSON válido.",
+    "invalid-settings": "El archivo de configuración guardado está dañado.",
+    "too-large": "La petición era demasiado grande.",
+    "microphone-denied": "Se ha denegado el acceso al micrófono. Permítelo en el navegador y vuelve a intentarlo.",
+    "microphone-missing": "No se ha encontrado ningún micrófono.",
+    "microphone-failed": "No se pudo abrir el micrófono.",
+    "recorder-unavailable": "Este navegador no puede grabar audio.",
+    "recording-failed": "La grabación falló. Inténtalo de nuevo.",
+    "not-configured": "Añade tu clave API de Groq en Ajustes → General para usar el dictado."
+  }
+}

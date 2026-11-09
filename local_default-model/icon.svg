@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Modelo predeterminado">
+  <defs>
+    <linearGradient id="dm-bg" x1="10" y1="4" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#172554"/>
+    </linearGradient>
+    <linearGradient id="dm-star" x1="32" y1="14" x2="32" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dm-bg)"/>
+  <ellipse cx="32" cy="34" rx="21" ry="7.5" fill="none" stroke="#a5b4fc" stroke-opacity="0.55" stroke-width="1.6"/>
+  <path d="M32 13.5 37 24l11.5 1.4-8.5 8 2.3 11.3L32 39.4l-10.3 5.3L24 33.4l-8.5-8L27 24l5-10.5Z" fill="url(#dm-star)"/>
+  <g fill="#a5b4fc">
+    <circle cx="11.5" cy="34" r="1.7"/>
+    <circle cx="52.5" cy="34" r="1.7"/>
+    <rect x="27" y="50" width="10" height="2.4" rx="1.2" fill="#c7d2fe"/>
+  </g>
+</svg>

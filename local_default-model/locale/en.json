@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Default model",
+    "description": "Choose the model new chats start with from Settings → Models; each session can still pick another model afterwards."
+  }
+}
