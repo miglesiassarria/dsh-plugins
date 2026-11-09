@@ -130,6 +130,7 @@ const connectedWorkspaces = []
 const openedSessions = []
 const sentPrompts = []
 const modelSelections = []
+const agentPresetSelections = []
 const permissionCommands = []
 let permissionValue = 'workspace-write'
 const modelSubscribers = new Set()
@@ -297,6 +298,9 @@ const fakeContext = {
     },
   },
   sessions: {
+    list: {
+      getSnapshot: () => ({ byId: { s9: { projectionValues: { agentPreset: 'standard' } } } }),
+    },
     binding(sessionId) {
       return sessionId === 's9' ? { session: fakeSession } : undefined
     },
@@ -333,6 +337,25 @@ const fakeContext = {
             ],
           },
         }
+      },
+    },
+    agentPresets: {
+      async list() {
+        return {
+          ok: true,
+          value: {
+            presets: [
+              { id: 'standard', isDefault: true },
+              { id: 'ptc' },
+              { id: 'minimal' },
+              { id: 'cordis' },
+            ],
+          },
+        }
+      },
+      async select(sessionId, presetId) {
+        agentPresetSelections.push({ sessionId, presetId })
+        return { ok: true, value: presetId }
       },
     },
   },
@@ -648,17 +671,39 @@ if (startedSessions.length !== 1 || startedSessions[0] !== 'ws-1') {
   throw new Error(`New session started ${JSON.stringify(startedSessions)}`)
 }
 
-// The permission menu creates the draft session, lists the host presets and
-// applies one through the session command.
+// The mode menu lists the healthy host presets and applies the chosen one.
 let triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
-if (triggers.length !== 2) throw new Error(`expected two composer triggers, got ${triggers.length}`)
+if (triggers.length !== 3) throw new Error(`expected three composer triggers, got ${triggers.length}`)
 await triggers[0].props.onClick()
 text = await renderWith(overviewComponent, {
   useWorkspaces: overviewUseWorkspaces,
   useSessions: overviewUseSessions,
   t: translate,
 }, 'overview')
-let options = collected.filter(node => node.props?.className === 'wsc-project-option')
+let options = collected.filter(node => node.props?.className?.split(' ').includes('wsc-project-option'))
+if (options.length !== 4) throw new Error(`expected four mode options, got ${options.length}`)
+options[1].props.onClick()
+await new Promise(resolve => setTimeout(resolve, 0))
+if (agentPresetSelections.length !== 1 || agentPresetSelections[0].sessionId !== 's9' || agentPresetSelections[0].presetId !== 'ptc') {
+  throw new Error(`mode selection was ${JSON.stringify(agentPresetSelections)}`)
+}
+
+// The permission menu reuses the draft session, lists the host presets and
+// applies one through the session command.
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
+if (triggers.length !== 3) throw new Error(`expected three composer triggers, got ${triggers.length}`)
+await triggers[1].props.onClick()
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+options = collected.filter(node => node.props?.className?.split(' ').includes('wsc-project-option'))
 if (options.length !== 3) throw new Error(`expected three permission options, got ${options.length}`)
 options[0].props.onClick()
 await new Promise(resolve => setTimeout(resolve, 0))
@@ -673,14 +718,14 @@ text = await renderWith(overviewComponent, {
   t: translate,
 }, 'overview')
 triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
-if (triggers.length !== 2) throw new Error(`expected two composer triggers, got ${triggers.length}`)
-await triggers[1].props.onClick()
+if (triggers.length !== 3) throw new Error(`expected three composer triggers, got ${triggers.length}`)
+await triggers[2].props.onClick()
 text = await renderWith(overviewComponent, {
   useWorkspaces: overviewUseWorkspaces,
   useSessions: overviewUseSessions,
   t: translate,
 }, 'overview')
-options = collected.filter(node => node.props?.className === 'wsc-project-option')
+options = collected.filter(node => node.props?.className?.split(' ').includes('wsc-project-option'))
 if (options.length !== 2) throw new Error(`expected two model options, got ${options.length}`)
 options[1].props.onClick()
 await new Promise(resolve => setTimeout(resolve, 0))

@@ -101,6 +101,21 @@ window.__ModuleLoader__.load({
           confirm: 'Enable',
           retry: 'Retry',
         },
+        mode: {
+          label: 'Mode',
+          default: 'Default mode',
+          loading: 'Loading modes…',
+          empty: 'No modes available.',
+          error: 'Could not load the modes.',
+          standard: 'Standard mode',
+          standardDescription: 'Work with code, files, and information. Suitable for most tasks, with search, editing, terminal commands, and other tools available as needed.',
+          ptc: 'PTC mode',
+          ptcDescription: 'Includes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.',
+          minimal: 'Minimal mode',
+          minimalDescription: 'The agent uses a terminal and image reading, with context compaction. Useful for testing and comparing its basic performance.',
+          creator: 'Creator mode',
+          creatorDescription: 'Customize DSH through conversation. Let the agent write plugins that add functions or a user interface, or combine tools and instructions to create its own mode.',
+        },
         error: {
           requestFailed: 'The request failed.',
           unauthorized: 'The request was not authorized.',
@@ -207,6 +222,21 @@ window.__ModuleLoader__.load({
           cancel: 'Cancelar',
           confirm: 'Activar',
           retry: 'Reintentar',
+        },
+        mode: {
+          label: 'Modo',
+          default: 'Modo predeterminado',
+          loading: 'Cargando modos…',
+          empty: 'No hay modos disponibles.',
+          error: 'No se pudieron cargar los modos.',
+          standard: 'Modo estándar',
+          standardDescription: 'Trabaje con código, archivos e información. Adecuado para la mayoría de las tareas, con búsqueda, edición, comandos de terminal y otras herramientas disponibles según sea necesario.',
+          ptc: 'Modo PTC',
+          ptcDescription: 'Incluye todas las capacidades del modo Estándar. Más adecuado para tareas que llaman a herramientas en lotes y luego filtran, organizan, deduplican, cuentan o resumen los resultados.',
+          minimal: 'Modo mínimo',
+          minimalDescription: 'El agente utiliza un terminal y lectura de imágenes, con compactación de contexto. Útil para probar y comparar su rendimiento básico.',
+          creator: 'Modo creador',
+          creatorDescription: 'Personaliza DSH a través de la conversación. Deja que el agente escriba complementos que agreguen funciones o interfaz de usuario, o combine herramientas e indicaciones para crear su propio modo.',
         },
         error: {
           requestFailed: 'La petición ha fallado.',
@@ -356,13 +386,16 @@ window.__ModuleLoader__.load({
 .wsc-project-option:hover{background:var(--dsw-alias-interactive-bg-hover);}
 .wsc-project-option:disabled{opacity:.55;cursor:default;}
 .wsc-project-optionname{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wsc-project-modeoption{align-items:flex-start;padding-top:7px;padding-bottom:7px;}
+.wsc-project-modecopy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;}
+.wsc-project-optiondesc{font-size:10.5px;line-height:1.4;color:var(--dsw-alias-label-secondary);white-space:normal;}
 .wsc-project-optioncheck{flex:none;color:var(--dsw-alias-brand-primary);font-size:12px;}
 .wsc-project-menunote{padding:8px;font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary);}
 .wsc-project-menuerror{padding:7px 8px;font-size:11px;line-height:1.4;color:var(--dsw-alias-state-error-primary);}
 .wsc-project-confirm{display:flex;flex-direction:column;gap:6px;margin:4px 2px 2px;padding:8px;border:1px solid var(--dsw-alias-state-warn-primary);border-radius:8px;background:var(--dsw-alias-bg-layer-1);}
 .wsc-project-confirm p{margin:0;font-size:11px;line-height:1.45;color:var(--dsw-alias-label-primary);}
 .wsc-project-confirmactions{display:flex;justify-content:flex-end;gap:6px;}
-.wsc-project-send{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-brand-primary);color:#fff;font:inherit;cursor:pointer;}
+.wsc-project-send{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-brand-primary);color:#fff;font:inherit;cursor:pointer;}
 .wsc-project-send:hover{filter:brightness(1.06);}
 .wsc-project-send:disabled{opacity:.45;cursor:default;filter:none;}
 .wsc-project-composererror{font-size:11px;line-height:1.4;color:var(--dsw-alias-state-error-primary);}
@@ -438,6 +471,22 @@ window.__ModuleLoader__.load({
         case 'auto': return t('composer.permissionAuto');
         default: return typeof name === 'string' && name !== '' ? name : String(value ?? '');
       }
+    }
+
+    /** Read an agent-preset label and description, localizing shipped modes. */
+    function modeDisplayText(preset, t) {
+      const builtIn = {
+        standard: ['mode.standard', 'mode.standardDescription'],
+        ptc: ['mode.ptc', 'mode.ptcDescription'],
+        minimal: ['mode.minimal', 'mode.minimalDescription'],
+        cordis: ['mode.creator', 'mode.creatorDescription'],
+      };
+      const keys = preset?.name === undefined ? builtIn[preset?.id] : undefined;
+      if (keys !== undefined) return { name: t(keys[0]), description: t(keys[1]) };
+      return {
+        name: typeof preset?.name === 'string' && preset.name !== '' ? preset.name : String(preset?.id ?? ''),
+        ...typeof preset?.description === 'string' && preset.description !== '' ? { description: preset.description } : {},
+      };
     }
 
     /** Read a localized host error, falling back to its message. */
@@ -965,6 +1014,11 @@ window.__ModuleLoader__.load({
         const [permissionLoading, setPermissionLoading] = React.useState(false);
         const [permissionError, setPermissionError] = React.useState(null);
         const [permissionConfirm, setPermissionConfirm] = React.useState(null);
+        const [modeOpen, setModeOpen] = React.useState(false);
+        const [modeRoster, setModeRoster] = React.useState([]);
+        const [modeCurrent, setModeCurrent] = React.useState(null);
+        const [modeLoading, setModeLoading] = React.useState(false);
+        const [modeError, setModeError] = React.useState(null);
 
         React.useEffect(() => {
           workspaceToken.current += 1;
@@ -991,6 +1045,11 @@ window.__ModuleLoader__.load({
           setPermissionError(null);
           setPermissionLoading(false);
           setPermissionConfirm(null);
+          setModeOpen(false);
+          setModeRoster([]);
+          setModeCurrent(null);
+          setModeLoading(false);
+          setModeError(null);
         }, [workspaceId]);
 
         React.useEffect(() => () => {
@@ -1005,16 +1064,17 @@ window.__ModuleLoader__.load({
         }, []);
 
         React.useEffect(() => {
-          if (!modelOpen && !permissionOpen) return undefined;
+          if (!modelOpen && !permissionOpen && !modeOpen) return undefined;
           const onDown = (event) => {
             if (menusRef.current !== null && menusRef.current.contains(event.target)) return;
             setModelOpen(false);
             setPermissionOpen(false);
             setPermissionConfirm(null);
+            setModeOpen(false);
           };
           document.addEventListener('mousedown', onDown);
           return () => document.removeEventListener('mousedown', onDown);
-        }, [modelOpen, permissionOpen]);
+        }, [modelOpen, permissionOpen, modeOpen]);
 
         React.useEffect(() => {
           if (workspaceId === undefined) {
@@ -1094,6 +1154,7 @@ window.__ModuleLoader__.load({
           const token = workspaceToken.current;
           setPermissionOpen(false);
           setPermissionConfirm(null);
+          setModeOpen(false);
           setModelOpen(true);
           setModelError(null);
           setModelLoading(true);
@@ -1148,6 +1209,7 @@ window.__ModuleLoader__.load({
           }
           const token = workspaceToken.current;
           setModelOpen(false);
+          setModeOpen(false);
           setPermissionOpen(true);
           setPermissionError(null);
           setPermissionConfirm(null);
@@ -1218,6 +1280,59 @@ window.__ModuleLoader__.load({
           }
         };
 
+        const openModeMenu = async () => {
+          if (modeOpen) {
+            setModeOpen(false);
+            return;
+          }
+          const token = workspaceToken.current;
+          setModelOpen(false);
+          setPermissionOpen(false);
+          setPermissionConfirm(null);
+          setModeOpen(true);
+          setModeError(null);
+          setModeLoading(true);
+          try {
+            const sessionId = await ensureSession();
+            if (workspaceToken.current !== token) return;
+            const result = await composer.agentPresetsList();
+            if (!result?.ok) {
+              const error = new Error(result?.error?.message ?? t('mode.error'));
+              error.code = result?.error?.code;
+              throw error;
+            }
+            const presets = Array.isArray(result.value?.presets) ? result.value.presets : [];
+            const healthy = presets.filter((preset) => preset.broken === undefined);
+            const summary = composer.sessionSummary(sessionId);
+            const listed = summary?.projectionValues?.agentPreset;
+            const fallback = presets.find((preset) => preset.isDefault === true)?.id ?? presets[0]?.id ?? null;
+            if (workspaceToken.current !== token) return;
+            setModeRoster(healthy);
+            setModeCurrent(typeof listed === 'string' ? listed : fallback);
+          } catch (reason) {
+            if (workspaceToken.current === token) setModeError(describeError(reason, t));
+          } finally {
+            if (workspaceToken.current === token) setModeLoading(false);
+          }
+        };
+
+        const selectMode = async (presetId) => {
+          setModeError(null);
+          try {
+            const sessionId = await ensureSession();
+            const result = await composer.selectAgentPreset(sessionId, presetId);
+            if (!result?.ok) {
+              const error = new Error(result?.error?.message ?? t('mode.error'));
+              error.code = result?.error?.code;
+              throw error;
+            }
+            setModeCurrent(typeof result.value === 'string' ? result.value : presetId);
+            setModeOpen(false);
+          } catch (reason) {
+            setModeError(describeError(reason, t));
+          }
+        };
+
         const selectedModel = modelSnapshot.current;
         const selectedGroup = modelSnapshot.groups.find((group) => group.id === selectedModel?.provider);
         const selectedEntry = selectedGroup?.models?.find((model) => model.id === selectedModel?.model);
@@ -1226,6 +1341,10 @@ window.__ModuleLoader__.load({
         const permissionText = permissionCurrent === null
           ? t('composer.permissionDefault')
           : permissionLabel(permissionCurrent, permissionCurrent, t);
+        const modeEntry = modeRoster.find((preset) => preset.id === modeCurrent);
+        const modeLabel = modeCurrent === null
+          ? (modeLoading ? t('mode.loading') : t('mode.default'))
+          : modeDisplayText(modeEntry ?? { id: modeCurrent }, t).name;
 
         const send = async (event) => {
           if (event !== undefined && event !== null && typeof event.preventDefault === 'function') event.preventDefault();
@@ -1279,6 +1398,37 @@ window.__ModuleLoader__.load({
                 }),
                 h('div', { className: 'wsc-project-composerbar', ref: menusRef },
                   h('div', { className: 'wsc-project-tools' },
+                    h('div', { className: 'wsc-project-tool' },
+                      h('button', {
+                        type: 'button',
+                        className: 'wsc-project-trigger',
+                        onClick: openModeMenu,
+                        'aria-expanded': modeOpen,
+                        title: t('mode.label'),
+                      },
+                      h('svg', { viewBox: '0 0 16 16', width: 12, height: 12, fill: 'none', 'aria-hidden': true, className: 'wsc-project-triggericon' },
+                        h('path', { d: 'M8 1.8l1.3 3.4 3.4 1.3-3.4 1.3L8 11.2 6.7 7.8 3.3 6.5l3.4-1.3L8 1.8z', stroke: 'currentColor', strokeWidth: 1.2, strokeLinejoin: 'round' })),
+                      h('span', { className: 'wsc-project-triggerlabel' }, modeLabel),
+                      h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
+                      modeOpen ? h('div', { className: 'wsc-project-menu' },
+                        modeLoading ? h('div', { className: 'wsc-project-menunote' }, t('mode.loading')) : null,
+                        modeError === null ? null : h('div', { className: 'wsc-project-menuerror' }, modeError),
+                        modeRoster.map((preset) => {
+                          const text = modeDisplayText(preset, t);
+                          return h('button', {
+                            type: 'button',
+                            className: 'wsc-project-option wsc-project-modeoption',
+                            key: preset.id,
+                            onClick: () => void selectMode(preset.id),
+                          },
+                          h('span', { className: 'wsc-project-modecopy' },
+                            h('span', { className: 'wsc-project-optionname' }, text.name),
+                            text.description === undefined ? null : h('span', { className: 'wsc-project-optiondesc' }, text.description)),
+                          modeCurrent === preset.id ? h('span', { className: 'wsc-project-optioncheck' }, '✓') : null);
+                        }),
+                        !modeLoading && modeError === null && modeRoster.length === 0
+                          ? h('div', { className: 'wsc-project-menunote' }, t('mode.empty'))
+                          : null) : null),
                     h('div', { className: 'wsc-project-tool' },
                       h('button', {
                         type: 'button',
@@ -1386,7 +1536,18 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace', 'sidebarRightTabs', 'layout'],
+      inject: [
+        'slots',
+        'locale',
+        'contextMenus',
+        'commandUi',
+        'uiWorkspace',
+        'sidebarRightTabs',
+        'layout',
+        'remote',
+        'remote.permissionPresets',
+        'remote.agentPresets',
+      ],
       apply(ctx) {
         const disposeLocale = ctx.locale.register(NS, DICTS);
         ctx.effect(() => disposeLocale, 'workspace-context locale');
@@ -1498,6 +1659,9 @@ window.__ModuleLoader__.load({
           retain: (sessionId) => ctx.get('sessions')?.retain?.(sessionId, { source: 'workspaceContextDraft' }),
           modelDirectory: (sessionId) => ctx.get('modelDirectories')?.directoryFor?.(sessionId),
           permissionCatalog: () => ctx.get('remote')?.permissionPresets?.catalog?.(),
+          agentPresetsList: () => ctx.get('remote')?.agentPresets?.list?.(),
+          selectAgentPreset: (sessionId, presetId) => ctx.get('remote')?.agentPresets?.select?.(sessionId, presetId),
+          sessionSummary: (sessionId) => ctx.get('sessions')?.list?.getSnapshot?.()?.byId?.[sessionId],
           notify: (text, success) => api.notify(text, success),
         };
 

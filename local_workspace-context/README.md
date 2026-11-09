@@ -33,6 +33,8 @@ Al hacer clic en la fila de un espacio de trabajo (o en el botón `...` →
 - **caja de chat** para empezar una sesión nueva: escribe y pulsa Enter o
   **Enviar**; se crea una sesión en el espacio, se envía el mensaje y la vista
   pasa directamente a esa sesión;
+- **selector de modo** con los presets del host (estándar, PTC, mínimo,
+  creador y los personalizados), con su descripción;
 - **selector de modelo** con el catálogo del host, agrupado por proveedor, y
   **selector de permisos** (sólo lectura, escritura en el espacio de trabajo y
   acceso completo; este último pide confirmación). Al abrir un selector se crea

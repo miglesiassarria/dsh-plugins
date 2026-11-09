@@ -85,7 +85,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   instalarlo.
 - **Contexto de espacios**: pulsa la fila de un espacio (la flecha solo pliega
   la lista) para abrir su página de proyecto con descripción, prompt del
-  sistema, contexto, caja de chat con selectores de modelo y permisos, y chats
+  sistema, contexto, caja de chat con selectores de modo, modelo y permisos, y chats
   navegables. Escribe en la caja y pulsa Enter o **Enviar** para crear una sesión
   con ese mensaje ya enviado. Clic derecho en el espacio → **Configurar
   espacio** para editar esos datos.
