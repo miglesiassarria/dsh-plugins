@@ -76,9 +76,30 @@ window.__ModuleLoader__.load({
           selectWorkspace: 'Select a workspace to see its project page.',
           openChat: 'Open chat',
           composerPlaceholder: 'How can I help you today?',
-          composerHint: 'Enter to send · Shift+Enter for a new line',
           send: 'Send',
           sendFailed: 'Could not send the message.',
+        },
+        composer: {
+          model: 'Model',
+          defaultModel: 'Default model',
+          selectModel: 'Select model',
+          modelLoading: 'Loading models…',
+          modelEmpty: 'No models available.',
+          modelError: 'Could not load the model list.',
+          permissions: 'Permissions',
+          permissionDefault: 'Default permissions',
+          permissionReadOnly: 'Read only',
+          permissionWorkspaceWrite: 'Workspace write',
+          permissionFullAccess: 'Full access',
+          permissionAuto: 'Auto review',
+          permissionUnavailable: 'Permissions are not available in this session.',
+          permissionLoading: 'Loading permissions…',
+          permissionError: 'Could not load the permission presets.',
+          permissionConfirmFull: 'Enable full access? This session may modify files outside the workspace.',
+          permissionConfirmAuto: 'Enable auto review? This is an experimental capability.',
+          cancel: 'Cancel',
+          confirm: 'Enable',
+          retry: 'Retry',
         },
         error: {
           requestFailed: 'The request failed.',
@@ -162,9 +183,30 @@ window.__ModuleLoader__.load({
           selectWorkspace: 'Selecciona un espacio de trabajo para ver su página de proyecto.',
           openChat: 'Abrir chat',
           composerPlaceholder: '¿Cómo puedo ayudarte hoy?',
-          composerHint: 'Enter para enviar · Shift+Enter para una línea nueva',
           send: 'Enviar',
           sendFailed: 'No se pudo enviar el mensaje.',
+        },
+        composer: {
+          model: 'Modelo',
+          defaultModel: 'Modelo predeterminado',
+          selectModel: 'Seleccionar modelo',
+          modelLoading: 'Cargando modelos…',
+          modelEmpty: 'No hay modelos disponibles.',
+          modelError: 'No se pudo cargar la lista de modelos.',
+          permissions: 'Permisos',
+          permissionDefault: 'Permisos predeterminados',
+          permissionReadOnly: 'Sólo lectura',
+          permissionWorkspaceWrite: 'Escritura en el espacio de trabajo',
+          permissionFullAccess: 'Acceso completo',
+          permissionAuto: 'Auto revisión',
+          permissionUnavailable: 'Los permisos no están disponibles en esta sesión.',
+          permissionLoading: 'Cargando permisos…',
+          permissionError: 'No se pudieron cargar los permisos.',
+          permissionConfirmFull: '¿Activar acceso completo? Esta sesión podrá modificar archivos fuera del espacio de trabajo.',
+          permissionConfirmAuto: '¿Activar la revisión automática? Es una capacidad experimental.',
+          cancel: 'Cancelar',
+          confirm: 'Activar',
+          retry: 'Reintentar',
         },
         error: {
           requestFailed: 'La petición ha fallado.',
@@ -298,7 +340,28 @@ window.__ModuleLoader__.load({
 .wsc-project-input{width:100%;min-height:54px;max-height:200px;box-sizing:border-box;padding:0;border:0;outline:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:1.5;resize:vertical;}
 .wsc-project-input::placeholder{color:var(--dsw-alias-label-secondary);}
 .wsc-project-composerbar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.wsc-project-composerhint{font-size:10.5px;line-height:1.4;color:var(--dsw-alias-label-secondary);}
+.wsc-project-tools{display:flex;align-items:center;gap:6px;min-width:0;}
+.wsc-project-tool{position:relative;min-width:0;}
+.wsc-project-trigger{display:inline-flex;align-items:center;gap:4px;max-width:240px;height:28px;padding:0 7px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;line-height:1;cursor:pointer;}
+.wsc-project-trigger:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);}
+.wsc-project-triggericon{flex:none;display:inline-flex;color:var(--dsw-alias-label-caption);}
+.wsc-project-triggerlabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wsc-project-triggerchevron{flex:none;font-size:10px;line-height:1;color:var(--dsw-alias-label-caption);}
+.wsc-project-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;box-sizing:border-box;width:max-content;min-width:230px;max-width:min(340px,calc(100vw - 48px));max-height:320px;overflow:auto;padding:5px;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-2);box-shadow:0 16px 48px rgba(0,0,0,.28);}
+.wsc-project-menu-right{left:auto;right:0;}
+.wsc-project-group{display:flex;flex-direction:column;gap:1px;padding:2px 0;}
+.wsc-project-group+.wsc-project-group{border-top:1px solid var(--dsw-alias-border-l1);margin-top:3px;padding-top:5px;}
+.wsc-project-grouphead{padding:4px 8px;font-size:9.5px;line-height:1.3;letter-spacing:.05em;text-transform:uppercase;color:var(--dsw-alias-label-secondary);}
+.wsc-project-option{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:6px 8px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:1.4;text-align:left;cursor:pointer;}
+.wsc-project-option:hover{background:var(--dsw-alias-interactive-bg-hover);}
+.wsc-project-option:disabled{opacity:.55;cursor:default;}
+.wsc-project-optionname{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wsc-project-optioncheck{flex:none;color:var(--dsw-alias-brand-primary);font-size:12px;}
+.wsc-project-menunote{padding:8px;font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary);}
+.wsc-project-menuerror{padding:7px 8px;font-size:11px;line-height:1.4;color:var(--dsw-alias-state-error-primary);}
+.wsc-project-confirm{display:flex;flex-direction:column;gap:6px;margin:4px 2px 2px;padding:8px;border:1px solid var(--dsw-alias-state-warn-primary);border-radius:8px;background:var(--dsw-alias-bg-layer-1);}
+.wsc-project-confirm p{margin:0;font-size:11px;line-height:1.45;color:var(--dsw-alias-label-primary);}
+.wsc-project-confirmactions{display:flex;justify-content:flex-end;gap:6px;}
 .wsc-project-send{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-brand-primary);color:#fff;font:inherit;cursor:pointer;}
 .wsc-project-send:hover{filter:brightness(1.06);}
 .wsc-project-send:disabled{opacity:.45;cursor:default;filter:none;}
@@ -351,6 +414,30 @@ window.__ModuleLoader__.load({
       const [value, setValue] = React.useState(store.get());
       React.useEffect(() => store.subscribe(() => setValue(store.get())), [store]);
       return value;
+    }
+
+    /** Subscribe one component to a `getSnapshot`/`subscribe` store. */
+    function useSnapshot(store) {
+      const [value, setValue] = React.useState(() => store.getSnapshot());
+      React.useEffect(() => {
+        setValue(store.getSnapshot());
+        return store.subscribe(() => setValue(store.getSnapshot()));
+      }, [store]);
+      return value;
+    }
+
+    const EMPTY_MODEL_SNAPSHOT = { current: null, routable: null, groups: [], failures: [], status: 'idle', pending: null, error: null };
+    const EMPTY_MODEL_STORE = { getSnapshot: () => EMPTY_MODEL_SNAPSHOT, subscribe: () => () => {} };
+
+    /** Read a permission preset label, falling back to the host name. */
+    function permissionLabel(value, name, t) {
+      switch (value) {
+        case 'read-only': return t('composer.permissionReadOnly');
+        case 'workspace-write': return t('composer.permissionWorkspaceWrite');
+        case 'danger-full-access': return t('composer.permissionFullAccess');
+        case 'auto': return t('composer.permissionAuto');
+        default: return typeof name === 'string' && name !== '' ? name : String(value ?? '');
+      }
     }
 
     /** Read a localized host error, falling back to its message. */
@@ -846,7 +933,7 @@ window.__ModuleLoader__.load({
 
     /** Main-panel project page opened by clicking a workspace row. */
     function createWorkspaceOverview(options) {
-      const { api, overviewStore, contextBumps, openDialog, uiWorkspace, sendPrompt } = options;
+      const { api, overviewStore, contextBumps, openDialog, uiWorkspace, sendPrompt, composer } = options;
       return function WorkspaceOverview({ useWorkspaces, useSessions, t }) {
         const request = useStore(overviewStore);
         const workspaceId = request?.workspaceId;
@@ -862,6 +949,52 @@ window.__ModuleLoader__.load({
         const [draft, setDraft] = React.useState('');
         const [sending, setSending] = React.useState(false);
         const [composerError, setComposerError] = React.useState(null);
+        const sessionRef = React.useRef(null);
+        const sessionPromise = React.useRef(null);
+        const workspaceToken = React.useRef(0);
+        const menusRef = React.useRef(null);
+        const [modelOpen, setModelOpen] = React.useState(false);
+        const [modelDirectory, setModelDirectory] = React.useState(null);
+        const modelSnapshot = useSnapshot(modelDirectory?.store ?? EMPTY_MODEL_STORE);
+        const [modelLoading, setModelLoading] = React.useState(false);
+        const [modelError, setModelError] = React.useState(null);
+        const [permissionOpen, setPermissionOpen] = React.useState(false);
+        const [permissionOptions, setPermissionOptions] = React.useState([]);
+        const [permissionCurrent, setPermissionCurrent] = React.useState(null);
+        const [permissionLoading, setPermissionLoading] = React.useState(false);
+        const [permissionError, setPermissionError] = React.useState(null);
+        const [permissionConfirm, setPermissionConfirm] = React.useState(null);
+
+        React.useEffect(() => {
+          workspaceToken.current += 1;
+          sessionRef.current = null;
+          sessionPromise.current = null;
+          setDraft('');
+          setSending(false);
+          setComposerError(null);
+          setModelOpen(false);
+          setModelDirectory(null);
+          setModelError(null);
+          setModelLoading(false);
+          setPermissionOpen(false);
+          setPermissionOptions([]);
+          setPermissionCurrent(null);
+          setPermissionError(null);
+          setPermissionLoading(false);
+          setPermissionConfirm(null);
+        }, [workspaceId]);
+
+        React.useEffect(() => {
+          if (!modelOpen && !permissionOpen) return undefined;
+          const onDown = (event) => {
+            if (menusRef.current !== null && menusRef.current.contains(event.target)) return;
+            setModelOpen(false);
+            setPermissionOpen(false);
+            setPermissionConfirm(null);
+          };
+          document.addEventListener('mousedown', onDown);
+          return () => document.removeEventListener('mousedown', onDown);
+        }, [modelOpen, permissionOpen]);
 
         React.useEffect(() => {
           if (workspaceId === undefined) {
@@ -907,14 +1040,157 @@ window.__ModuleLoader__.load({
         const openWorkspaceDialog = () => openDialog({ workspaceId, path: meta.path, title: meta.title });
         const entries = Array.isArray(config.entries) ? config.entries : [];
 
+        const ensureSession = () => {
+          if (sessionRef.current !== null) return Promise.resolve(sessionRef.current);
+          if (sessionPromise.current === null) {
+            const token = workspaceToken.current;
+            sessionPromise.current = composer.connectWorkspace(workspaceId).then((id) => {
+              if (workspaceToken.current === token) sessionRef.current = id;
+              return id;
+            }).finally(() => {
+              sessionPromise.current = null;
+            });
+          }
+          return sessionPromise.current;
+        };
+
+        const openModelMenu = async () => {
+          if (modelOpen) {
+            setModelOpen(false);
+            return;
+          }
+          const token = workspaceToken.current;
+          setPermissionOpen(false);
+          setPermissionConfirm(null);
+          setModelOpen(true);
+          setModelError(null);
+          setModelLoading(true);
+          try {
+            const sessionId = await ensureSession();
+            if (workspaceToken.current !== token) return;
+            const directory = composer.modelDirectory(sessionId);
+            if (directory === undefined) throw new Error(t('composer.modelError'));
+            setModelDirectory(directory);
+            await directory.load();
+          } catch (reason) {
+            if (workspaceToken.current === token) setModelError(describeError(reason, t));
+          } finally {
+            if (workspaceToken.current === token) setModelLoading(false);
+          }
+        };
+
+        const selectModel = async (group, model) => {
+          if (modelDirectory === null) return;
+          setModelError(null);
+          try {
+            const result = await modelDirectory.select({ provider: group.id, model: model.id });
+            if (!result?.ok) {
+              const error = new Error(result?.error?.message ?? t('composer.modelError'));
+              error.code = result?.error?.code;
+              throw error;
+            }
+            setModelOpen(false);
+          } catch (reason) {
+            setModelError(describeError(reason, t));
+          }
+        };
+
+        const openPermissionMenu = async () => {
+          if (permissionOpen) {
+            setPermissionOpen(false);
+            return;
+          }
+          const token = workspaceToken.current;
+          setModelOpen(false);
+          setPermissionOpen(true);
+          setPermissionError(null);
+          setPermissionConfirm(null);
+          setPermissionLoading(true);
+          try {
+            const sessionId = await ensureSession();
+            if (workspaceToken.current !== token) return;
+            const binding = composer.binding(sessionId);
+            const projection = binding?.session?.projections?.faceOf?.('permissions')?.getSnapshot?.();
+            if (projection === undefined) throw new Error(t('composer.permissionUnavailable'));
+            const result = await composer.permissionCatalog();
+            if (!result?.ok) {
+              const error = new Error(result?.error?.message ?? t('composer.permissionError'));
+              error.code = result?.error?.code;
+              throw error;
+            }
+            if (workspaceToken.current !== token) return;
+            setPermissionOptions(Array.isArray(result.value?.options) ? result.value.options : []);
+            setPermissionCurrent(projection.currentValue ?? null);
+          } catch (reason) {
+            if (workspaceToken.current === token) setPermissionError(describeError(reason, t));
+          } finally {
+            if (workspaceToken.current === token) setPermissionLoading(false);
+          }
+        };
+
+        const applyPermission = async (value) => {
+          const sessionId = await ensureSession();
+          const binding = composer.binding(sessionId);
+          if (binding === undefined) throw new Error(t('composer.permissionUnavailable'));
+          const result = await binding.session.command(`/permission ${value}`);
+          if (!result?.ok) {
+            const error = new Error(result?.error?.message ?? t('composer.permissionError'));
+            error.code = result?.error?.code;
+            throw error;
+          }
+          if (result.value?.matched !== true) throw new Error(t('composer.permissionUnavailable'));
+          setPermissionCurrent(value);
+          setPermissionConfirm(null);
+          setPermissionOpen(false);
+        };
+
+        const pickPermission = async (value) => {
+          if (value === permissionCurrent) {
+            setPermissionOpen(false);
+            return;
+          }
+          if (value === 'danger-full-access' || value === 'auto') {
+            setPermissionConfirm(value);
+            return;
+          }
+          setPermissionError(null);
+          try {
+            await applyPermission(value);
+          } catch (reason) {
+            setPermissionError(describeError(reason, t));
+          }
+        };
+
+        const confirmPermission = async () => {
+          if (permissionConfirm === null) return;
+          setPermissionError(null);
+          try {
+            await applyPermission(permissionConfirm);
+          } catch (reason) {
+            setPermissionError(describeError(reason, t));
+          }
+        };
+
+        const selectedModel = modelSnapshot.current;
+        const selectedGroup = modelSnapshot.groups.find((group) => group.id === selectedModel?.provider);
+        const selectedEntry = selectedGroup?.models?.find((model) => model.id === selectedModel?.model);
+        const modelLabel = selectedEntry?.name ?? (modelLoading ? t('composer.modelLoading') : t('composer.defaultModel'));
+        const modelErrorText = modelError ?? (modelSnapshot.status === 'error' ? modelSnapshot.error : null);
+        const permissionText = permissionCurrent === null
+          ? t('composer.permissionDefault')
+          : permissionLabel(permissionCurrent, permissionCurrent, t);
+
         const send = async (event) => {
           if (event !== undefined && event !== null && typeof event.preventDefault === 'function') event.preventDefault();
           const text = draft.trim();
           if (text === '' || sending) return;
           setSending(true);
           setComposerError(null);
+          const token = workspaceToken.current;
           try {
-            await sendPrompt(workspaceId, text);
+            const sessionId = await ensureSession();
+            if (workspaceToken.current !== token) return;
+            await sendPrompt(workspaceId, text, sessionId);
             setDraft('');
           } catch (reason) {
             const message = describeError(reason, t);
@@ -954,16 +1230,78 @@ window.__ModuleLoader__.load({
                   onChange: (event) => setDraft(event.target.value),
                   onKeyDown: onComposerKeyDown,
                 }),
-                h('div', { className: 'wsc-project-composerbar' },
-                  h('span', { className: 'wsc-project-composerhint' }, t('overview.composerHint')),
-                  h('button', {
-                    type: 'submit',
-                    className: 'wsc-project-send',
-                    disabled: sending || draft.trim() === '',
-                    title: t('overview.send'),
-                    'aria-label': t('overview.send'),
-                  }, h('svg', { viewBox: '0 0 16 16', width: 15, height: 15, fill: 'none', 'aria-hidden': true },
-                    h('path', { d: 'M8 13V3M4 7l4-4 4 4', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' })))),
+                h('div', { className: 'wsc-project-composerbar', ref: menusRef },
+                  h('div', { className: 'wsc-project-tools' },
+                    h('div', { className: 'wsc-project-tool' },
+                      h('button', {
+                        type: 'button',
+                        className: 'wsc-project-trigger',
+                        onClick: openPermissionMenu,
+                        'aria-expanded': permissionOpen,
+                        title: t('composer.permissions'),
+                      },
+                      h('svg', { viewBox: '0 0 16 16', width: 12, height: 12, fill: 'none', 'aria-hidden': true, className: 'wsc-project-triggericon' },
+                        h('path', { d: 'M8 1.8l5 2v3.4c0 3.1-2.1 5.4-5 6.9-2.9-1.5-5-3.8-5-6.9V3.8l5-2z', stroke: 'currentColor', strokeWidth: 1.2, strokeLinejoin: 'round' })),
+                      h('span', { className: 'wsc-project-triggerlabel' }, permissionText),
+                      h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
+                      permissionOpen ? h('div', { className: 'wsc-project-menu' },
+                        permissionLoading ? h('div', { className: 'wsc-project-menunote' }, t('composer.permissionLoading')) : null,
+                        permissionError === null ? null : h('div', { className: 'wsc-project-menuerror' }, permissionError),
+                        permissionOptions.map((option) => h('button', {
+                          type: 'button',
+                          className: 'wsc-project-option',
+                          key: option.value,
+                          onClick: () => void pickPermission(option.value),
+                        },
+                        h('span', { className: 'wsc-project-optionname' }, permissionLabel(option.value, option.name, t)),
+                        permissionCurrent === option.value ? h('span', { className: 'wsc-project-optioncheck' }, '✓') : null)),
+                        permissionConfirm === null ? null : h('div', { className: 'wsc-project-confirm' },
+                          h('p', null, permissionConfirm === 'auto' ? t('composer.permissionConfirmAuto') : t('composer.permissionConfirmFull')),
+                          h('div', { className: 'wsc-project-confirmactions' },
+                            h('button', { type: 'button', className: 'wsc-btn wsc-btn-ghost', onClick: () => setPermissionConfirm(null) }, t('composer.cancel')),
+                            h('button', { type: 'button', className: 'wsc-btn wsc-btn-primary', onClick: () => void confirmPermission() }, t('composer.confirm')))),
+                        !permissionLoading && permissionError === null && permissionOptions.length === 0
+                          ? h('div', { className: 'wsc-project-menunote' }, t('composer.permissionUnavailable'))
+                          : null) : null)),
+                  h('div', { className: 'wsc-project-tools' },
+                    h('div', { className: 'wsc-project-tool' },
+                      h('button', {
+                        type: 'button',
+                        className: 'wsc-project-trigger',
+                        onClick: openModelMenu,
+                        'aria-expanded': modelOpen,
+                        title: t('composer.model'),
+                      },
+                      h('span', { className: 'wsc-project-triggerlabel' }, modelLabel),
+                      h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
+                      modelOpen ? h('div', { className: 'wsc-project-menu wsc-project-menu-right' },
+                        modelLoading || modelSnapshot.status === 'loading' ? h('div', { className: 'wsc-project-menunote' }, t('composer.modelLoading')) : null,
+                        modelErrorText === null ? null : h('div', { className: 'wsc-project-menuerror' }, modelErrorText),
+                        modelSnapshot.groups.map((group) => h('div', { className: 'wsc-project-group', key: group.id },
+                          h('div', { className: 'wsc-project-grouphead' }, group.name ?? group.id),
+                          (Array.isArray(group.models) ? group.models : []).map((model) => h('button', {
+                            type: 'button',
+                            className: 'wsc-project-option',
+                            key: `${group.id}:${model.id}`,
+                            disabled: modelSnapshot.status === 'selecting',
+                            onClick: () => void selectModel(group, model),
+                          },
+                          h('span', { className: 'wsc-project-optionname' }, model.name ?? model.id),
+                          selectedModel?.provider === group.id && selectedModel?.model === model.id
+                            ? h('span', { className: 'wsc-project-optioncheck' }, '✓')
+                            : null)))),
+                        !modelLoading && modelErrorText === null && modelSnapshot.groups.length === 0
+                          ? h('div', { className: 'wsc-project-menunote' }, t('composer.modelEmpty'))
+                          : null) : null),
+                    h('button', {
+                      type: 'submit',
+                      className: 'wsc-project-send',
+                      disabled: sending || draft.trim() === '',
+                      title: t('overview.send'),
+                      'aria-label': t('overview.send'),
+                    }, h('svg', { viewBox: '0 0 16 16', width: 15, height: 15, fill: 'none', 'aria-hidden': true },
+                      h('path', { d: 'M8 13V3M4 7l4-4 4 4', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' })))),
+              ),
               ),
               composerError === null ? null : h('div', { className: 'wsc-project-composererror' }, composerError),
               h('section', { className: 'wsc-project-chats' },
@@ -1065,8 +1403,8 @@ window.__ModuleLoader__.load({
         };
 
         /** Create a session in the workspace and send the project page prompt. */
-        const sendProjectPrompt = async (workspaceId, text) => {
-          const sessionId = await ctx.uiWorkspace.connectWorkspace(workspaceId);
+        const sendProjectPrompt = async (workspaceId, text, existingSessionId) => {
+          const sessionId = existingSessionId ?? await ctx.uiWorkspace.connectWorkspace(workspaceId);
           ctx.uiWorkspace.openSession(sessionId);
           const sessions = ctx.get('sessions');
           let binding;
@@ -1105,6 +1443,14 @@ window.__ModuleLoader__.load({
             restoreDraft();
             throw error;
           }
+        };
+
+        const composerTools = {
+          connectWorkspace: (workspaceId) => ctx.uiWorkspace.connectWorkspace(workspaceId),
+          binding: (sessionId) => ctx.get('sessions')?.binding?.(sessionId),
+          modelDirectory: (sessionId) => ctx.get('modelDirectories')?.directoryFor?.(sessionId),
+          permissionCatalog: () => ctx.get('remote')?.permissionPresets?.catalog?.(),
+          notify: (text, success) => api.notify(text, success),
         };
 
         // Workspace menu: open the project page explicitly.
@@ -1214,6 +1560,7 @@ window.__ModuleLoader__.load({
           openDialog,
           uiWorkspace: ctx.uiWorkspace,
           sendPrompt: sendProjectPrompt,
+          composer: composerTools,
         })));
 
         // A primary click on a real workspace row opens its project page; the

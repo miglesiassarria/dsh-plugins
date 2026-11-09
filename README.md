@@ -85,9 +85,10 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   instalarlo.
 - **Contexto de espacios**: pulsa la fila de un espacio (la flecha solo pliega
   la lista) para abrir su página de proyecto con descripción, prompt del
-  sistema, contexto, caja de chat y chats navegables. Escribe en la caja y pulsa
-  Enter o **Enviar** para crear una sesión con ese mensaje ya enviado. Clic
-  derecho en el espacio → **Configurar espacio** para editar esos datos.
+  sistema, contexto, caja de chat con selectores de modelo y permisos, y chats
+  navegables. Escribe en la caja y pulsa Enter o **Enviar** para crear una sesión
+  con ese mensaje ya enviado. Clic derecho en el espacio → **Configurar
+  espacio** para editar esos datos.
   Para una sesión suelta, pulsa `+` → **Carpeta**. La barra lateral derecha
   muestra una tarjeta **Contexto** en *Empezar* y una pestaña completa con la
   suma del contexto del espacio y el de la sesión. La configuración se guarda

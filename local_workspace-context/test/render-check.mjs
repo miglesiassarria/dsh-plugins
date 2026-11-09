@@ -19,6 +19,7 @@ const loaderCalls = []
 const collected = []
 const pendingEffects = []
 const effectKeys = new Set()
+const effectDeps = new Map()
 const stateStore = new Map()
 const refStore = new Map()
 const fetchCalls = []
@@ -44,8 +45,18 @@ const React = {
       }
     }]
   },
-  useEffect(fn) {
+  useEffect(fn, deps) {
     const key = `${currentPath}#${hooksIndex++}`
+    if (deps === undefined) {
+      if (effectKeys.has(key)) return
+      effectKeys.add(key)
+      pendingEffects.push({ key, fn })
+      return
+    }
+    const previous = effectDeps.get(key)
+    const changed = previous === undefined || previous.length !== deps.length || deps.some((value, index) => !Object.is(value, previous[index]))
+    if (!changed) return
+    effectDeps.set(key, deps)
     pendingEffects.push({ key, fn })
   },
   useRef(initial) {
@@ -118,7 +129,52 @@ const startedSessions = []
 const connectedWorkspaces = []
 const openedSessions = []
 const sentPrompts = []
-const fakeSession = { getSnapshot: () => ({ openState: 'open' }) }
+const modelSelections = []
+const permissionCommands = []
+let permissionValue = 'workspace-write'
+const modelSubscribers = new Set()
+let modelSnapshot = {
+  current: null,
+  routable: null,
+  groups: [{ id: 'provider-a', name: 'Provider A', models: [{ id: 'model-1', name: 'Model One' }, { id: 'model-2', name: 'Model Two' }] }],
+  failures: [],
+  status: 'ready',
+  pending: null,
+  error: null,
+}
+const modelDirectory = {
+  store: {
+    getSnapshot: () => modelSnapshot,
+    subscribe(listener) {
+      modelSubscribers.add(listener)
+      return () => modelSubscribers.delete(listener)
+    },
+  },
+  async load() {
+    modelSnapshot = { ...modelSnapshot, status: 'ready' }
+    for (const listener of modelSubscribers) listener()
+    return modelSnapshot
+  },
+  async select(selection) {
+    modelSelections.push(selection)
+    modelSnapshot = { ...modelSnapshot, current: selection }
+    for (const listener of modelSubscribers) listener()
+    return { ok: true }
+  },
+}
+const fakeSession = {
+  getSnapshot: () => ({ openState: 'open' }),
+  projections: {
+    faceOf(name) {
+      return name === 'permissions' ? { getSnapshot: () => ({ currentValue: permissionValue }) } : undefined
+    },
+  },
+  async command(command) {
+    permissionCommands.push(command)
+    if (command.startsWith('/permission ')) permissionValue = command.slice('/permission '.length)
+    return { ok: true, value: { matched: true } }
+  },
+}
 const fakeDocument = {
   addEventListener(type, listener, capture) {
     if (type === 'click' && capture === true) clickListeners.add(listener)
@@ -249,6 +305,27 @@ const fakeContext = {
     sendSession(session, text, attachments, mode) {
       sentPrompts.push({ text, attachments, mode })
       return Promise.resolve({ kind: 'success' })
+    },
+  },
+  modelDirectories: {
+    directoryFor(sessionId) {
+      return sessionId === 's9' ? modelDirectory : undefined
+    },
+  },
+  remote: {
+    permissionPresets: {
+      async catalog() {
+        return {
+          ok: true,
+          value: {
+            options: [
+              { value: 'read-only', name: 'Read only' },
+              { value: 'workspace-write', name: 'Workspace write' },
+              { value: 'danger-full-access', name: 'Full access' },
+            ],
+          },
+        }
+      },
     },
   },
   layout: {
@@ -428,13 +505,10 @@ async function renderWith(component, props, path) {
   output = []
   renderNode(React.createElement(component, props), path, output)
   for (let pass = 0; pass < 5; pass += 1) {
-    const effects = pendingEffects.filter(entry => !effectKeys.has(entry.key))
+    const effects = pendingEffects.slice()
     if (effects.length === 0) break
-    for (const entry of effects) {
-      effectKeys.add(entry.key)
-      entry.fn()
-    }
     pendingEffects.length = 0
+    for (const entry of effects) entry.fn()
     await new Promise(resolve => setTimeout(resolve, 0))
     collected.length = 0
     output = []
@@ -565,6 +639,50 @@ newSessionButton.props.onClick()
 if (startedSessions.length !== 1 || startedSessions[0] !== 'ws-1') {
   throw new Error(`New session started ${JSON.stringify(startedSessions)}`)
 }
+
+// The permission menu creates the draft session, lists the host presets and
+// applies one through the session command.
+let triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
+if (triggers.length !== 2) throw new Error(`expected two composer triggers, got ${triggers.length}`)
+await triggers[0].props.onClick()
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+let options = collected.filter(node => node.props?.className === 'wsc-project-option')
+if (options.length !== 3) throw new Error(`expected three permission options, got ${options.length}`)
+options[0].props.onClick()
+await new Promise(resolve => setTimeout(resolve, 0))
+if (permissionCommands.length !== 1 || permissionCommands[0] !== '/permission read-only') {
+  throw new Error(`permission command was ${JSON.stringify(permissionCommands)}`)
+}
+
+// The model menu reuses the same draft session and applies the chosen model.
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
+if (triggers.length !== 2) throw new Error(`expected two composer triggers, got ${triggers.length}`)
+await triggers[1].props.onClick()
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+options = collected.filter(node => node.props?.className === 'wsc-project-option')
+if (options.length !== 2) throw new Error(`expected two model options, got ${options.length}`)
+options[1].props.onClick()
+await new Promise(resolve => setTimeout(resolve, 0))
+if (modelSelections.length !== 1 || modelSelections[0].provider !== 'provider-a' || modelSelections[0].model !== 'model-2') {
+  throw new Error(`model selection was ${JSON.stringify(modelSelections)}`)
+}
+if (!text.includes('Model One') || !text.includes('Provider A')) {
+  throw new Error('the model menu did not render its provider group')
+}
+
 const composerInput = collected.find(node => node.props?.className === 'wsc-project-input')
 if (composerInput === undefined) throw new Error('the workspace page rendered no chat composer')
 composerInput.props.onChange({ target: { value: 'Hello project' } })
