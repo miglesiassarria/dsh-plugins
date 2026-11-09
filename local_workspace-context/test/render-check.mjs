@@ -176,7 +176,24 @@ const fakeSession = {
     return { ok: true, value: { matched: true } }
   },
 }
+const injectedStyles = []
 const fakeDocument = {
+  head: {
+    appendChild(node) {
+      injectedStyles.push(node)
+    },
+  },
+  createElement(tagName) {
+    return {
+      tagName,
+      dataset: {},
+      textContent: '',
+      remove() {
+        const index = injectedStyles.indexOf(this)
+        if (index >= 0) injectedStyles.splice(index, 1)
+      },
+    }
+  },
   addEventListener(type, listener, capture) {
     if (type === 'click' && capture === true) clickListeners.add(listener)
   },
@@ -393,6 +410,11 @@ const fakeContext = {
 }
 
 plugin.apply(fakeContext)
+
+const sidebarStyle = injectedStyles.find(style => style.dataset?.workspaceContext === 'sidebar-chevron')
+if (sidebarStyle === undefined || !sidebarStyle.textContent.includes('order:-1') || !sidebarStyle.textContent.includes('display:inline-flex !important')) {
+  throw new Error('the plugin did not inject the persistent workspace chevron style')
+}
 
 // ---- Registration inventory --------------------------------------------------
 const menu = menuRegistrations.find(entry => entry.id === 'workspace-context.configure')

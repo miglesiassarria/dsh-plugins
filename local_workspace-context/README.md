@@ -48,7 +48,9 @@ Al hacer clic en la fila de un espacio de trabajo (o en el botón `...` →
 
 El clic sobre el nombre, la carpeta o el fondo de la fila abre esta página y
 **no** pliega la lista. Para plegar o desplegar los chats del espacio hay que
-pulsar la **flecha** situada a la izquierda del nombre.
+pulsar la **flecha**, que queda siempre visible a la izquierda de la carpeta
+(no solo al pasar el ratón), de modo que también se puede usar en pantallas
+táctiles.
 
 ## El apartado «Contexto» de la barra derecha
 

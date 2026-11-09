@@ -428,6 +428,15 @@ window.__ModuleLoader__.load({
 @media (max-width:640px){.wsc-overlay{padding:10px;}.wsc-dialog{max-height:calc(100vh - 20px);}.wsc-head,.wsc-body,.wsc-foot{padding-left:16px;padding-right:16px;}}
 `;
 
+    /**
+     * Keep each workspace row's expander visible on every input modality, and
+     * place it before the folder icon so touch screens can collapse the list.
+     */
+    const SIDEBAR_CSS = `
+[data-row-key^="workspace:"] [class*="_chevron"]{display:inline-flex !important;order:-1;align-items:center;justify-content:center;width:20px;height:28px;margin-inline-start:-2px;}
+[data-row-key^="workspace:"]:hover [class*="_folder"]{display:inline-flex !important;}
+`;
+
     /** Small external store: enough for one dialog request and session bumps. */
     function createStore(initial) {
       let value = initial;
@@ -1581,6 +1590,17 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         const disposeLocale = ctx.locale.register(NS, DICTS);
         ctx.effect(() => disposeLocale, 'workspace-context locale');
+
+        const sidebarStyle = typeof document !== 'undefined' && document.head !== undefined && typeof document.createElement === 'function'
+          ? document.createElement('style')
+          : null;
+        if (sidebarStyle !== null) {
+          sidebarStyle.dataset.plugin = NS;
+          sidebarStyle.dataset.workspaceContext = 'sidebar-chevron';
+          sidebarStyle.textContent = SIDEBAR_CSS;
+          document.head.appendChild(sidebarStyle);
+          ctx.effect(() => () => sidebarStyle.remove(), 'workspace-context sidebar chevron');
+        }
 
         const t = ctx.locale.bind(NS);
         const dialogStore = createStore(null);
