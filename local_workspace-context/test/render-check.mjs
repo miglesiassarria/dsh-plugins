@@ -112,8 +112,22 @@ const workspaceState = {
 
 const folderPicker = { value: '/tmp/context-folder' }
 
+const clickListeners = new Set()
+const selectedPanels = []
+const startedSessions = []
+const openedSessions = []
+const fakeDocument = {
+  addEventListener(type, listener, capture) {
+    if (type === 'click' && capture === true) clickListeners.add(listener)
+  },
+  removeEventListener(type, listener) {
+    if (type === 'click') clickListeners.delete(listener)
+  },
+}
+
 const sandbox = {
   console,
+  document: fakeDocument,
   setTimeout,
   clearTimeout,
   TextDecoder,
@@ -180,7 +194,12 @@ const fakeContext = {
   },
   slots: {
     inject(key, callback) {
-      callback()
+      const result = callback()
+      if (result !== undefined && result !== null && typeof result.next === 'function') {
+        for (const _registration of result) {
+          // Consume the generator so every yielded registration runs.
+        }
+      }
       return () => {}
     },
     register(options, component) {
@@ -206,6 +225,17 @@ const fakeContext = {
   uiWorkspace: {
     async pickDirectory() {
       return folderPicker.value
+    },
+    startSession(workspaceId) {
+      startedSessions.push(workspaceId)
+    },
+    openSession(sessionId) {
+      openedSessions.push(sessionId)
+    },
+  },
+  layout: {
+    selectPanel(panelId) {
+      selectedPanels.push(panelId)
     },
   },
   sidebarRightTabs: {
@@ -233,15 +263,18 @@ if (menu.order !== 150) throw new Error(`unexpected menu order ${menu.order}`)
 overlayComponent = registrations.find(entry => entry.options.name === 'shell.overlay')?.component
 const guideComponent = registrations.find(entry => entry.options.name === 'sidebar.right.tab.guide.entry')?.component
 const tabComponent = registrations.find(entry => entry.options.name === 'sidebar.right.pane.tab')?.component
-const iconRegistration = registrations.find(entry => entry.options.name === 'contextMenu.icon')
+const overviewComponent = registrations.find(entry => entry.options.name === 'main' && entry.options.key === 'workspace-overview')?.component
+const settingsIcon = registrations.find(entry => entry.options.name === 'contextMenu.icon' && entry.options.key === 'workspace-context.settings')
+const openIcon = registrations.find(entry => entry.options.name === 'contextMenu.icon' && entry.options.key === 'workspace-context.open')
 if (overlayComponent === undefined) throw new Error('the plugin registered no shell.overlay dialog')
 if (guideComponent === undefined) throw new Error('the plugin registered no right sidebar guide card')
 if (tabComponent === undefined) throw new Error('the plugin registered no right sidebar Context tab')
+if (overviewComponent === undefined) throw new Error('the plugin registered no workspace overview main panel')
 if (tabDefinitions.length !== 1) throw new Error(`expected one tab definition, got ${tabDefinitions.length}`)
 if (tabDefinitions[0].kind !== 'workspace-context') throw new Error(`unexpected tab kind ${tabDefinitions[0].kind}`)
 if (tabDefinitions[0].guide?.[0]?.id !== 'context') throw new Error('the tab definition has no Context guide entry')
-if (iconRegistration === undefined || iconRegistration.options.key !== 'workspace-context.settings') {
-  throw new Error('the plugin registered no context menu icon')
+if (settingsIcon === undefined || openIcon === undefined) {
+  throw new Error('the plugin registered no context menu icons')
 }
 const folderCommand = commandRegistrations.find(entry => entry.name === 'folder')
 if (folderCommand === undefined) throw new Error('the plugin registered no folder command')
@@ -354,6 +387,19 @@ const translate = (key, params) => {
 }
 const openedTabs = []
 const useTabInfo = () => ({ tab: { actions: { openTab(kind, options) { openedTabs.push({ kind, options }) } } } })
+const overviewBySessions = {
+  byId: {
+    s1: { id: 's1', title: 'First chat', cwd: '/tmp/project', updatedAt: 1700000000000 },
+    s2: { id: 's2', title: 'Second chat', cwd: '/tmp/project', updatedAt: 1700000100000 },
+    s3: { id: 's3', title: 'Subagent chat', cwd: '/tmp/project', origin: 'subagent', updatedAt: 1700000200000 },
+    s4: { id: 's4', title: 'Blank chat', cwd: '/tmp/project', blank: true, updatedAt: 1700000300000 },
+  },
+}
+const overviewUseSessions = (selector) => selector(overviewBySessions)
+const overviewUseWorkspaces = (selector) => selector({
+  items: [{ workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project', sessionIds: ['s1', 's2', 's3', 's4'] }],
+  archivedSessionIds: [],
+})
 
 /** Render a component and flush its effects. */
 async function renderWith(component, props, path) {
@@ -417,6 +463,56 @@ if (removeBody.sessionId !== 's1' || removeBody.entryId !== 'session-folder-1') 
   throw new Error(`unexpected remove body ${removeCall.options.body}`)
 }
 
+// ---- Workspace project page --------------------------------------------------
+if (clickListeners.size !== 1) throw new Error(`expected one workspace click listener, got ${clickListeners.size}`)
+const fakeRow = { getAttribute: (name) => (name === 'data-row-key' ? 'workspace:ws-1' : null) }
+const fakeTarget = {
+  closest(selector) {
+    if (selector === '[data-row-key^="workspace:"]') return fakeRow
+    return null
+  },
+}
+;[...clickListeners][0]({ button: 0, defaultPrevented: false, target: fakeTarget })
+if (selectedPanels[selectedPanels.length - 1] !== 'workspace-overview') {
+  throw new Error(`workspace click selected ${selectedPanels[selectedPanels.length - 1]}`)
+}
+
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+for (const fragment of [
+  'Docs project',
+  '/tmp/project',
+  'Product documentation workspace.',
+  'Prefer TypeScript.',
+  'Contexto',
+  'project',
+  'First chat',
+  'Second chat',
+]) {
+  if (!text.includes(fragment)) {
+    console.error('Rendered overview: ' + text)
+    throw new Error(`workspace page is missing ${fragment}`)
+  }
+}
+if (text.includes('Subagent chat') || text.includes('Blank chat')) {
+  throw new Error('the workspace page listed a subagent or blank session')
+}
+const chatButtons = collected.filter(node => node.props?.className === 'wsc-project-chat')
+if (chatButtons.length !== 2) throw new Error(`expected two chats, got ${chatButtons.length}`)
+chatButtons[0].props.onClick()
+if (openedSessions.length !== 1 || openedSessions[0] !== 's2') {
+  throw new Error(`clicking a chat opened ${JSON.stringify(openedSessions)}`)
+}
+const newSessionButton = collected.find(node => node.props?.className === 'wsc-btn wsc-btn-primary')
+if (newSessionButton === undefined) throw new Error('the workspace page rendered no New session button')
+newSessionButton.props.onClick()
+if (startedSessions.length !== 1 || startedSessions[0] !== 'ws-1') {
+  throw new Error(`New session started ${JSON.stringify(startedSessions)}`)
+}
+
 // ---- "+" menu folder command -------------------------------------------------
 await folderCommand.ui.run({ sessionId: 's2' })
 await new Promise(resolve => setTimeout(resolve, 0))
@@ -433,5 +529,6 @@ if (!notices.some(notice => notice.text.includes('context-folder') && notice.suc
 console.log('render check passed:', {
   dialogEntries: saveBody.entries.length,
   rightSidebar: 'ok',
+  projectPage: 'ok',
   command: folderCommand.name,
 })

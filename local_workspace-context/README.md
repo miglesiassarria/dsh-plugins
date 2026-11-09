@@ -2,8 +2,10 @@
 
 Un plugin de DeepSeek Harness que amplía los espacios de trabajo con tres
 capacidades opcionales y añade carpetas como contexto de sesión desde el botón
-`+` del compositor. El contexto activo se muestra en la **barra lateral
-derecha**: una tarjeta **Contexto** en la página *Empezar* y una pestaña
+`+` del compositor. Al hacer clic en un espacio de trabajo se abre su **página
+de proyecto** en el panel principal, con descripción, prompt del sistema,
+contexto y chats navegables. El contexto activo se muestra además en la **barra
+lateral derecha**: una tarjeta **Contexto** en la página *Empezar* y una pestaña
 completa con la gestión de entradas.
 
 ## Qué añade
@@ -20,6 +22,23 @@ una entrada nueva, **Configurar espacio**, con:
 Además, el botón `+` del compositor ofrece **Carpeta** en su menú (sección
 *Comandos*). Al elegirla se abre el selector de carpetas del sistema y la
 carpeta queda como contexto de esa sesión.
+
+## Página de proyecto del espacio
+
+Al hacer clic en la fila de un espacio de trabajo (o en el botón `...` →
+**Abrir espacio**) el panel principal muestra una página de proyecto:
+
+- título y ruta del espacio;
+- descripción del espacio;
+- **Prompt del sistema** en una tarjeta lateral, con acceso a Configurar
+  espacio;
+- **Contexto** del espacio en otra tarjeta, con acceso a Configurar espacio;
+- **Chats** del espacio, ordenados por actividad, con fecha y clic para abrirlo;
+- botones **Nueva sesión** y **Configurar espacio**.
+
+El clic en la fila sigue expandiendo o plegando la lista de chats en la barra
+izquierda; la página del proyecto se abre en el panel central sin sustituir ese
+comportamiento.
 
 ## El apartado «Contexto» de la barra derecha
 
@@ -140,6 +159,9 @@ composición web estándar. La mitad de cliente inyecta
    esa carpeta junto a las que ya herede del espacio.
 6. Para ver el detalle, abre la barra derecha, ve a *Empezar* y pulsa la
    tarjeta **Contexto**. La pestaña se abre en esa misma barra.
+7. Para abrir la página de proyecto de un espacio, pulsa su fila en la barra
+   izquierda. Desde ahí puedes abrir cualquiera de sus chats, crear una sesión
+   nueva o configurar el espacio.
 
 ## Pruebas
 
@@ -154,7 +176,8 @@ node test/render-check.mjs
 - `render-check` ejecuta la mitad de cliente en una VM con un React mínimo:
   abre el diálogo desde el menú, edita campos, añade un archivo, guarda la
   configuración, renderiza la tarjeta y la pestaña **Contexto** de la barra
-  derecha con el contexto fusionado y ejecuta el comando **Carpeta**.
+  derecha, simula el clic en una fila de espacio, comprueba la página de
+  proyecto con sus chats y ejecuta el comando **Carpeta**.
 
 ## Límites conocidos
 

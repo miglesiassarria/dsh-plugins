@@ -7,13 +7,14 @@ window.__ModuleLoader__.load({
     const NS = '@local/workspace-context';
     const TAB_ID = '@local/workspace-context';
     const TAB_KIND = 'workspace-context';
+    const OVERVIEW_PANEL_ID = 'workspace-overview';
     const ENDPOINT = '/dsh-workspace-context';
     const HEADER = 'x-dsh-workspace-context';
     const MAX_FILE_BYTES = 128 * 1024;
 
     const STRINGS = {
       en: {
-        menu: { configure: 'Configure workspace' },
+        menu: { configure: 'Configure workspace', openWorkspace: 'Open workspace' },
         dialog: {
           title: 'Configure workspace',
           subtitle: 'Give this workspace context that every session carries.',
@@ -61,6 +62,20 @@ window.__ModuleLoader__.load({
           workspace: 'workspace',
           more: '+{count} more',
         },
+        overview: {
+          newSession: 'New session',
+          chats: 'Chats',
+          untitled: 'Untitled session',
+          instructions: 'System prompt',
+          context: 'Context',
+          noDescription: 'No description yet. Use Configure workspace to add one.',
+          noInstructions: 'No system prompt yet.',
+          noContext: 'No files or folders in this workspace context yet.',
+          noChats: 'This workspace has no chats yet.',
+          notFound: 'This workspace no longer exists.',
+          selectWorkspace: 'Select a workspace to see its project page.',
+          openChat: 'Open chat',
+        },
         error: {
           requestFailed: 'The request failed.',
           unauthorized: 'The request was not authorized.',
@@ -81,7 +96,7 @@ window.__ModuleLoader__.load({
         },
       },
       es: {
-        menu: { configure: 'Configurar espacio' },
+        menu: { configure: 'Configurar espacio', openWorkspace: 'Abrir espacio' },
         dialog: {
           title: 'Configurar espacio',
           subtitle: 'Da a este espacio un contexto que acompaña a todas sus sesiones.',
@@ -128,6 +143,20 @@ window.__ModuleLoader__.load({
           description: 'Contexto del espacio y de la sesión',
           workspace: 'espacio',
           more: '+{count} más',
+        },
+        overview: {
+          newSession: 'Nueva sesión',
+          chats: 'Chats',
+          untitled: 'Sesión sin título',
+          instructions: 'Prompt del sistema',
+          context: 'Contexto',
+          noDescription: 'Todavía no hay descripción. Usa Configurar espacio para añadirla.',
+          noInstructions: 'Todavía no hay prompt del sistema.',
+          noContext: 'Todavía no hay archivos ni carpetas en el contexto del espacio.',
+          noChats: 'Este espacio todavía no tiene chats.',
+          notFound: 'Este espacio de trabajo ya no existe.',
+          selectWorkspace: 'Selecciona un espacio de trabajo para ver su página de proyecto.',
+          openChat: 'Abrir chat',
         },
         error: {
           requestFailed: 'La petición ha fallado.',
@@ -246,6 +275,39 @@ window.__ModuleLoader__.load({
 .wsc-rt-head{display:flex;align-items:center;gap:8px;flex:none;}
 .wsc-rt-title{min-width:0;flex:1 1 auto;font-size:14px;font-weight:600;letter-spacing:-.01em;}
 .wsc-rt-body{display:flex;flex-direction:column;gap:14px;min-height:0;}
+.wsc-project{height:100%;min-height:0;overflow:auto;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit;}
+.wsc-project-inner{max-width:1120px;margin:0 auto;padding:40px 32px 64px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:36px;box-sizing:border-box;}
+.wsc-project-main{min-width:0;display:flex;flex-direction:column;gap:22px;}
+.wsc-project-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.wsc-project-titlewrap{display:flex;align-items:flex-start;gap:10px;min-width:0;}
+.wsc-project-icon{flex:0 0 auto;display:inline-flex;color:var(--dsw-alias-label-secondary);margin-top:3px;}
+.wsc-project-title{margin:0;font-size:28px;line-height:1.2;font-weight:600;letter-spacing:-.02em;overflow-wrap:anywhere;}
+.wsc-project-path{margin:5px 0 0;font-size:12px;line-height:1.4;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere;}
+.wsc-project-actions{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
+.wsc-project-desc{margin:0;font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;}
+.wsc-project-muted{color:var(--dsw-alias-label-secondary);}
+.wsc-project-sectionhead{display:flex;align-items:center;gap:8px;}
+.wsc-project-h2{margin:0;font-size:14px;font-weight:600;}
+.wsc-project-count{font-size:11px;color:var(--dsw-alias-label-secondary);}
+.wsc-project-chatlist{display:flex;flex-direction:column;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1);}
+.wsc-project-chat{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:12px 14px;border:0;border-bottom:1px solid var(--dsw-alias-border-l1);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.wsc-project-chat:last-child{border-bottom:0;}
+.wsc-project-chat:hover{background:var(--dsw-alias-bg-layer-2);}
+.wsc-project-chat:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px;}
+.wsc-project-chaticon{flex:0 0 auto;display:inline-flex;color:var(--dsw-alias-label-secondary);}
+.wsc-project-chattext{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px;}
+.wsc-project-chattitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.4;font-weight:500;}
+.wsc-project-chatmeta{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary);}
+.wsc-project-chatarrow{flex:0 0 auto;color:var(--dsw-alias-label-secondary);font-size:16px;line-height:1;}
+.wsc-project-side{display:flex;flex-direction:column;gap:16px;min-width:0;}
+.wsc-project-card{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);}
+.wsc-project-cardhead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.wsc-project-h3{margin:0;font-size:13px;font-weight:600;}
+.wsc-project-cardtext{margin:0;font-size:12.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;}
+.wsc-project-empty{height:100%;display:flex;align-items:center;justify-content:center;padding:40px;box-sizing:border-box;color:var(--dsw-alias-label-secondary);font-size:13px;text-align:center;}
+.wsc-project-empty-inline{padding:18px;border:1px dashed var(--dsw-alias-border-l1);border-radius:12px;color:var(--dsw-alias-label-secondary);font-size:12px;text-align:center;}
+.wsc-project-error{padding:10px 12px;border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 12%,transparent);color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:1.4;}
+@media (max-width:900px){.wsc-project-inner{grid-template-columns:minmax(0,1fr);padding:24px 18px 48px;gap:24px;}.wsc-project-head{flex-direction:column;}.wsc-project-actions{justify-content:flex-start;}}
 .wsc-spin{font-size:12px;color:var(--dsw-alias-label-secondary);}
 @media (max-width:640px){.wsc-overlay{padding:10px;}.wsc-dialog{max-height:calc(100vh - 20px);}.wsc-head,.wsc-body,.wsc-foot{padding-left:16px;padding-right:16px;}}
 `;
@@ -740,14 +802,149 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** Chat bubble glyph for the project page chat list. */
+    function ChatGlyph(props) {
+      const size = props && props.size ? props.size : 15;
+      return h('svg', {
+        width: size, height: size, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': 'true',
+      },
+      h('path', {
+        d: 'M2.5 4.25A2.25 2.25 0 0 1 4.75 2h6.5a2.25 2.25 0 0 1 2.25 2.25v5A2.25 2.25 0 0 1 11.25 11.5H7.1L4.2 13.7a.55.55 0 0 1-.88-.44V11.4a2.25 2.25 0 0 1-0.82-1.74z',
+        stroke: 'currentColor', strokeWidth: 1.35, strokeLinejoin: 'round',
+      }));
+    }
+
+    /** Compact date label for one project chat. */
+    function sessionTime(value) {
+      const stamp = typeof value === 'number' ? value : typeof value === 'string' ? Date.parse(value) : Number.NaN;
+      if (Number.isNaN(stamp)) return '';
+      const date = new Date(stamp);
+      if (Number.isNaN(date.getTime())) return '';
+      const now = new Date();
+      if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      }
+      return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    }
+
+    /** Main-panel project page opened by clicking a workspace row. */
+    function createWorkspaceOverview(options) {
+      const { api, overviewStore, contextBumps, openDialog, uiWorkspace } = options;
+      return function WorkspaceOverview({ useWorkspaces, useSessions, t }) {
+        const request = useStore(overviewStore);
+        const workspaceId = request?.workspaceId;
+        const workspace = useWorkspaces((state) => {
+          if (workspaceId === undefined) return undefined;
+          const items = Array.isArray(state.items) ? state.items : [];
+          return items.find((item) => item.workspaceId === workspaceId);
+        });
+        const archived = useWorkspaces((state) => (Array.isArray(state.archivedSessionIds) ? state.archivedSessionIds : []));
+        const byId = useSessions((state) => state.byId ?? {});
+        const version = useStore(contextBumps);
+        const [state, setState] = React.useState({ phase: 'loading', config: null, meta: null, error: null });
+
+        React.useEffect(() => {
+          if (workspaceId === undefined) {
+            setState({ phase: 'idle', config: null, meta: null, error: null });
+            return undefined;
+          }
+          let cancelled = false;
+          api.get(`/state?workspaceId=${encodeURIComponent(workspaceId)}`).then((data) => {
+            if (cancelled) return;
+            setState({ phase: 'ready', config: data.config, meta: data.workspace, error: null });
+          }, (reason) => {
+            if (cancelled) return;
+            setState({ phase: 'error', config: null, meta: null, error: describeError(reason, t) });
+          });
+          return () => {
+            cancelled = true;
+          };
+        }, [workspaceId, version]);
+
+        if (workspaceId === undefined) {
+          return h('div', { className: 'wsc-project' }, h('style', null, CSS), h('div', { className: 'wsc-project-empty' }, t('overview.selectWorkspace')));
+        }
+
+        const meta = workspace ?? state.meta;
+        const config = state.config ?? { description: '', systemPrompt: '', entries: [] };
+        const archivedSet = new Set(archived);
+        const memberIds = new Set(Array.isArray(workspace?.sessionIds) ? workspace.sessionIds : []);
+        const projectPath = meta?.path ?? workspace?.path;
+        const chats = [];
+        for (const [id, summary] of Object.entries(byId)) {
+          if (summary === null || summary === undefined || summary.blank) continue;
+          if (summary.origin === 'subagent' || archivedSet.has(id)) continue;
+          if (!memberIds.has(id) && summary.cwd !== projectPath) continue;
+          chats.push({ id, ...summary });
+        }
+        chats.sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0));
+
+        if (meta === undefined || meta === null) {
+          return h('div', { className: 'wsc-project' }, h('style', null, CSS), h('div', { className: 'wsc-project-empty' },
+            state.phase === 'error' ? state.error : state.phase === 'loading' ? t('dialog.loading') : t('overview.notFound')));
+        }
+
+        const openWorkspaceDialog = () => openDialog({ workspaceId, path: meta.path, title: meta.title });
+        const entries = Array.isArray(config.entries) ? config.entries : [];
+
+        return h('div', { className: 'wsc-project' },
+          h('style', null, CSS),
+          h('div', { className: 'wsc-project-inner' },
+            h('div', { className: 'wsc-project-main' },
+              h('header', { className: 'wsc-project-head' },
+                h('div', { className: 'wsc-project-titlewrap' },
+                  h('span', { className: 'wsc-project-icon' }, h(FolderGlyph, { size: 26 })),
+                  h('div', { style: { minWidth: 0 } },
+                    h('h1', { className: 'wsc-project-title' }, meta.title || meta.path),
+                    h('p', { className: 'wsc-project-path' }, meta.path))),
+                h('div', { className: 'wsc-project-actions' },
+                  h('button', { type: 'button', className: 'wsc-btn wsc-btn-primary', onClick: () => uiWorkspace.startSession(workspaceId) }, t('overview.newSession')),
+                  h('button', { type: 'button', className: 'wsc-btn', onClick: openWorkspaceDialog }, t('menu.configure')))),
+              h('p', { className: config.description ? 'wsc-project-desc' : 'wsc-project-desc wsc-project-muted' }, config.description || t('overview.noDescription')),
+              state.phase === 'error' ? h('div', { className: 'wsc-project-error' }, state.error) : null,
+              h('section', { className: 'wsc-project-chats' },
+                h('div', { className: 'wsc-project-sectionhead' },
+                  h('h2', { className: 'wsc-project-h2' }, t('overview.chats')),
+                  h('span', { className: 'wsc-project-count' }, String(chats.length))),
+                chats.length === 0
+                  ? h('div', { className: 'wsc-project-empty-inline' }, t('overview.noChats'))
+                  : h('div', { className: 'wsc-project-chatlist' }, chats.map((chat) => h('button', {
+                    type: 'button',
+                    className: 'wsc-project-chat',
+                    key: chat.id,
+                    title: t('overview.openChat'),
+                    onClick: () => uiWorkspace.openSession(chat.id),
+                  },
+                  h('span', { className: 'wsc-project-chaticon' }, h(ChatGlyph, { size: 15 })),
+                  h('span', { className: 'wsc-project-chattext' },
+                    h('span', { className: 'wsc-project-chattitle' }, chat.title?.trim() || t('overview.untitled')),
+                    h('span', { className: 'wsc-project-chatmeta' }, sessionTime(chat.updatedAt))),
+                  h('span', { className: 'wsc-project-chatarrow' }, '›')))))),
+            h('aside', { className: 'wsc-project-side' },
+              h('section', { className: 'wsc-project-card' },
+                h('div', { className: 'wsc-project-cardhead' },
+                  h('h3', { className: 'wsc-project-h3' }, t('overview.instructions')),
+                  h('button', { type: 'button', className: 'wsc-side-gear', title: t('menu.configure'), 'aria-label': t('menu.configure'), onClick: openWorkspaceDialog }, h(SettingsGlyph, { size: 14 }))),
+                h('p', { className: config.systemPrompt ? 'wsc-project-cardtext' : 'wsc-project-cardtext wsc-project-muted' }, config.systemPrompt || t('overview.noInstructions'))),
+              h('section', { className: 'wsc-project-card' },
+                h('div', { className: 'wsc-project-cardhead' },
+                  h('h3', { className: 'wsc-project-h3' }, t('overview.context')),
+                  h('button', { type: 'button', className: 'wsc-side-add', title: t('sidebar.addFolder'), 'aria-label': t('sidebar.addFolder'), onClick: openWorkspaceDialog }, '+')),
+                entries.length === 0
+                  ? h('p', { className: 'wsc-project-cardtext wsc-project-muted' }, t('overview.noContext'))
+                  : h('div', { className: 'wsc-side-group' }, contextRows(entries, 'workspace', t, () => {}))))));
+      };
+    }
+
     return {
-      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace', 'sidebarRightTabs'],
+      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace', 'sidebarRightTabs', 'layout'],
       apply(ctx) {
         const disposeLocale = ctx.locale.register(NS, DICTS);
         ctx.effect(() => disposeLocale, 'workspace-context locale');
 
         const t = ctx.locale.bind(NS);
         const dialogStore = createStore(null);
+        const overviewStore = createStore(null);
         const openDialog = (request) => dialogStore.set(request);
         const closeDialog = () => dialogStore.set(null);
 
@@ -803,6 +1000,22 @@ window.__ModuleLoader__.load({
           }
         };
 
+        // Workspace menu: open the project page explicitly.
+        ctx.effect(() => ctx.contextMenus.register({
+          id: 'workspace-context.open',
+          target: 'workspace',
+          order: 50,
+          resolve: ({ workspaceId }) => [{
+            id: 'open',
+            label: t('menu.openWorkspace'),
+            icon: { key: 'workspace-context.open' },
+            run: () => {
+              overviewStore.set({ workspaceId });
+              ctx.layout.selectPanel(OVERVIEW_PANEL_ID);
+            },
+          }],
+        }), 'workspace-context: open workspace menu');
+
         // Menu action shared by right-click and the "..." button on a Workspace.
         ctx.effect(() => ctx.contextMenus.register({
           id: 'workspace-context.configure',
@@ -820,11 +1033,11 @@ window.__ModuleLoader__.load({
           }],
         }), 'workspace-context: workspace menu');
 
-        // Icon dispatched by the captured action's icon key.
-        ctx.slots.inject('contextMenu.icon', () => ctx.slots.register({
-          name: 'contextMenu.icon',
-          key: 'workspace-context.settings',
-        }, SettingsGlyph));
+        // Icons dispatched by the captured actions' icon keys.
+        ctx.slots.inject('contextMenu.icon', function* () {
+          yield ctx.slots.register({ name: 'contextMenu.icon', key: 'workspace-context.open' }, FolderGlyph);
+          yield ctx.slots.register({ name: 'contextMenu.icon', key: 'workspace-context.settings' }, SettingsGlyph);
+        });
 
         // The Workspace dialog lives in the frame-wide overlay layer.
         ctx.slots.inject('shell.overlay', () => ctx.slots.register({
@@ -881,6 +1094,45 @@ window.__ModuleLoader__.load({
           openDialog,
           addFolder: addFolderToSession,
         })));
+
+        // Main panel: the workspace project page.
+        ctx.slots.inject('main', () => ctx.slots.register({
+          name: 'main',
+          key: OVERVIEW_PANEL_ID,
+          locale: NS,
+        }, createWorkspaceOverview({
+          api,
+          overviewStore,
+          contextBumps,
+          openDialog,
+          uiWorkspace: ctx.uiWorkspace,
+        })));
+
+        // A primary click on a real workspace row opens its project page; the
+        // row's own expand/collapse handler still runs.
+        ctx.effect(() => {
+          if (typeof document === 'undefined') return () => {};
+          const onClick = (event) => {
+            if (event.button !== 0 || event.defaultPrevented) return;
+            const target = event.target;
+            if (target === null || target === undefined || typeof target.closest !== 'function') return;
+            if (target.closest('button, [data-context-menu-trigger]') !== null) return;
+            const row = target.closest('[data-row-key^="workspace:"]');
+            if (row === null) return;
+            const key = typeof row.getAttribute === 'function' ? row.getAttribute('data-row-key') : null;
+            if (typeof key !== 'string') return;
+            const workspaceId = key.slice('workspace:'.length);
+            if (workspaceId === '') return;
+            overviewStore.set({ workspaceId });
+            try {
+              ctx.layout.selectPanel(OVERVIEW_PANEL_ID);
+            } catch {
+              // The panel may be transiently unregistered during an HMR swap.
+            }
+          };
+          document.addEventListener('click', onClick, true);
+          return () => document.removeEventListener('click', onClick, true);
+        }, 'workspace-context: workspace row click');
       },
     };
   },
