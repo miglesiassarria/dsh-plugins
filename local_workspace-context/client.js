@@ -46,6 +46,16 @@ window.__ModuleLoader__.load({
           remove: 'Remove folder',
           removeFailed: 'Could not remove the folder.',
         },
+        sidebar: {
+          title: 'Context',
+          session: 'Session',
+          empty: 'No context yet.',
+          emptyHint: 'Add a folder from the composer + menu.',
+          addFolder: 'Add folder',
+          expand: 'Show context',
+          collapse: 'Hide context',
+          noWorkspaceContext: 'No workspace context',
+        },
         error: {
           requestFailed: 'The request failed.',
           unauthorized: 'The request was not authorized.',
@@ -100,6 +110,16 @@ window.__ModuleLoader__.load({
           added: 'Carpeta «{name}» añadida a esta sesión.',
           remove: 'Quitar carpeta',
           removeFailed: 'No se pudo quitar la carpeta.',
+        },
+        sidebar: {
+          title: 'Contexto',
+          session: 'Sesión',
+          empty: 'Sin contexto todavía.',
+          emptyHint: 'Añade una carpeta desde el menú + del compositor.',
+          addFolder: 'Añadir carpeta',
+          expand: 'Mostrar contexto',
+          collapse: 'Ocultar contexto',
+          noWorkspaceContext: 'Sin contexto del espacio',
         },
         error: {
           requestFailed: 'La petición ha fallado.',
@@ -173,12 +193,33 @@ window.__ModuleLoader__.load({
 .wsc-empty{padding:12px;border:1px dashed var(--dsw-alias-border-l1);border-radius:9px;color:var(--dsw-alias-label-secondary);font-size:12px;text-align:center;}
 .wsc-error{margin:0;padding:9px 11px;border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 12%,transparent);color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:1.4;}
 .wsc-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:16px 22px 20px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:16px;}
-.wsc-dock{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:0 2px 6px;}
-.wsc-dock-label{font-size:10.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--dsw-alias-label-secondary);}
-.wsc-chip{display:inline-flex;align-items:center;gap:5px;max-width:280px;box-sizing:border-box;padding:2px 3px 2px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-size:11.5px;}
-.wsc-chip-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.wsc-chip-remove{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1;}
-.wsc-chip-remove:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-state-error-primary);}
+.wsc-side{flex:1 1 0%;min-width:0;max-height:260px;box-sizing:border-box;display:flex;flex-direction:column;padding:6px 2px 8px;border-top:1px solid var(--dsw-alias-border-l1);}
+.wsc-side-head{display:flex;align-items:center;gap:6px;padding:1px 4px 5px;}
+.wsc-side-toggle{display:inline-flex;align-items:center;gap:6px;min-width:0;flex:1;padding:2px 2px;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;text-align:left;}
+.wsc-side-toggle:hover{background:var(--dsw-alias-bg-layer-2);}
+.wsc-side-title{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+.wsc-side-count{min-width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:9.5px;}
+.wsc-side-chevron{font-size:10px;line-height:1;color:var(--dsw-alias-label-secondary);}
+.wsc-side-add{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font-size:15px;line-height:1;cursor:pointer;}
+.wsc-side-add:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
+.wsc-side-body{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:0 2px;}
+.wsc-side-group{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.wsc-side-group-head{display:flex;align-items:center;gap:4px;padding:2px 4px 2px 6px;}
+.wsc-side-group-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:600;color:var(--dsw-alias-label-primary);}
+.wsc-side-gear{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;}
+.wsc-side-gear:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
+.wsc-side-row{display:flex;align-items:center;gap:6px;min-height:26px;box-sizing:border-box;padding:3px 5px;border-radius:6px;}
+.wsc-side-row:hover{background:var(--dsw-alias-bg-layer-2);}
+.wsc-side-icon{flex:0 0 auto;display:inline-flex;color:var(--dsw-alias-label-secondary);}
+.wsc-side-text{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:0;}
+.wsc-side-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--dsw-alias-label-primary);}
+.wsc-side-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--dsw-alias-label-secondary);}
+.wsc-side-remove{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1;}
+.wsc-side-remove:hover{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-state-error-primary);}
+.wsc-side-empty{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:4px 6px 6px;font-size:11px;line-height:1.45;color:var(--dsw-alias-label-secondary);}
+.wsc-side-empty button{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:10.5px;cursor:pointer;}
+.wsc-side-empty button:hover{background:var(--dsw-alias-bg-layer-2);}
+.wsc-side-error{padding:2px 6px 6px;font-size:10.5px;line-height:1.4;color:var(--dsw-alias-state-error-primary);}
 .wsc-spin{font-size:12px;color:var(--dsw-alias-label-secondary);}
 @media (max-width:640px){.wsc-overlay{padding:10px;}.wsc-dialog{max-height:calc(100vh - 20px);}.wsc-head,.wsc-body,.wsc-foot{padding-left:16px;padding-right:16px;}}
 `;
@@ -204,6 +245,17 @@ window.__ModuleLoader__.load({
     function useStore(store) {
       const [value, setValue] = React.useState(store.get());
       React.useEffect(() => store.subscribe(() => setValue(store.get())), [store]);
+      return value;
+    }
+
+    /** Subscribe one component to an external observable face (`getSnapshot`/`subscribe`). */
+    function useObservable(observable) {
+      const [value, setValue] = React.useState(() => (observable === undefined ? undefined : observable.getSnapshot()));
+      React.useEffect(() => {
+        if (observable === undefined) return undefined;
+        setValue(observable.getSnapshot());
+        return observable.subscribe(() => setValue(observable.getSnapshot()));
+      }, [observable]);
       return value;
     }
 
@@ -299,7 +351,7 @@ window.__ModuleLoader__.load({
 
     /** Modal that edits one Workspace's context configuration. */
     function createWorkspaceDialog(options) {
-      const { api, t, notify, closeDialog, uiWorkspace } = options;
+      const { api, t, closeDialog, uiWorkspace, bump } = options;
 
       return function WorkspaceDialog({ request }) {
         const [phase, setPhase] = React.useState('loading');
@@ -344,7 +396,7 @@ window.__ModuleLoader__.load({
               : [...current, { kind: 'folder', path: picked, name: baseName(picked) }]);
             setError(null);
           } catch (reason) {
-            setError(describeError(reason, t).replace(/\{detail\}/gu, ''));
+            setError(describeError(reason, t));
           }
         };
 
@@ -393,7 +445,8 @@ window.__ModuleLoader__.load({
                 : { id: entry.id, kind: 'file', name: entry.name, text: entry.text, bytes: entry.bytes }),
             });
             closeDialog();
-            notify(t('dialog.saved'), true);
+            if (typeof bump === 'function') bump();
+            api.notify(t('dialog.saved'), true);
             return data;
           } catch (reason) {
             setError(describeError(reason, t));
@@ -506,65 +559,140 @@ window.__ModuleLoader__.load({
       };
     }
 
-    /** Rail of folders attached to one Session, rendered above the composer. */
-    function createSessionDock(options) {
-      const { api, t, sessionBumps } = options;
-      return function SessionContextDock({ sessionId }) {
-        const [entries, setEntries] = React.useState([]);
-        const [ready, setReady] = React.useState(false);
+    /** Always-visible Context section at the sidebar foot, above Settings. */
+    function createSidebarContext(options) {
+      const { api, t, contextBumps, openDialog, addFolder, sidebarRight } = options;
+      return function SidebarContext({ wide, useSessions, useWorkspaces }) {
+        const sessionId = useObservable(sidebarRight === undefined ? undefined : sidebarRight.mounted);
+        const cwd = useSessions((state) => (sessionId === undefined ? undefined : state.byId?.[sessionId]?.cwd));
+        const workspaceId = useWorkspaces((state) => {
+          if (sessionId === undefined) return undefined;
+          const items = Array.isArray(state.items) ? state.items : [];
+          const bySession = items.find((item) => Array.isArray(item.sessionIds) && item.sessionIds.includes(sessionId));
+          if (bySession !== undefined) return bySession.workspaceId;
+          if (cwd === undefined) return undefined;
+          return items.find((item) => item.path === cwd)?.workspaceId;
+        });
+        const version = useStore(contextBumps);
+        const [data, setData] = React.useState(null);
+        const [error, setError] = React.useState(null);
+        const [collapsed, setCollapsed] = React.useState(false);
 
         React.useEffect(() => {
+          if (!wide || sessionId === undefined) {
+            setData(null);
+            setError(null);
+            return undefined;
+          }
           let cancelled = false;
-          let current = true;
-          const load = async () => {
-            if (!current) return;
-            try {
-              const data = await api.get(`/session?sessionId=${encodeURIComponent(sessionId)}`);
+          const suffix = workspaceId === undefined ? '' : `&workspaceId=${encodeURIComponent(workspaceId)}`;
+          api.get(`/session/context?sessionId=${encodeURIComponent(sessionId)}${suffix}`)
+            .then((next) => {
               if (cancelled) return;
-              setEntries(Array.isArray(data.entries) ? data.entries : []);
-            } catch {
+              setData(next);
+              setError(null);
+            })
+            .catch((reason) => {
               if (cancelled) return;
-              setEntries([]);
-            } finally {
-              if (!cancelled) setReady(true);
-            }
+              setData(null);
+              setError(describeError(reason, t));
+            });
+          return () => {
+            cancelled = true;
           };
-          void load();
-          return sessionBumps.subscribe(sessionId, () => {
-            current = true;
-            void load();
-          });
-        }, [sessionId]);
+        }, [wide, sessionId, workspaceId, version]);
 
-        if (!ready || entries.length === 0) return null;
+        if (!wide || sessionId === undefined) return null;
+
+        const workspace = data?.workspace ?? null;
+        const workspaceEntries = Array.isArray(data?.workspaceEntries) ? data.workspaceEntries : [];
+        const sessionEntries = Array.isArray(data?.sessionEntries) ? data.sessionEntries : [];
+        const total = workspaceEntries.length + sessionEntries.length;
 
         const remove = async (entryId) => {
           try {
             await api.post('/session/entries/remove', { sessionId, entryId });
-            sessionBumps.bump(sessionId);
+            contextBumps.set(contextBumps.get() + 1);
           } catch (reason) {
             api.notify(describeError(reason, t), false);
           }
         };
 
-        return h('div', { className: 'wsc-dock' },
+        const rows = (entries, source) => entries.map((entry) => h('div', {
+          className: 'wsc-side-row',
+          key: `${source}:${entry.id}`,
+          title: entry.path || entry.name,
+        },
+        h('span', { className: 'wsc-side-icon' }, entry.kind === 'folder' ? h(FolderGlyph, { size: 13 }) : h(FileGlyph, { size: 13 })),
+        h('span', { className: 'wsc-side-text' },
+          h('span', { className: 'wsc-side-name' }, entry.name),
+          h('span', { className: 'wsc-side-meta' }, entry.kind === 'folder' ? entry.path : `${t('dialog.fileTag')} · ${formatBytes(entry.bytes || 0)}`)),
+        source === 'session'
+          ? h('button', {
+            type: 'button',
+            className: 'wsc-side-remove',
+            title: t('session.remove'),
+            'aria-label': t('session.remove'),
+            onClick: () => void remove(entry.id),
+          }, '×')
+          : null));
+
+        return h('section', { className: 'wsc-side', 'aria-label': t('sidebar.title') },
           h('style', null, CSS),
-          h('span', { className: 'wsc-dock-label' }, t('session.contextLabel')),
-          ...entries.map((entry) => h('span', { className: 'wsc-chip', key: entry.id, title: entry.path },
-            h(FolderGlyph, { size: 13 }),
-            h('span', { className: 'wsc-chip-name' }, entry.name),
+          h('div', { className: 'wsc-side-head' },
             h('button', {
               type: 'button',
-              className: 'wsc-chip-remove',
-              title: t('session.remove'),
-              'aria-label': t('session.remove'),
-              onClick: () => void remove(entry.id),
-            }, '×'))));
+              className: 'wsc-side-toggle',
+              'aria-expanded': !collapsed,
+              title: collapsed ? t('sidebar.expand') : t('sidebar.collapse'),
+              onClick: () => setCollapsed((value) => !value),
+            },
+            h('span', { className: 'wsc-side-title' }, t('sidebar.title')),
+            h('span', { className: 'wsc-side-count' }, String(total)),
+            h('span', { className: 'wsc-side-chevron' }, collapsed ? '▸' : '▾')),
+            h('button', {
+              type: 'button',
+              className: 'wsc-side-add',
+              title: t('sidebar.addFolder'),
+              'aria-label': t('sidebar.addFolder'),
+              onClick: () => void addFolder(sessionId),
+            }, '+')),
+          collapsed
+            ? null
+            : h('div', { className: 'wsc-side-body' },
+              workspace === null || (workspaceEntries.length === 0 && total === 0) ? null : h('div', { className: 'wsc-side-group' },
+                h('div', { className: 'wsc-side-group-head' },
+                  h('span', { className: 'wsc-side-group-title' }, workspace.title),
+                  h('button', {
+                    type: 'button',
+                    className: 'wsc-side-gear',
+                    title: t('menu.configure'),
+                    'aria-label': t('menu.configure'),
+                    onClick: () => openDialog({ workspaceId: workspace.workspaceId, path: workspace.path, title: workspace.title }),
+                  }, h(SettingsGlyph, { size: 12 }))),
+                workspaceEntries.length === 0
+                  ? h('div', { className: 'wsc-side-empty' }, t('sidebar.noWorkspaceContext'))
+                  : rows(workspaceEntries, 'workspace')),
+              sessionEntries.length === 0 ? null : h('div', { className: 'wsc-side-group' },
+                h('div', { className: 'wsc-side-group-head' },
+                  h('span', { className: 'wsc-side-group-title' }, t('sidebar.session'))),
+                rows(sessionEntries, 'session')),
+              total === 0
+                ? h('div', { className: 'wsc-side-empty' },
+                  h('span', null, t('sidebar.empty')),
+                  h('span', null, t('sidebar.emptyHint')),
+                  h('button', { type: 'button', onClick: () => void addFolder(sessionId) }, `+ ${t('sidebar.addFolder')}`),
+                  workspace === null ? null : h('button', {
+                    type: 'button',
+                    onClick: () => openDialog({ workspaceId: workspace.workspaceId, path: workspace.path, title: workspace.title }),
+                  }, t('menu.configure')))
+                : null,
+              error === null ? null : h('div', { className: 'wsc-side-error' }, error)));
       };
     }
 
     return {
-      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace'],
+      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace', 'sidebarRight'],
       apply(ctx) {
         const disposeLocale = ctx.locale.register(NS, DICTS);
         ctx.effect(() => disposeLocale, 'workspace-context locale');
@@ -610,23 +738,21 @@ window.__ModuleLoader__.load({
           },
         };
 
-        const sessionBumps = (() => {
-          const listeners = new Map();
-          return {
-            subscribe(sessionId, listener) {
-              const set = listeners.get(sessionId) ?? new Set();
-              set.add(listener);
-              listeners.set(sessionId, set);
-              return () => {
-                set.delete(listener);
-                if (set.size === 0) listeners.delete(sessionId);
-              };
-            },
-            bump(sessionId) {
-              for (const listener of [...(listeners.get(sessionId) ?? [])]) listener();
-            },
-          };
-        })();
+        const contextBumps = createStore(0);
+        const bumpContext = () => contextBumps.set(contextBumps.get() + 1);
+
+        /** Pick one folder and attach it to a Session's context. */
+        const addFolderToSession = async (sessionId) => {
+          try {
+            const picked = await ctx.uiWorkspace.pickDirectory();
+            if (picked === null || picked === undefined) return;
+            await api.post('/session/entries', { sessionId, path: picked });
+            bumpContext();
+            api.notify(t('session.added', { name: baseName(picked) }), true);
+          } catch (reason) {
+            api.notify(describeError(reason, t), false);
+          }
+        };
 
         // Menu action shared by right-click and the "..." button on a Workspace.
         ctx.effect(() => ctx.contextMenus.register({
@@ -656,7 +782,7 @@ window.__ModuleLoader__.load({
           name: 'shell.overlay',
           id: 'workspace-context-dialog',
           order: 100,
-        }, createWorkspaceOverlay({ api, t, notify: (text, ok) => api.notify(text, ok), closeDialog, uiWorkspace: ctx.uiWorkspace, dialogStore })));
+        }, createWorkspaceOverlay({ api, t, closeDialog, uiWorkspace: ctx.uiWorkspace, dialogStore, bump: bumpContext })));
 
         // "+" menu: Folder joins the Add/Commands menu as a session context row.
         ctx.commandUi.register({
@@ -667,29 +793,27 @@ window.__ModuleLoader__.load({
           available: (session) => session !== undefined && session !== null && typeof session.sessionId === 'string',
           ui: {
             kind: 'action',
-            run: async (session) => {
+            run: (session) => {
               const sessionId = session?.sessionId;
-              if (typeof sessionId !== 'string') return;
-              try {
-                const picked = await ctx.uiWorkspace.pickDirectory();
-                if (picked === null || picked === undefined) return;
-                await api.post('/session/entries', { sessionId, path: picked });
-                sessionBumps.bump(sessionId);
-                api.notify(t('session.added', { name: baseName(picked) }), true);
-              } catch (reason) {
-                api.notify(describeError(reason, t), false);
-              }
+              if (typeof sessionId === 'string') void addFolderToSession(sessionId);
             },
           },
         });
 
-        // Visible chips for the folders attached to the current Session.
-        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-          name: 'conversation.input.dock',
-          id: 'workspace-context-session',
-          order: 30,
+        // Always-visible Context section at the sidebar foot, above Settings.
+        ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+          name: 'sidebar.footer.action',
+          id: 'workspace-context-sidebar',
+          order: -100,
           locale: NS,
-        }, createSessionDock({ api, t, sessionBumps })));
+        }, createSidebarContext({
+          api,
+          t,
+          contextBumps,
+          openDialog,
+          addFolder: addFolderToSession,
+          sidebarRight: ctx.sidebarRight,
+        })));
       },
     };
   },

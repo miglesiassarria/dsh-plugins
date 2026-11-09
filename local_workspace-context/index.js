@@ -89,6 +89,9 @@ const SKIP_DIRECTORIES = new Set([
 /** File names and suffixes that commonly carry credentials. */
 const SECRET_FILE = /(^|\.)(env|npmrc|pypirc|netrc|htpasswd|credentials|secrets?)$|\.(pem|key|p12|pfx|jks|keystore|kdbx|asc|gpg)$/i
 
+/** Generated or dependency files that rarely help and can flood the budget. */
+const SKIP_FILE = /(^package-lock\.json$|^pnpm-lock\.yaml$|^yarn\.lock$|^bun\.lockb?$|^Cargo\.lock$|^poetry\.lock$|^composer\.lock$|^go\.sum$|^Gemfile\.lock$|\.lock$|\.min\.(?:js|css)$|\.map$|\.snap$|^node_modules$|^package-lock\.json$)/i
+
 /** Inline text decoder that rejects invalid UTF-8. */
 const UTF8 = new TextDecoder('utf-8', { fatal: true })
 
@@ -286,15 +289,22 @@ export class WorkspaceContextStore {
   }
 
   /**
-   * Read one Workspace record with defaults.
+   * Read one Workspace record with defaults. The id is authoritative, but a
+   * record saved under an older id for the same canonical path is found too,
+   * so re-creating a Workspace does not orphan its context.
    * @param {string} workspaceId Workspace id.
+   * @param {string} [workspacePath] Canonical Workspace path.
    * @returns {{ description: string, systemPrompt: string, entries: object[] }} Record.
    */
-  workspace(workspaceId) {
-    const record = this.load().workspaces[workspaceId]
-    if (typeof record !== 'object' || record === null) {
-      return { description: '', systemPrompt: '', entries: [] }
+  workspace(workspaceId, workspacePath) {
+    const state = this.load()
+    let record = state.workspaces[workspaceId]
+    if (!isWorkspaceRecord(record) && typeof workspacePath === 'string') {
+      record = Object.values(state.workspaces).find(candidate => isWorkspaceRecord(candidate)
+        && typeof candidate.path === 'string'
+        && sameWorkspacePath(candidate.path, workspacePath))
     }
+    if (!isWorkspaceRecord(record)) return { description: '', systemPrompt: '', entries: [] }
     return {
       description: typeof record.description === 'string' ? record.description : '',
       systemPrompt: typeof record.systemPrompt === 'string' ? record.systemPrompt : '',
@@ -305,10 +315,11 @@ export class WorkspaceContextStore {
   /**
    * Read one Workspace record as the browser sees it.
    * @param {string} workspaceId Workspace id.
+   * @param {string} [workspacePath] Canonical Workspace path.
    * @returns {{ description: string, systemPrompt: string, entries: object[] }} Public record.
    */
-  publicWorkspace(workspaceId) {
-    const record = this.workspace(workspaceId)
+  publicWorkspace(workspaceId, workspacePath) {
+    const record = this.workspace(workspaceId, workspacePath)
     return {
       description: record.description,
       systemPrompt: record.systemPrompt,
@@ -317,17 +328,30 @@ export class WorkspaceContextStore {
   }
 
   /**
-   * Save one Workspace patch.
+   * Save one Workspace patch. The record carries its canonical path so a later
+   * Workspace re-creation with a new id still finds the same context.
    * @param {string} workspaceId Workspace id.
    * @param {object} input Untrusted patch.
+   * @param {{ path?: string, title?: string }} [meta] Workspace identity.
    * @returns {{ description: string, systemPrompt: string, entries: object[] }} Public record.
    */
-  saveWorkspace(workspaceId, input) {
+  saveWorkspace(workspaceId, input, meta = {}) {
     const state = this.load()
-    const previous = this.workspace(workspaceId)
-    state.workspaces[workspaceId] = normalizeWorkspacePatch(input, previous)
+    const previous = this.workspace(workspaceId, meta.path)
+    const record = normalizeWorkspacePatch(input, previous)
+    if (typeof meta.path === 'string' && meta.path !== '') record.path = meta.path
+    if (typeof meta.title === 'string' && meta.title !== '') record.title = meta.title
+    if (typeof record.path === 'string' && record.path !== '') {
+      for (const [id, candidate] of Object.entries(state.workspaces)) {
+        if (id === workspaceId) continue
+        if (isWorkspaceRecord(candidate) && typeof candidate.path === 'string' && sameWorkspacePath(candidate.path, record.path)) {
+          delete state.workspaces[id]
+        }
+      }
+    }
+    state.workspaces[workspaceId] = record
     this.persist()
-    return this.publicWorkspace(workspaceId)
+    return this.publicWorkspace(workspaceId, meta.path)
   }
 
   /**
@@ -397,6 +421,15 @@ export class WorkspaceContextStore {
 }
 
 /**
+ * Whether a stored Workspace record carries the minimum shape this module reads.
+ * @param {unknown} record Candidate record.
+ * @returns {boolean} True for a usable record.
+ */
+function isWorkspaceRecord(record) {
+  return typeof record === 'object' && record !== null && !Array.isArray(record)
+}
+
+/**
  * Whether a stored entry carries the minimum shape this module reads.
  * @param {unknown} entry Candidate entry.
  * @returns {boolean} True for a usable entry.
@@ -462,7 +495,7 @@ function readFolderText(folderPath) {
     children.sort((left, right) => left.name.localeCompare(right.name))
     for (const child of children) {
       if (files >= MAX_FOLDER_FILES || characters >= MAX_CONTEXT_CHARS) return
-      if (child.name.startsWith('.') || SECRET_FILE.test(child.name)) continue
+      if (child.name.startsWith('.') || SECRET_FILE.test(child.name) || SKIP_FILE.test(child.name)) continue
       if (child.isDirectory() && SKIP_DIRECTORIES.has(child.name)) continue
       const full = join(directory, child.name)
       let stat
@@ -583,6 +616,7 @@ export function resolveAgentWorkspace(agent, services = {}) {
   } catch {
     cwd = undefined
   }
+  if (typeof cwd !== 'string') cwd = agent.session?.header?.cwd
   let workspaces = []
   try {
     workspaces = services.workspaceRegistry?.list?.() ?? []
@@ -591,9 +625,26 @@ export function resolveAgentWorkspace(agent, services = {}) {
   }
   const bySession = workspaces.find(workspace => Array.isArray(workspace.sessionIds) && workspace.sessionIds.includes(agent.id))
   const byPath = bySession === undefined && typeof cwd === 'string'
-    ? workspaces.find(workspace => workspace.path === cwd)
+    ? workspaces.find(workspace => sameWorkspacePath(workspace.path, cwd))
     : undefined
   return { workspace: bySession ?? byPath, cwd }
+}
+
+/**
+ * Compare two workspace paths after resolving symlinks, so a session whose
+ * directory is spelled through a symlink still inherits its workspace.
+ * @param {unknown} left Workspace path.
+ * @param {unknown} right Session directory.
+ * @returns {boolean} True when both name the same directory.
+ */
+function sameWorkspacePath(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string') return false
+  if (left === right) return true
+  try {
+    return realpathSync(left) === realpathSync(right)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -606,7 +657,7 @@ export function resolveAgentWorkspace(agent, services = {}) {
 export function renderContextForAgent(store, agent, services = {}) {
   const { workspace } = resolveAgentWorkspace(agent, services)
   const sessionEntries = store.sessionEntries(agent.id)
-  const config = workspace === undefined ? undefined : store.workspace(workspace.id)
+  const config = workspace === undefined ? undefined : store.workspace(workspace.id, workspace.path)
   const hasWorkspaceContent = config !== undefined
     && (config.description !== '' || config.systemPrompt !== '' || config.entries.length > 0)
   if (!hasWorkspaceContent && sessionEntries.length === 0) return ''
@@ -658,7 +709,7 @@ async function readJsonBody(request) {
  * @param {import('node:http').ServerResponse} response Outgoing response.
  * @returns {Promise<void>} Resolves when the response ends.
  */
-export async function handleRequest(store, lookupWorkspace, request, response) {
+export async function handleRequest(store, lookupWorkspace, lookupWorkspaceForSession, request, response) {
   const reply = (status, payload) => {
     const body = JSON.stringify(payload)
     response.writeHead(status, {
@@ -691,7 +742,7 @@ export async function handleRequest(store, lookupWorkspace, request, response) {
         ok: true,
         data: {
           workspace: { workspaceId: workspace.id, title: workspace.title, path: workspace.path },
-          config: store.publicWorkspace(workspaceId),
+          config: store.publicWorkspace(workspaceId, workspace.path),
         },
       })
       return
@@ -702,8 +753,35 @@ export async function handleRequest(store, lookupWorkspace, request, response) {
       const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId : ''
       const workspace = lookupWorkspace(workspaceId)
       if (workspace === undefined) throw fail('workspace-unknown', workspaceId, 404)
-      const config = store.saveWorkspace(workspaceId, body)
+      const config = store.saveWorkspace(workspaceId, body, { path: workspace.path, title: workspace.title })
       reply(200, { ok: true, data: { config } })
+      return
+    }
+
+    if (segments[0] === 'session' && segments[1] === 'context' && segments.length === 2 && method === 'GET') {
+      const sessionId = url.searchParams.get('sessionId') ?? ''
+      if (sessionId === '') throw fail('invalid-session')
+      const requestedId = url.searchParams.get('workspaceId') ?? ''
+      let workspace = requestedId !== '' ? lookupWorkspace(requestedId) : undefined
+      if (workspace === undefined) workspace = lookupWorkspaceForSession(sessionId)
+      const config = workspace === undefined ? undefined : store.publicWorkspace(workspace.id, workspace.path)
+      const workspaceEntries = config?.entries ?? []
+      const sessionEntries = store.sessionEntries(sessionId)
+      const merged = [
+        ...workspaceEntries.map(entry => ({ ...entry, source: 'workspace' })),
+        ...sessionEntries.map(entry => ({ ...entry, source: 'session' })),
+      ]
+      reply(200, {
+        ok: true,
+        data: {
+          workspace: workspace === undefined
+            ? null
+            : { workspaceId: workspace.id, title: workspace.title, path: workspace.path },
+          workspaceEntries,
+          sessionEntries,
+          merged,
+        },
+      })
       return
     }
 
@@ -773,13 +851,45 @@ export function apply(ctx) {
       return undefined
     }
   }
+  // Backfill the canonical path on records created before it was stored, so a
+  // later Workspace re-creation with a new id can still find its context.
+  try {
+    const registry = ctx.get('workspaceRegistry')
+    const state = store.load()
+    let changed = false
+    for (const workspace of registry?.list?.() ?? []) {
+      const record = state.workspaces[workspace.id]
+      if (!isWorkspaceRecord(record)) continue
+      if (record.path !== workspace.path || record.title !== workspace.title) {
+        record.path = workspace.path
+        record.title = workspace.title
+        changed = true
+      }
+    }
+    if (changed) store.persist()
+  } catch (error) {
+    ctx.logger?.warn?.(`workspace-context: cannot backfill workspace paths: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  const lookupWorkspaceForSession = (sessionId) => {
+    if (typeof sessionId !== 'string' || sessionId === '') return undefined
+    try {
+      const workspace = ctx.get('workspaceRegistry')?.list?.()
+        ?.find(candidate => Array.isArray(candidate.sessionIds) && candidate.sessionIds.includes(sessionId))
+      return workspace === undefined
+        ? undefined
+        : { id: workspace.id, path: workspace.path, title: workspace.title }
+    } catch {
+      return undefined
+    }
+  }
 
   ctx.effect(() => {
     const disposeRoute = ctx.webServer.register({
       kind: 'prefix',
       path: ROUTE,
       handler: (request, response) => {
-        void handleRequest(store, lookupWorkspace, request, response)
+        void handleRequest(store, lookupWorkspace, lookupWorkspaceForSession, request, response)
       },
     })
     return () => disposeRoute()

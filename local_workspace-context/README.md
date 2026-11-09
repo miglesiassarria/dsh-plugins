@@ -2,7 +2,8 @@
 
 Un plugin de DeepSeek Harness que amplía los espacios de trabajo con tres
 capacidades opcionales y añade carpetas como contexto de sesión desde el botón
-`+` del compositor.
+`+` del compositor. El contexto activo se muestra en una sección **Contexto**
+al pie de la barra lateral izquierda, siempre visible, encima de Ajustes.
 
 ## Qué añade
 
@@ -17,8 +18,23 @@ una entrada nueva, **Configurar espacio**, con:
 
 Además, el botón `+` del compositor ofrece **Carpeta** en su menú (sección
 *Comandos*). Al elegirla se abre el selector de carpetas del sistema y la
-carpeta queda como contexto de esa sesión. Las carpetas añadidas aparecen como
-chips encima del compositor, con un botón para quitarlas.
+carpeta queda como contexto de esa sesión.
+
+## La sección «Contexto»
+
+La barra lateral izquierda muestra, encima de Ajustes, un apartado **Contexto**
+con la suma del contexto del espacio de trabajo y el de la sesión activa:
+
+- cada entrada indica si viene del espacio o de la sesión;
+- las entradas del espacio se editan con el engranaje del grupo, que abre
+  **Configurar espacio**;
+- las entradas de la sesión se pueden quitar con su aspa;
+- el botón `+` de la cabecera añade una carpeta a la sesión activa;
+- la sección se puede plegar, pero empieza abierta y se oculta cuando la barra
+  lateral se colapsa o no hay sesión seleccionada.
+
+La lista se refresca al añadir o quitar contexto, al guardar la configuración
+del espacio y al cambiar de sesión.
 
 ## Cómo llega el contexto al modelo
 
@@ -34,14 +50,21 @@ La sección solo existe cuando hay algo configurado: un espacio sin contexto no
 gasta tokens. Los agentes que ya estaban vivos al instalar el plugin también
 reciben la sección, y los nuevos agentes se enganchan al nacer.
 
+El espacio se resuelve por pertenencia de la sesión y, si hace falta, por la
+ruta canónica del directorio (resolviendo enlaces simbólicos). La configuración
+guarda también la ruta del espacio, de modo que si un espacio se vuelve a
+registrar con otro id su contexto no se pierde.
+
 ### Límites y filtros
 
 - Se incluyen como máximo **120 000 caracteres** por sesión y paso.
 - Una carpeta aporta hasta **80 archivos** de texto, con un máximo de **256 KB**
   por archivo y **8 niveles** de profundidad.
 - Se omiten las carpetas pesadas habituales (`node_modules`, `.git`, `dist`,
-  `build`, `.venv`, etc.), los archivos ocultos y los que parecen credenciales
-  (`.env`, `*.pem`, `*.key`, `credentials`, `id_rsa`, etc.).
+  `build`, `.venv`, etc.), los archivos ocultos, los que parecen credenciales
+  (`.env`, `*.pem`, `*.key`, `credentials`, `id_rsa`, etc.) y los generados o de
+  dependencias (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `*.map`,
+  `*.min.js`, `*.lock`, etc.).
 - Solo se admiten archivos de texto UTF-8. Un archivo binario, demasiado grande
   o con bytes nulos se omite.
 - El diálogo admite hasta **40 entradas** por espacio y **128 KB** de texto por
@@ -52,7 +75,8 @@ reciben la sección, y los nuevos agentes se enganchan al nacer.
 ## Dónde se guarda
 
 - Configuración y textos de archivos:
-  `$DSH_HOME/workspace-context/context.json` (permisos `0600`).
+  `$DSH_HOME/workspace-context/context.json` (permisos `0600`). Los registros de
+  espacio incluyen su ruta canónica y su título además del id.
 - El plugin **no** escribe en la sesión ni en el perfil. La configuración es
   datos del plugin; el estado del modelo se deriva de ella en cada paso.
 - El contenido de una carpeta se lee del disco cuando se compone el prompt. No
@@ -104,9 +128,10 @@ composición web estándar. La mitad de cliente inyecta
    lee los archivos de texto elegidos y los guarda en el contexto del espacio.
 4. Guarda. La siguiente petición de cualquier sesión del espacio ya incluye el
    contexto.
-5. Para una sesión concreta, pulsa `+` → **Carpeta** y elige una carpeta. El
-   chip aparece encima del compositor y el contexto se inyecta en el siguiente
-   paso.
+5. Para una sesión concreta, pulsa `+` → **Carpeta** y elige una carpeta. La
+   entrada aparece en la sección **Contexto** de la barra lateral y el contexto
+   se inyecta en el siguiente paso. La sección muestra esa carpeta junto a las
+   que ya herede del espacio.
 
 ## Pruebas
 
@@ -120,13 +145,17 @@ node test/render-check.mjs
   la ruta HTTP con su cabecera de mismo origen.
 - `render-check` ejecuta la mitad de cliente en una VM con un React mínimo:
   abre el diálogo desde el menú, edita campos, añade un archivo, guarda la
-  configuración, renderiza el rail de sesión y ejecuta el comando **Carpeta**.
+  configuración, renderiza la sección **Contexto** de la barra lateral con el
+  contexto fusionado y ejecuta el comando **Carpeta**.
 
 ## Límites conocidos
 
 - El contexto del espacio y las carpetas de sesión son datos del plugin: no
   forman parte del log de la sesión. Un fork, una sesión restaurada en otro
   equipo o una sesión que se abra con el plugin desinstalado no los hereda.
+- La sección **Contexto** vive en el pie de la barra lateral izquierda, no en
+  el panel derecho; se oculta con la barra colapsada y muestra solo la sesión
+  activa. El contexto de un espacio se ve al abrir cualquiera de sus sesiones.
 - Las carpetas se leen en el momento de componer el prompt; no hay watcher
   dedicado. La caché de 5 segundos hace que un cambio tarde como mucho ese
   tiempo en reflejarse.

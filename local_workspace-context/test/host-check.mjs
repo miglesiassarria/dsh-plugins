@@ -7,7 +7,7 @@
  * Usage: node test/host-check.mjs
  */
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -31,6 +31,7 @@ writeFileSync(join(project, '.env'), 'SECRET_TOKEN=do-not-leak\n')
 writeFileSync(join(project, 'credentials.pem'), '-----BEGIN PRIVATE KEY-----\n')
 writeFileSync(join(project, 'binary.bin'), Buffer.from([0, 1, 2, 3, 0, 255]))
 writeFileSync(join(project, '.gitignore'), 'node_modules\n')
+writeFileSync(join(project, 'package-lock.json'), '{"lockfileVersion": 3}\n')
 
 const store = new plugin.WorkspaceContextStore({ file: join(home, 'workspace-context', 'context.json') })
 
@@ -61,6 +62,21 @@ store.saveWorkspace('ws-1', {
 })
 assert.equal(store.workspace('ws-1').entries[1].text, '# Notes\n\nShip it.\n')
 
+// ---- Stable workspace path ---------------------------------------------------
+const legacy = join(home, 'legacy-project')
+mkdirSync(legacy, { recursive: true })
+writeFileSync(join(legacy, 'legacy.md'), '# Legacy\n')
+store.saveWorkspace('legacy-old', {
+  description: 'Legacy workspace',
+  entries: [{ kind: 'folder', path: legacy }],
+}, { path: legacy, title: 'Legacy' })
+assert.equal(store.workspace('legacy-new', legacy).description, 'Legacy workspace')
+store.saveWorkspace('legacy-new', {
+  description: 'Legacy workspace',
+  entries: [{ kind: 'folder', path: legacy }],
+}, { path: legacy, title: 'Legacy' })
+assert.equal(store.load().workspaces['legacy-old'], undefined, 'the old id must migrate to the new one')
+
 // ---- Model context -----------------------------------------------------------
 const workspaceRegistry = {
   list: () => [{ id: 'ws-1', path: project, title: 'Docs project', sessionIds: ['session-1'] }],
@@ -68,6 +84,14 @@ const workspaceRegistry = {
 const workingDirectory = { get: () => project }
 const agent = { id: 'session-1', session: {} }
 const services = { workspaceRegistry, workingDirectory }
+
+const alias = join(home, 'project-link')
+symlinkSync(project, alias)
+const aliasWorkspace = plugin.resolveAgentWorkspace(
+  { id: 'session-alias', session: {} },
+  { workspaceRegistry, workingDirectory: { get: () => alias } },
+)
+assert.equal(aliasWorkspace.workspace?.id, 'ws-1', 'a symlinked cwd must inherit its workspace')
 
 let context = plugin.renderContextForAgent(store, agent, services)
 for (const fragment of [
@@ -83,7 +107,7 @@ for (const fragment of [
 ]) {
   assert.ok(context.includes(fragment), `missing context fragment: ${fragment}`)
 }
-for (const fragment of ['node_modules', 'SECRET_TOKEN', 'PRIVATE KEY', 'binary.bin', '.gitignore']) {
+for (const fragment of ['node_modules', 'SECRET_TOKEN', 'PRIVATE KEY', 'binary.bin', '.gitignore', 'lockfileVersion']) {
   assert.ok(!context.includes(fragment), `leaked skipped content: ${fragment}`)
 }
 assert.ok(context.startsWith('<workspace_context>'))
@@ -138,6 +162,7 @@ await assert.rejects(
 // ---- HTTP route --------------------------------------------------------------
 const workspace = { id: 'ws-1', path: project, title: 'Docs project' }
 const lookup = (id) => (id === 'ws-1' ? workspace : undefined)
+const lookupForSession = (id) => (typeof id === 'string' && id.length > 0 ? workspace : undefined)
 
 /** Build a minimal request/response pair for handleRequest. */
 function requestPair({ method = 'GET', url = '/dsh-workspace-context/health', headers = {}, body } = {}) {
@@ -160,20 +185,20 @@ function requestPair({ method = 'GET', url = '/dsh-workspace-context/health', he
 }
 
 let pair = requestPair()
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 403)
 assert.deepEqual(JSON.parse(pair.result.body), { ok: false, error: 'unauthorized' })
 
 pair = requestPair({ headers: { 'x-dsh-workspace-context': '1' } })
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 200)
-assert.deepEqual(JSON.parse(pair.result.body).data, { workspaces: 1, sessions: 1, entries: 3 })
+assert.deepEqual(JSON.parse(pair.result.body).data, { workspaces: 2, sessions: 1, entries: 4 })
 
 pair = requestPair({
   url: '/dsh-workspace-context/state?workspaceId=ws-1',
   headers: { 'x-dsh-workspace-context': '1' },
 })
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 200)
 const state = JSON.parse(pair.result.body).data
 assert.equal(state.workspace.title, 'Docs project')
@@ -185,10 +210,23 @@ pair = requestPair({
   headers: { 'x-dsh-workspace-context': '1' },
   body: { workspaceId: 'ws-1', description: 'Updated', systemPrompt: '', entries: [{ kind: 'folder', path: docs }] },
 })
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 200)
 assert.equal(JSON.parse(pair.result.body).data.config.description, 'Updated')
 assert.equal(JSON.parse(pair.result.body).data.config.entries[0].path, realpathSync(docs))
+
+pair = requestPair({
+  url: '/dsh-workspace-context/session/context?sessionId=session-1&workspaceId=ws-1',
+  headers: { 'x-dsh-workspace-context': '1' },
+})
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
+assert.equal(pair.result.status, 200)
+const mergedOne = JSON.parse(pair.result.body).data
+assert.equal(mergedOne.workspace.title, 'Docs project')
+assert.equal(mergedOne.workspaceEntries.length, 1)
+assert.equal(mergedOne.sessionEntries.length, 0)
+assert.equal(mergedOne.merged.length, 1)
+assert.equal(mergedOne.merged[0].source, 'workspace')
 
 pair = requestPair({
   method: 'POST',
@@ -196,11 +234,23 @@ pair = requestPair({
   headers: { 'x-dsh-workspace-context': '1' },
   body: { sessionId: 'session-9', path: docs },
 })
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 200)
 const sessionData = JSON.parse(pair.result.body).data
 assert.equal(sessionData.entries.length, 1)
 assert.equal(sessionData.entries[0].path, realpathSync(docs))
+
+pair = requestPair({
+  url: '/dsh-workspace-context/session/context?sessionId=session-9',
+  headers: { 'x-dsh-workspace-context': '1' },
+})
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
+assert.equal(pair.result.status, 200)
+const mergedTwo = JSON.parse(pair.result.body).data
+assert.equal(mergedTwo.workspaceEntries.length, 1)
+assert.equal(mergedTwo.sessionEntries.length, 1)
+assert.equal(mergedTwo.merged.length, 2)
+assert.deepEqual(mergedTwo.merged.map(entry => entry.source), ['workspace', 'session'])
 
 pair = requestPair({
   method: 'POST',
@@ -208,7 +258,7 @@ pair = requestPair({
   headers: { 'x-dsh-workspace-context': '1' },
   body: { sessionId: 'session-9', entryId: sessionData.entries[0].id },
 })
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 200)
 assert.deepEqual(JSON.parse(pair.result.body).data.entries, [])
 
@@ -216,7 +266,7 @@ pair = requestPair({
   url: '/dsh-workspace-context/state?workspaceId=missing',
   headers: { 'x-dsh-workspace-context': '1' },
 })
-await plugin.handleRequest(store, lookup, pair.request, pair.response)
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response)
 assert.equal(pair.result.status, 404)
 assert.equal(JSON.parse(pair.result.body).error, 'workspace-unknown')
 

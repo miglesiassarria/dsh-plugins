@@ -88,7 +88,7 @@ function renderNode(node, path, output) {
 }
 
 let overlayComponent = null
-let dockComponent = null
+let sidebarComponent = null
 
 /** Build a stubbed Host response. */
 function response(data, ok = true, status = 200) {
@@ -121,6 +121,14 @@ const sandbox = {
   fetch: async (url, options = {}) => {
     fetchCalls.push({ url: String(url), options })
     if (String(url).startsWith('/dsh-workspace-context/state')) return response(workspaceState)
+    if (String(url).startsWith('/dsh-workspace-context/session/context')) {
+      return response({
+        workspace: { workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project' },
+        workspaceEntries: [{ id: 'folder-1', kind: 'folder', name: 'project', path: '/tmp/project' }],
+        sessionEntries: [{ id: 'session-folder-1', kind: 'folder', name: 'notes', path: '/tmp/notes' }],
+        merged: [],
+      })
+    }
     if (String(url).startsWith('/dsh-workspace-context/session?sessionId=s1')) {
       return response({ entries: [{ id: 'session-folder-1', kind: 'folder', name: 'notes', path: '/tmp/notes' }] })
     }
@@ -143,6 +151,16 @@ const plugin = moduleDefinition.factory((name) => {
   if (name === 'react') return React
   throw new Error(`unexpected module import: ${name}`)
 })
+
+let mountedSession = 's1'
+const mountedListeners = new Set()
+const mountedObservable = {
+  getSnapshot: () => mountedSession,
+  subscribe(listener) {
+    mountedListeners.add(listener)
+    return () => mountedListeners.delete(listener)
+  },
+}
 
 const registrations = []
 const dicts = new Map()
@@ -196,6 +214,9 @@ const fakeContext = {
       return folderPicker.value
     },
   },
+  sidebarRight: {
+    mounted: mountedObservable,
+  },
   effect(callback) {
     const dispose = callback()
     return () => {
@@ -213,10 +234,10 @@ if (menu.target !== 'workspace') throw new Error(`unexpected menu target ${menu.
 if (menu.order !== 150) throw new Error(`unexpected menu order ${menu.order}`)
 
 overlayComponent = registrations.find(entry => entry.options.name === 'shell.overlay')?.component
-dockComponent = registrations.find(entry => entry.options.name === 'conversation.input.dock')?.component
+sidebarComponent = registrations.find(entry => entry.options.name === 'sidebar.footer.action')?.component
 const iconRegistration = registrations.find(entry => entry.options.name === 'contextMenu.icon')
 if (overlayComponent === undefined) throw new Error('the plugin registered no shell.overlay dialog')
-if (dockComponent === undefined) throw new Error('the plugin registered no conversation.input.dock rail')
+if (sidebarComponent === undefined) throw new Error('the plugin registered no sidebar.footer.action section')
 if (iconRegistration === undefined || iconRegistration.options.key !== 'workspace-context.settings') {
   throw new Error('the plugin registered no context menu icon')
 }
@@ -319,13 +340,18 @@ if (!notices.some(notice => notice.text === 'Espacio guardado.' && notice.succes
   throw new Error('saving the dialog showed no success notice')
 }
 
-// ---- Session dock ------------------------------------------------------------
-/** Render the dock and flush its fetch. */
-async function renderDock() {
+// ---- Sidebar context section -------------------------------------------------
+/** Render the sidebar section and flush its fetch. */
+async function renderSidebar() {
+  const props = {
+    wide: true,
+    useSessions: (selector) => selector({ byId: { s1: { id: 's1', cwd: '/tmp/project' } } }),
+    useWorkspaces: (selector) => selector({ items: [{ workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project', sessionIds: ['s1'] }] }),
+  }
   collected.length = 0
   output = []
-  renderNode(React.createElement(dockComponent, { sessionId: 's1' }), 'dock', output)
-  for (let pass = 0; pass < 4; pass += 1) {
+  renderNode(React.createElement(sidebarComponent, props), 'sidebar', output)
+  for (let pass = 0; pass < 5; pass += 1) {
     const effects = pendingEffects.filter(entry => !effectKeys.has(entry.key))
     if (effects.length === 0) break
     for (const entry of effects) {
@@ -336,22 +362,24 @@ async function renderDock() {
     await new Promise(resolve => setTimeout(resolve, 0))
     collected.length = 0
     output = []
-    renderNode(React.createElement(dockComponent, { sessionId: 's1' }), 'dock', output)
+    renderNode(React.createElement(sidebarComponent, props), 'sidebar', output)
   }
   return output.join(' | ')
 }
 
-text = await renderDock()
-if (!text.includes('Contexto de sesión')) throw new Error(`dock missing label: ${text}`)
-if (!text.includes('notes')) throw new Error(`dock missing folder chip: ${text}`)
-const chip = collected.find(node => node.props?.className === 'wsc-chip')
-if (chip === undefined) throw new Error('the dock rendered no chip')
-const removeButton = collected.find(node => node.props?.className === 'wsc-chip-remove')
-if (removeButton === undefined) throw new Error('the chip rendered no remove button')
+text = await renderSidebar()
+for (const fragment of ['Contexto', 'Docs project', 'project', 'notes', 'Sesión']) {
+  if (!text.includes(fragment)) {
+    console.error('Rendered sidebar: ' + text)
+    throw new Error(`sidebar is missing ${fragment}`)
+  }
+}
+const removeButton = collected.find(node => node.props?.className === 'wsc-side-remove')
+if (removeButton === undefined) throw new Error('the sidebar section rendered no remove button')
 removeButton.props.onClick()
 await new Promise(resolve => setTimeout(resolve, 0))
 const removeCall = fetchCalls.find(call => call.url.endsWith('/session/entries/remove') && call.options.method === 'POST')
-if (removeCall === undefined) throw new Error('removing the chip sent no POST')
+if (removeCall === undefined) throw new Error('removing the sidebar entry sent no POST')
 const removeBody = JSON.parse(removeCall.options.body)
 if (removeBody.sessionId !== 's1' || removeBody.entryId !== 'session-folder-1') {
   throw new Error(`unexpected remove body ${removeCall.options.body}`)
@@ -372,6 +400,6 @@ if (!notices.some(notice => notice.text.includes('context-folder') && notice.suc
 
 console.log('render check passed:', {
   dialogEntries: saveBody.entries.length,
-  dock: 'ok',
+  sidebar: 'ok',
   command: folderCommand.name,
 })
