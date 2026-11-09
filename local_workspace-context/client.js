@@ -75,6 +75,10 @@ window.__ModuleLoader__.load({
           notFound: 'This workspace no longer exists.',
           selectWorkspace: 'Select a workspace to see its project page.',
           openChat: 'Open chat',
+          composerPlaceholder: 'How can I help you today?',
+          composerHint: 'Enter to send · Shift+Enter for a new line',
+          send: 'Send',
+          sendFailed: 'Could not send the message.',
         },
         error: {
           requestFailed: 'The request failed.',
@@ -157,6 +161,10 @@ window.__ModuleLoader__.load({
           notFound: 'Este espacio de trabajo ya no existe.',
           selectWorkspace: 'Selecciona un espacio de trabajo para ver su página de proyecto.',
           openChat: 'Abrir chat',
+          composerPlaceholder: '¿Cómo puedo ayudarte hoy?',
+          composerHint: 'Enter para enviar · Shift+Enter para una línea nueva',
+          send: 'Enviar',
+          sendFailed: 'No se pudo enviar el mensaje.',
         },
         error: {
           requestFailed: 'La petición ha fallado.',
@@ -286,6 +294,15 @@ window.__ModuleLoader__.load({
 .wsc-project-actions{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
 .wsc-project-desc{margin:0;font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;}
 .wsc-project-muted{color:var(--dsw-alias-label-secondary);}
+.wsc-project-composer{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1);}
+.wsc-project-input{width:100%;min-height:54px;max-height:200px;box-sizing:border-box;padding:0;border:0;outline:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:1.5;resize:vertical;}
+.wsc-project-input::placeholder{color:var(--dsw-alias-label-secondary);}
+.wsc-project-composerbar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.wsc-project-composerhint{font-size:10.5px;line-height:1.4;color:var(--dsw-alias-label-secondary);}
+.wsc-project-send{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-brand-primary);color:#fff;font:inherit;cursor:pointer;}
+.wsc-project-send:hover{filter:brightness(1.06);}
+.wsc-project-send:disabled{opacity:.45;cursor:default;filter:none;}
+.wsc-project-composererror{font-size:11px;line-height:1.4;color:var(--dsw-alias-state-error-primary);}
 .wsc-project-sectionhead{display:flex;align-items:center;gap:8px;}
 .wsc-project-h2{margin:0;font-size:14px;font-weight:600;}
 .wsc-project-count{font-size:11px;color:var(--dsw-alias-label-secondary);}
@@ -829,7 +846,7 @@ window.__ModuleLoader__.load({
 
     /** Main-panel project page opened by clicking a workspace row. */
     function createWorkspaceOverview(options) {
-      const { api, overviewStore, contextBumps, openDialog, uiWorkspace } = options;
+      const { api, overviewStore, contextBumps, openDialog, uiWorkspace, sendPrompt } = options;
       return function WorkspaceOverview({ useWorkspaces, useSessions, t }) {
         const request = useStore(overviewStore);
         const workspaceId = request?.workspaceId;
@@ -842,6 +859,9 @@ window.__ModuleLoader__.load({
         const byId = useSessions((state) => state.byId ?? {});
         const version = useStore(contextBumps);
         const [state, setState] = React.useState({ phase: 'loading', config: null, meta: null, error: null });
+        const [draft, setDraft] = React.useState('');
+        const [sending, setSending] = React.useState(false);
+        const [composerError, setComposerError] = React.useState(null);
 
         React.useEffect(() => {
           if (workspaceId === undefined) {
@@ -887,6 +907,28 @@ window.__ModuleLoader__.load({
         const openWorkspaceDialog = () => openDialog({ workspaceId, path: meta.path, title: meta.title });
         const entries = Array.isArray(config.entries) ? config.entries : [];
 
+        const send = async (event) => {
+          if (event !== undefined && event !== null && typeof event.preventDefault === 'function') event.preventDefault();
+          const text = draft.trim();
+          if (text === '' || sending) return;
+          setSending(true);
+          setComposerError(null);
+          try {
+            await sendPrompt(workspaceId, text);
+            setDraft('');
+          } catch (reason) {
+            const message = describeError(reason, t);
+            setComposerError(message);
+            setSending(false);
+            api.notify(message, false);
+          }
+        };
+        const onComposerKeyDown = (event) => {
+          if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent?.isComposing) return;
+          event.preventDefault();
+          void send();
+        };
+
         return h('div', { className: 'wsc-project' },
           h('style', null, CSS),
           h('div', { className: 'wsc-project-inner' },
@@ -902,6 +944,28 @@ window.__ModuleLoader__.load({
                   h('button', { type: 'button', className: 'wsc-btn', onClick: openWorkspaceDialog }, t('menu.configure')))),
               h('p', { className: config.description ? 'wsc-project-desc' : 'wsc-project-desc wsc-project-muted' }, config.description || t('overview.noDescription')),
               state.phase === 'error' ? h('div', { className: 'wsc-project-error' }, state.error) : null,
+              h('form', { className: 'wsc-project-composer', onSubmit: send },
+                h('textarea', {
+                  className: 'wsc-project-input',
+                  rows: 2,
+                  value: draft,
+                  placeholder: t('overview.composerPlaceholder'),
+                  disabled: sending,
+                  onChange: (event) => setDraft(event.target.value),
+                  onKeyDown: onComposerKeyDown,
+                }),
+                h('div', { className: 'wsc-project-composerbar' },
+                  h('span', { className: 'wsc-project-composerhint' }, t('overview.composerHint')),
+                  h('button', {
+                    type: 'submit',
+                    className: 'wsc-project-send',
+                    disabled: sending || draft.trim() === '',
+                    title: t('overview.send'),
+                    'aria-label': t('overview.send'),
+                  }, h('svg', { viewBox: '0 0 16 16', width: 15, height: 15, fill: 'none', 'aria-hidden': true },
+                    h('path', { d: 'M8 13V3M4 7l4-4 4 4', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' })))),
+              ),
+              composerError === null ? null : h('div', { className: 'wsc-project-composererror' }, composerError),
               h('section', { className: 'wsc-project-chats' },
                 h('div', { className: 'wsc-project-sectionhead' },
                   h('h2', { className: 'wsc-project-h2' }, t('overview.chats')),
@@ -997,6 +1061,49 @@ window.__ModuleLoader__.load({
             api.notify(t('session.added', { name: baseName(picked) }), true);
           } catch (reason) {
             api.notify(describeError(reason, t), false);
+          }
+        };
+
+        /** Create a session in the workspace and send the project page prompt. */
+        const sendProjectPrompt = async (workspaceId, text) => {
+          const sessionId = await ctx.uiWorkspace.connectWorkspace(workspaceId);
+          ctx.uiWorkspace.openSession(sessionId);
+          const sessions = ctx.get('sessions');
+          let binding;
+          const bindingDeadline = Date.now() + 5_000;
+          while (Date.now() < bindingDeadline) {
+            binding = sessions?.binding?.(sessionId);
+            if (binding !== undefined) break;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          if (binding === undefined) throw new Error(t('overview.sendFailed'));
+          let opened = false;
+          const deadline = Date.now() + 5_000;
+          while (Date.now() < deadline) {
+            const sessionState = binding.session.getSnapshot();
+            if (sessionState.openState === 'open' || sessionState.openState === undefined) {
+              opened = true;
+              break;
+            }
+            if (sessionState.openState === 'error') throw new Error(sessionState.openError?.message ?? t('overview.sendFailed'));
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          if (!opened) throw new Error(t('overview.sendFailed'));
+          const restoreDraft = () => {
+            try {
+              ctx.get('conversation.input')?.requestDraftInitialization?.(binding, { prompt: text, whenDraftExists: 'replace' });
+            } catch {
+              // The composer may not be mounted yet; the toast still reports the failure.
+            }
+          };
+          try {
+            const conversation = ctx.get('conversation');
+            if (conversation === undefined || typeof conversation.sendSession !== 'function') throw new Error(t('overview.sendFailed'));
+            const result = await conversation.sendSession(binding.session, text, [], 'queue');
+            if (result?.kind === 'error') throw new Error(t('overview.sendFailed'));
+          } catch (error) {
+            restoreDraft();
+            throw error;
           }
         };
 
@@ -1106,6 +1213,7 @@ window.__ModuleLoader__.load({
           contextBumps,
           openDialog,
           uiWorkspace: ctx.uiWorkspace,
+          sendPrompt: sendProjectPrompt,
         })));
 
         // A primary click on a real workspace row opens its project page; the
@@ -1117,12 +1225,17 @@ window.__ModuleLoader__.load({
             const target = event.target;
             if (target === null || target === undefined || typeof target.closest !== 'function') return;
             if (target.closest('button, [data-context-menu-trigger]') !== null) return;
+            if (target.closest('[class*="_chevron"]') !== null) return;
             const row = target.closest('[data-row-key^="workspace:"]');
             if (row === null) return;
+            const rowChevron = row.children !== undefined && row.children.length > 1 ? row.children[1] : null;
+            if (rowChevron !== null && typeof rowChevron.contains === 'function' && rowChevron.contains(target)) return;
             const key = typeof row.getAttribute === 'function' ? row.getAttribute('data-row-key') : null;
             if (typeof key !== 'string') return;
             const workspaceId = key.slice('workspace:'.length);
             if (workspaceId === '') return;
+            if (typeof event.preventDefault === 'function') event.preventDefault();
+            if (typeof event.stopPropagation === 'function') event.stopPropagation();
             overviewStore.set({ workspaceId });
             try {
               ctx.layout.selectPanel(OVERVIEW_PANEL_ID);

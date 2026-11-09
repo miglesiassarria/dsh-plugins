@@ -30,15 +30,18 @@ Al hacer clic en la fila de un espacio de trabajo (o en el botón `...` →
 
 - título y ruta del espacio;
 - descripción del espacio;
+- **caja de chat** para empezar una sesión nueva: escribe y pulsa Enter o
+  **Enviar**; se crea una sesión en el espacio, se envía el mensaje y la vista
+  pasa directamente a esa sesión;
 - **Prompt del sistema** en una tarjeta lateral, con acceso a Configurar
   espacio;
 - **Contexto** del espacio en otra tarjeta, con acceso a Configurar espacio;
 - **Chats** del espacio, ordenados por actividad, con fecha y clic para abrirlo;
 - botones **Nueva sesión** y **Configurar espacio**.
 
-El clic en la fila sigue expandiendo o plegando la lista de chats en la barra
-izquierda; la página del proyecto se abre en el panel central sin sustituir ese
-comportamiento.
+El clic sobre el nombre, la carpeta o el fondo de la fila abre esta página y
+**no** pliega la lista. Para plegar o desplegar los chats del espacio hay que
+pulsar la **flecha** situada a la izquierda del nombre.
 
 ## El apartado «Contexto» de la barra derecha
 
@@ -177,7 +180,8 @@ node test/render-check.mjs
   abre el diálogo desde el menú, edita campos, añade un archivo, guarda la
   configuración, renderiza la tarjeta y la pestaña **Contexto** de la barra
   derecha, simula el clic en una fila de espacio, comprueba la página de
-  proyecto con sus chats y ejecuta el comando **Carpeta**.
+  proyecto con su caja de chat y sus chats, verifica que la flecha no abre la
+  página y ejecuta el comando **Carpeta**.
 
 ## Límites conocidos
 

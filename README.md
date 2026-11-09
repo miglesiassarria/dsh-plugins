@@ -83,9 +83,11 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   desaparecen «Cuenta DeepSeek» y «DeepSeek» del chat y de Ajustes, y también la
   página Cuenta, y tus proveedores siguen igual. Recarga la pestaña después de
   instalarlo.
-- **Contexto de espacios**: pulsa la fila de un espacio para abrir su página de
-  proyecto con descripción, prompt del sistema, contexto y chats navegables.
-  Clic derecho en el espacio → **Configurar espacio** para editar esos datos.
+- **Contexto de espacios**: pulsa la fila de un espacio (la flecha solo pliega
+  la lista) para abrir su página de proyecto con descripción, prompt del
+  sistema, contexto, caja de chat y chats navegables. Escribe en la caja y pulsa
+  Enter o **Enviar** para crear una sesión con ese mensaje ya enviado. Clic
+  derecho en el espacio → **Configurar espacio** para editar esos datos.
   Para una sesión suelta, pulsa `+` → **Carpeta**. La barra lateral derecha
   muestra una tarjeta **Contexto** en *Empezar* y una pestaña completa con la
   suma del contexto del espacio y el de la sesión. La configuración se guarda
@@ -106,8 +108,8 @@ la de `local_dsh-backups` construye un Harness desechable en un directorio
 temporal, la de `local_tools-mcp-servers` monta el árbol de React en una VM, la
 de `local_workspace-context` prueba el store, el filtrado de carpetas, la ruta
 HTTP, la herencia por ruta canónica, la tarjeta y la pestaña **Contexto**, la
-página de proyecto con el clic en el espacio y el diálogo del cliente, y la de
-`local_hide-deepseek-defaults` valida su parche y sus recursos.
+página de proyecto con clic, flecha y caja de chat, y el diálogo del cliente, y
+la de `local_hide-deepseek-defaults` valida su parche y sus recursos.
 
 ```bash
 node local_dsh-backups/test/host-check.mjs

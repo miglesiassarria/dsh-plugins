@@ -115,7 +115,10 @@ const folderPicker = { value: '/tmp/context-folder' }
 const clickListeners = new Set()
 const selectedPanels = []
 const startedSessions = []
+const connectedWorkspaces = []
 const openedSessions = []
+const sentPrompts = []
+const fakeSession = { getSnapshot: () => ({ openState: 'open' }) }
 const fakeDocument = {
   addEventListener(type, listener, capture) {
     if (type === 'click' && capture === true) clickListeners.add(listener)
@@ -229,8 +232,23 @@ const fakeContext = {
     startSession(workspaceId) {
       startedSessions.push(workspaceId)
     },
+    connectWorkspace(workspaceId) {
+      connectedWorkspaces.push(workspaceId)
+      return Promise.resolve('s9')
+    },
     openSession(sessionId) {
       openedSessions.push(sessionId)
+    },
+  },
+  sessions: {
+    binding(sessionId) {
+      return sessionId === 's9' ? { session: fakeSession } : undefined
+    },
+  },
+  conversation: {
+    sendSession(session, text, attachments, mode) {
+      sentPrompts.push({ text, attachments, mode })
+      return Promise.resolve({ kind: 'success' })
     },
   },
   layout: {
@@ -243,6 +261,9 @@ const fakeContext = {
       tabDefinitions.push(definition)
       return () => {}
     },
+  },
+  get(name) {
+    return fakeContext[name]
   },
   effect(callback) {
     const dispose = callback()
@@ -472,9 +493,41 @@ const fakeTarget = {
     return null
   },
 }
-;[...clickListeners][0]({ button: 0, defaultPrevented: false, target: fakeTarget })
+const clickEvent = {
+  button: 0,
+  defaultPrevented: false,
+  stopped: false,
+  target: fakeTarget,
+  preventDefault() { this.defaultPrevented = true },
+  stopPropagation() { this.stopped = true },
+}
+;[...clickListeners][0](clickEvent)
 if (selectedPanels[selectedPanels.length - 1] !== 'workspace-overview') {
   throw new Error(`workspace click selected ${selectedPanels[selectedPanels.length - 1]}`)
+}
+if (!clickEvent.defaultPrevented || !clickEvent.stopped) {
+  throw new Error('workspace click did not stop the row toggle')
+}
+
+// The chevron must keep toggling and must not open the project page.
+const beforeChevron = selectedPanels.length
+const chevronEvent = {
+  button: 0,
+  defaultPrevented: false,
+  stopped: false,
+  target: {
+    closest(selector) {
+      if (selector === '[class*="_chevron"]') return {}
+      if (selector === '[data-row-key^="workspace:"]') return fakeRow
+      return null
+    },
+  },
+  preventDefault() { this.defaultPrevented = true },
+  stopPropagation() { this.stopped = true },
+}
+;[...clickListeners][0](chevronEvent)
+if (selectedPanels.length !== beforeChevron || chevronEvent.defaultPrevented || chevronEvent.stopped) {
+  throw new Error('chevron click must only toggle the row')
 }
 
 text = await renderWith(overviewComponent, {
@@ -511,6 +564,27 @@ if (newSessionButton === undefined) throw new Error('the workspace page rendered
 newSessionButton.props.onClick()
 if (startedSessions.length !== 1 || startedSessions[0] !== 'ws-1') {
   throw new Error(`New session started ${JSON.stringify(startedSessions)}`)
+}
+const composerInput = collected.find(node => node.props?.className === 'wsc-project-input')
+if (composerInput === undefined) throw new Error('the workspace page rendered no chat composer')
+composerInput.props.onChange({ target: { value: 'Hello project' } })
+text = await renderWith(overviewComponent, {
+  useWorkspaces: overviewUseWorkspaces,
+  useSessions: overviewUseSessions,
+  t: translate,
+}, 'overview')
+const composerForm = collected.find(node => node.props?.className === 'wsc-project-composer')
+if (composerForm === undefined) throw new Error('the workspace page rendered no composer form')
+await composerForm.props.onSubmit({ preventDefault() {} })
+await new Promise(resolve => setTimeout(resolve, 0))
+if (connectedWorkspaces.length !== 1 || connectedWorkspaces[0] !== 'ws-1') {
+  throw new Error(`composer connected ${JSON.stringify(connectedWorkspaces)}`)
+}
+if (openedSessions[openedSessions.length - 1] !== 's9') {
+  throw new Error(`composer did not open the new session: ${JSON.stringify(openedSessions)}`)
+}
+if (sentPrompts.length !== 1 || sentPrompts[0].text !== 'Hello project' || sentPrompts[0].mode !== 'queue') {
+  throw new Error(`composer sent ${JSON.stringify(sentPrompts)}`)
 }
 
 // ---- "+" menu folder command -------------------------------------------------
