@@ -4,3 +4,13 @@ node_modules/
 *.log
 *.bak
 *.bak-*
+
+# Datos locales con credenciales: nunca se publican
+.env
+.env.*
+*.pem
+*.key
+*.p12
+.credentials*
+servers.json
+*.zip

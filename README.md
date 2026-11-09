@@ -99,11 +99,27 @@ local_tools-mcp-servers/
   test/               comprobación de render y servidores MCP de ejemplo
 ```
 
+## Seguridad
+
+Este repositorio es público y **no contiene credenciales**: ni claves de API, ni
+tokens, ni rutas de tu equipo, ni direcciones de tu red. Los valores de ejemplo
+de los tests son ficticios (`/Users/demo`, `localhost`, `example.com`).
+
+Lo que sí puede contener secretos son tus **datos**, que nunca entran aquí:
+
+- Las credenciales del Harness viven en `$DSH_HOME/.credentials.yaml`.
+- La página **Herramientas** guarda en `$DSH_HOME/mcp-tools/servers.json` los
+  valores de entorno y los tokens Bearer que escribas, con permisos `0600`. Ese
+  archivo se incluye a propósito en la copia de seguridad para poder restaurar
+  los servidores MCP en otro equipo: trata los ZIP de copia como material
+  sensible y no los adjuntes a incidencias, PRs ni conversaciones públicas.
+- `.gitignore` bloquea `.env`, claves privadas, `servers.json`, credenciales y
+  archivos `.zip` para que no se suban por descuido.
+
 ## Notas
 
 - Los plugins se cargan desde el sistema de archivos: si editas su código,
   reinicia el Harness para ver los cambios en el host. La mitad de cliente se
   recarga con el HMR de la GUI cuando está activo.
-- No hay claves ni rutas absolutas en el repositorio; las credenciales de los
-  servidores MCP las escribe el usuario y se guardan fuera del control de
-  versiones.
+- Las credenciales de los servidores MCP las escribe el usuario y se guardan
+  fuera del control de versiones.
