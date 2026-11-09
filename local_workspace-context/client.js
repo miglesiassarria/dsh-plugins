@@ -5,6 +5,8 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
 
     const NS = '@local/workspace-context';
+    const TAB_ID = '@local/workspace-context';
+    const TAB_KIND = 'workspace-context';
     const ENDPOINT = '/dsh-workspace-context';
     const HEADER = 'x-dsh-workspace-context';
     const MAX_FILE_BYTES = 128 * 1024;
@@ -55,6 +57,9 @@ window.__ModuleLoader__.load({
           expand: 'Show context',
           collapse: 'Hide context',
           noWorkspaceContext: 'No workspace context',
+          description: 'Workspace and session context',
+          workspace: 'workspace',
+          more: '+{count} more',
         },
         error: {
           requestFailed: 'The request failed.',
@@ -120,6 +125,9 @@ window.__ModuleLoader__.load({
           expand: 'Mostrar contexto',
           collapse: 'Ocultar contexto',
           noWorkspaceContext: 'Sin contexto del espacio',
+          description: 'Contexto del espacio y de la sesión',
+          workspace: 'espacio',
+          more: '+{count} más',
         },
         error: {
           requestFailed: 'La petición ha fallado.',
@@ -220,6 +228,24 @@ window.__ModuleLoader__.load({
 .wsc-side-empty button{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:10.5px;cursor:pointer;}
 .wsc-side-empty button:hover{background:var(--dsw-alias-bg-layer-2);}
 .wsc-side-error{padding:2px 6px 6px;font-size:10.5px;line-height:1.4;color:var(--dsw-alias-state-error-primary);}
+.wsc-guide-wrap{width:100%;}
+.wsc-guide{width:100%;box-sizing:border-box;display:flex;align-items:flex-start;gap:14px;min-height:56px;padding:14px 18px;border:0.5px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;text-align:left;cursor:pointer;}
+.wsc-guide:hover{background:var(--dsw-alias-bg-layer-2);}
+.wsc-guide:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;}
+.wsc-guide-icon{flex:0 0 auto;display:inline-flex;color:var(--dsw-alias-label-secondary);margin-top:1px;}
+.wsc-guide-body{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:3px;}
+.wsc-guide-title{font-size:14px;line-height:1.4;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wsc-guide-desc{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wsc-guide-list{display:flex;flex-direction:column;gap:1px;margin-top:4px;min-width:0;}
+.wsc-guide-item{display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;line-height:1.4;color:var(--dsw-alias-label-primary);}
+.wsc-guide-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wsc-guide-source{flex:0 0 auto;font-size:9.5px;color:var(--dsw-alias-label-secondary);}
+.wsc-guide-more{font-size:10px;line-height:1.4;color:var(--dsw-alias-label-secondary);}
+.wsc-guide-chevron{flex:0 0 auto;color:var(--dsw-alias-label-secondary);font-size:16px;line-height:1;margin-top:1px;}
+.wsc-rt{height:100%;min-height:0;box-sizing:border-box;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:16px;color:var(--dsw-alias-label-primary);font:inherit;}
+.wsc-rt-head{display:flex;align-items:center;gap:8px;flex:none;}
+.wsc-rt-title{min-width:0;flex:1 1 auto;font-size:14px;font-weight:600;letter-spacing:-.01em;}
+.wsc-rt-body{display:flex;flex-direction:column;gap:14px;min-height:0;}
 .wsc-spin{font-size:12px;color:var(--dsw-alias-label-secondary);}
 @media (max-width:640px){.wsc-overlay{padding:10px;}.wsc-dialog{max-height:calc(100vh - 20px);}.wsc-head,.wsc-body,.wsc-foot{padding-left:16px;padding-right:16px;}}
 `;
@@ -245,17 +271,6 @@ window.__ModuleLoader__.load({
     function useStore(store) {
       const [value, setValue] = React.useState(store.get());
       React.useEffect(() => store.subscribe(() => setValue(store.get())), [store]);
-      return value;
-    }
-
-    /** Subscribe one component to an external observable face (`getSnapshot`/`subscribe`). */
-    function useObservable(observable) {
-      const [value, setValue] = React.useState(() => (observable === undefined ? undefined : observable.getSnapshot()));
-      React.useEffect(() => {
-        if (observable === undefined) return undefined;
-        setValue(observable.getSnapshot());
-        return observable.subscribe(() => setValue(observable.getSnapshot()));
-      }, [observable]);
       return value;
     }
 
@@ -559,51 +574,111 @@ window.__ModuleLoader__.load({
       };
     }
 
-    /** Always-visible Context section at the sidebar foot, above Settings. */
-    function createSidebarContext(options) {
-      const { api, t, contextBumps, openDialog, addFolder, sidebarRight } = options;
-      return function SidebarContext({ wide, useSessions, useWorkspaces }) {
-        const sessionId = useObservable(sidebarRight === undefined ? undefined : sidebarRight.mounted);
-        const cwd = useSessions((state) => (sessionId === undefined ? undefined : state.byId?.[sessionId]?.cwd));
-        const workspaceId = useWorkspaces((state) => {
-          if (sessionId === undefined) return undefined;
-          const items = Array.isArray(state.items) ? state.items : [];
-          const bySession = items.find((item) => Array.isArray(item.sessionIds) && item.sessionIds.includes(sessionId));
-          if (bySession !== undefined) return bySession.workspaceId;
-          if (cwd === undefined) return undefined;
-          return items.find((item) => item.path === cwd)?.workspaceId;
-        });
-        const version = useStore(contextBumps);
-        const [data, setData] = React.useState(null);
-        const [error, setError] = React.useState(null);
-        const [collapsed, setCollapsed] = React.useState(false);
+    /** Shared fetch for the right-sidebar guide card and the full Context tab. */
+    function useContextState({ sessionId, api, t, contextBumps, useSessions, useWorkspaces }) {
+      const cwd = useSessions((state) => (sessionId === undefined ? undefined : state.byId?.[sessionId]?.cwd));
+      const workspaceId = useWorkspaces((state) => {
+        if (sessionId === undefined) return undefined;
+        const items = Array.isArray(state.items) ? state.items : [];
+        const bySession = items.find((item) => Array.isArray(item.sessionIds) && item.sessionIds.includes(sessionId));
+        if (bySession !== undefined) return bySession.workspaceId;
+        if (cwd === undefined) return undefined;
+        return items.find((item) => item.path === cwd)?.workspaceId;
+      });
+      const version = useStore(contextBumps);
+      const [state, setState] = React.useState({ phase: 'loading', data: null, error: null });
 
-        React.useEffect(() => {
-          if (!wide || sessionId === undefined) {
-            setData(null);
-            setError(null);
-            return undefined;
-          }
-          let cancelled = false;
-          const suffix = workspaceId === undefined ? '' : `&workspaceId=${encodeURIComponent(workspaceId)}`;
-          api.get(`/session/context?sessionId=${encodeURIComponent(sessionId)}${suffix}`)
-            .then((next) => {
-              if (cancelled) return;
-              setData(next);
-              setError(null);
-            })
-            .catch((reason) => {
-              if (cancelled) return;
-              setData(null);
-              setError(describeError(reason, t));
-            });
-          return () => {
-            cancelled = true;
-          };
-        }, [wide, sessionId, workspaceId, version]);
+      React.useEffect(() => {
+        if (sessionId === undefined) {
+          setState({ phase: 'idle', data: null, error: null });
+          return undefined;
+        }
+        let cancelled = false;
+        const suffix = workspaceId === undefined ? '' : `&workspaceId=${encodeURIComponent(workspaceId)}`;
+        api.get(`/session/context?sessionId=${encodeURIComponent(sessionId)}${suffix}`)
+          .then((data) => {
+            if (cancelled) return;
+            setState({ phase: 'ready', data, error: null });
+          })
+          .catch((reason) => {
+            if (cancelled) return;
+            setState({ phase: 'error', data: null, error: describeError(reason, t) });
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, [sessionId, workspaceId, version]);
 
-        if (!wide || sessionId === undefined) return null;
+      return { state, workspaceId };
+    }
 
+    /** Entry rows shared by the full tab. */
+    function contextRows(entries, source, t, onRemove) {
+      return entries.map((entry) => h('div', {
+        className: 'wsc-side-row',
+        key: `${source}:${entry.id}`,
+        title: entry.path || entry.name,
+      },
+      h('span', { className: 'wsc-side-icon' }, entry.kind === 'folder' ? h(FolderGlyph, { size: 13 }) : h(FileGlyph, { size: 13 })),
+      h('span', { className: 'wsc-side-text' },
+        h('span', { className: 'wsc-side-name' }, entry.name),
+        h('span', { className: 'wsc-side-meta' }, entry.kind === 'folder' ? entry.path : `${t('dialog.fileTag')} · ${formatBytes(entry.bytes || 0)}`)),
+      source === 'session'
+        ? h('button', {
+          type: 'button',
+          className: 'wsc-side-remove',
+          title: t('session.remove'),
+          'aria-label': t('session.remove'),
+          onClick: () => void onRemove(entry.id),
+        }, '×')
+        : null));
+    }
+
+    /** Guide card shown in the right Sidebar's Start page. */
+    function createContextGuideCard(options) {
+      const { api, contextBumps } = options;
+      return function ContextGuideCard({ title, description, kind, sessionId, useTabInfo, useSessions, useWorkspaces, t }) {
+        const { state } = useContextState({ sessionId, api, t, contextBumps, useSessions, useWorkspaces });
+        const { tab } = useTabInfo();
+        const entries = Array.isArray(state.data?.merged) ? state.data.merged : [];
+        const preview = entries.slice(0, 4);
+        const remaining = entries.length - preview.length;
+        const open = () => {
+          tab.actions.openTab(kind, { replaceTab: true });
+        };
+        return h('div', { className: 'wsc-guide-wrap' },
+          h('style', null, CSS),
+          h('button', {
+            type: 'button',
+            className: 'wsc-guide',
+            'data-sidebar-right-guide-entry': kind,
+            'aria-label': description === undefined ? title : `${title} ${description}`,
+            onClick: open,
+          },
+          h('span', { className: 'wsc-guide-icon' }, h(FolderGlyph, { size: 22 })),
+          h('span', { className: 'wsc-guide-body' },
+            h('span', { className: 'wsc-guide-title' }, title),
+            h('span', { className: 'wsc-guide-desc' }, entries.length === 0
+              ? (state.phase === 'loading' ? t('dialog.loading') : t('sidebar.empty'))
+              : `${entries.length} · ${t('sidebar.description')}`),
+            entries.length === 0
+              ? null
+              : h('span', { className: 'wsc-guide-list' },
+                ...preview.map((entry) => h('span', { className: 'wsc-guide-item', key: `${entry.source}:${entry.id}` },
+                  entry.kind === 'folder' ? h(FolderGlyph, { size: 12 }) : h(FileGlyph, { size: 12 }),
+                  h('span', { className: 'wsc-guide-name' }, entry.name),
+                  h('span', { className: 'wsc-guide-source' }, entry.source === 'workspace' ? t('sidebar.workspace') : t('sidebar.session')))),
+                remaining > 0 ? h('span', { className: 'wsc-guide-more' }, t('sidebar.more', { count: remaining })) : null)),
+          h('span', { className: 'wsc-guide-chevron' }, '›')));
+      };
+    }
+
+    /** Full Context tab opened from the guide card. */
+    function createContextTab(options) {
+      const { api, t: boundT, contextBumps, openDialog, addFolder } = options;
+      return function ContextTab({ sessionId, useSessions, useWorkspaces, t }) {
+        const { state } = useContextState({ sessionId, api, t, contextBumps, useSessions, useWorkspaces });
+        const data = state.data;
         const workspace = data?.workspace ?? null;
         const workspaceEntries = Array.isArray(data?.workspaceEntries) ? data.workspaceEntries : [];
         const sessionEntries = Array.isArray(data?.sessionEntries) ? data.sessionEntries : [];
@@ -614,42 +689,15 @@ window.__ModuleLoader__.load({
             await api.post('/session/entries/remove', { sessionId, entryId });
             contextBumps.set(contextBumps.get() + 1);
           } catch (reason) {
-            api.notify(describeError(reason, t), false);
+            api.notify(describeError(reason, boundT), false);
           }
         };
 
-        const rows = (entries, source) => entries.map((entry) => h('div', {
-          className: 'wsc-side-row',
-          key: `${source}:${entry.id}`,
-          title: entry.path || entry.name,
-        },
-        h('span', { className: 'wsc-side-icon' }, entry.kind === 'folder' ? h(FolderGlyph, { size: 13 }) : h(FileGlyph, { size: 13 })),
-        h('span', { className: 'wsc-side-text' },
-          h('span', { className: 'wsc-side-name' }, entry.name),
-          h('span', { className: 'wsc-side-meta' }, entry.kind === 'folder' ? entry.path : `${t('dialog.fileTag')} · ${formatBytes(entry.bytes || 0)}`)),
-        source === 'session'
-          ? h('button', {
-            type: 'button',
-            className: 'wsc-side-remove',
-            title: t('session.remove'),
-            'aria-label': t('session.remove'),
-            onClick: () => void remove(entry.id),
-          }, '×')
-          : null));
-
-        return h('section', { className: 'wsc-side', 'aria-label': t('sidebar.title') },
+        return h('div', { className: 'wsc-rt' },
           h('style', null, CSS),
-          h('div', { className: 'wsc-side-head' },
-            h('button', {
-              type: 'button',
-              className: 'wsc-side-toggle',
-              'aria-expanded': !collapsed,
-              title: collapsed ? t('sidebar.expand') : t('sidebar.collapse'),
-              onClick: () => setCollapsed((value) => !value),
-            },
-            h('span', { className: 'wsc-side-title' }, t('sidebar.title')),
+          h('div', { className: 'wsc-rt-head' },
+            h('span', { className: 'wsc-rt-title' }, t('sidebar.title')),
             h('span', { className: 'wsc-side-count' }, String(total)),
-            h('span', { className: 'wsc-side-chevron' }, collapsed ? '▸' : '▾')),
             h('button', {
               type: 'button',
               className: 'wsc-side-add',
@@ -657,10 +705,12 @@ window.__ModuleLoader__.load({
               'aria-label': t('sidebar.addFolder'),
               onClick: () => void addFolder(sessionId),
             }, '+')),
-          collapsed
-            ? null
-            : h('div', { className: 'wsc-side-body' },
-              workspace === null || (workspaceEntries.length === 0 && total === 0) ? null : h('div', { className: 'wsc-side-group' },
+          h('div', { className: 'wsc-rt-body' },
+            state.phase === 'loading' ? h('div', { className: 'wsc-side-empty' }, t('dialog.loading')) : null,
+            state.phase === 'error' ? h('div', { className: 'wsc-side-error' }, state.error) : null,
+            workspace === null || (workspaceEntries.length === 0 && total === 0)
+              ? null
+              : h('div', { className: 'wsc-side-group' },
                 h('div', { className: 'wsc-side-group-head' },
                   h('span', { className: 'wsc-side-group-title' }, workspace.title),
                   h('button', {
@@ -669,30 +719,29 @@ window.__ModuleLoader__.load({
                     title: t('menu.configure'),
                     'aria-label': t('menu.configure'),
                     onClick: () => openDialog({ workspaceId: workspace.workspaceId, path: workspace.path, title: workspace.title }),
-                  }, h(SettingsGlyph, { size: 12 }))),
+                  }, h(SettingsGlyph, { size: 14 }))),
                 workspaceEntries.length === 0
                   ? h('div', { className: 'wsc-side-empty' }, t('sidebar.noWorkspaceContext'))
-                  : rows(workspaceEntries, 'workspace')),
-              sessionEntries.length === 0 ? null : h('div', { className: 'wsc-side-group' },
-                h('div', { className: 'wsc-side-group-head' },
-                  h('span', { className: 'wsc-side-group-title' }, t('sidebar.session'))),
-                rows(sessionEntries, 'session')),
-              total === 0
-                ? h('div', { className: 'wsc-side-empty' },
-                  h('span', null, t('sidebar.empty')),
-                  h('span', null, t('sidebar.emptyHint')),
-                  h('button', { type: 'button', onClick: () => void addFolder(sessionId) }, `+ ${t('sidebar.addFolder')}`),
-                  workspace === null ? null : h('button', {
-                    type: 'button',
-                    onClick: () => openDialog({ workspaceId: workspace.workspaceId, path: workspace.path, title: workspace.title }),
-                  }, t('menu.configure')))
-                : null,
-              error === null ? null : h('div', { className: 'wsc-side-error' }, error)));
+                  : contextRows(workspaceEntries, 'workspace', t, remove)),
+            sessionEntries.length === 0 ? null : h('div', { className: 'wsc-side-group' },
+              h('div', { className: 'wsc-side-group-head' },
+                h('span', { className: 'wsc-side-group-title' }, t('sidebar.session'))),
+              contextRows(sessionEntries, 'session', t, remove)),
+            total === 0 && state.phase === 'ready'
+              ? h('div', { className: 'wsc-side-empty' },
+                h('span', null, t('sidebar.empty')),
+                h('span', null, t('sidebar.emptyHint')),
+                h('button', { type: 'button', onClick: () => void addFolder(sessionId) }, `+ ${t('sidebar.addFolder')}`),
+                workspace === null ? null : h('button', {
+                  type: 'button',
+                  onClick: () => openDialog({ workspaceId: workspace.workspaceId, path: workspace.path, title: workspace.title }),
+                }, t('menu.configure')))
+              : null));
       };
     }
 
     return {
-      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace', 'sidebarRight'],
+      inject: ['slots', 'locale', 'contextMenus', 'commandUi', 'uiWorkspace', 'sidebarRightTabs'],
       apply(ctx) {
         const disposeLocale = ctx.locale.register(NS, DICTS);
         ctx.effect(() => disposeLocale, 'workspace-context locale');
@@ -800,19 +849,37 @@ window.__ModuleLoader__.load({
           },
         });
 
-        // Always-visible Context section at the sidebar foot, above Settings.
-        ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-          name: 'sidebar.footer.action',
-          id: 'workspace-context-sidebar',
-          order: -100,
+        // Right Sidebar: one type with a Start-page card and a full tab.
+        ctx.effect(() => ctx.sidebarRightTabs.register({
+          id: TAB_ID,
+          kind: TAB_KIND,
+          priority: 'extension',
+          title: () => t('sidebar.title'),
+          guide: [{
+            id: 'context',
+            order: 0,
+            title: () => t('sidebar.title'),
+            description: () => t('sidebar.description'),
+            icon: FolderGlyph,
+          }],
+        }), 'workspace-context: tab type');
+
+        ctx.slots.inject('sidebar.right.tab.guide.entry', () => ctx.slots.register({
+          name: 'sidebar.right.tab.guide.entry',
+          key: TAB_ID,
           locale: NS,
-        }, createSidebarContext({
+        }, createContextGuideCard({ api, contextBumps })));
+
+        ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab',
+          key: TAB_ID,
+          locale: NS,
+        }, createContextTab({
           api,
           t,
           contextBumps,
           openDialog,
           addFolder: addFolderToSession,
-          sidebarRight: ctx.sidebarRight,
         })));
       },
     };

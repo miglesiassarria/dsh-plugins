@@ -2,8 +2,9 @@
 
 Un plugin de DeepSeek Harness que amplía los espacios de trabajo con tres
 capacidades opcionales y añade carpetas como contexto de sesión desde el botón
-`+` del compositor. El contexto activo se muestra en una sección **Contexto**
-al pie de la barra lateral izquierda, siempre visible, encima de Ajustes.
+`+` del compositor. El contexto activo se muestra en la **barra lateral
+derecha**: una tarjeta **Contexto** en la página *Empezar* y una pestaña
+completa con la gestión de entradas.
 
 ## Qué añade
 
@@ -20,18 +21,23 @@ Además, el botón `+` del compositor ofrece **Carpeta** en su menú (sección
 *Comandos*). Al elegirla se abre el selector de carpetas del sistema y la
 carpeta queda como contexto de esa sesión.
 
-## La sección «Contexto»
+## El apartado «Contexto» de la barra derecha
 
-La barra lateral izquierda muestra, encima de Ajustes, un apartado **Contexto**
-con la suma del contexto del espacio de trabajo y el de la sesión activa:
+La barra lateral derecha muestra el contexto de la sesión activa de dos formas:
 
-- cada entrada indica si viene del espacio o de la sesión;
-- las entradas del espacio se editan con el engranaje del grupo, que abre
-  **Configurar espacio**;
+- **Tarjeta Contexto** en la página *Empezar*: aparece junto a Archivos,
+  Terminal, Navegador y Más herramientas. Muestra el nombre y el origen de las
+  primeras cuatro entradas, sin tener que pulsar nada. Al pulsarla se abre la
+  pestaña completa.
+- **Pestaña Contexto**: muestra la suma del contexto del espacio de trabajo y el
+  de la sesión, agrupada por origen.
+
+En la pestaña:
+
+- el engranaje del grupo del espacio abre **Configurar espacio**;
 - las entradas de la sesión se pueden quitar con su aspa;
-- el botón `+` de la cabecera añade una carpeta a la sesión activa;
-- la sección se puede plegar, pero empieza abierta y se oculta cuando la barra
-  lateral se colapsa o no hay sesión seleccionada.
+- el botón `+` añade una carpeta a la sesión activa;
+- el estado vacío ofrece añadir una carpeta o configurar el espacio.
 
 La lista se refresca al añadir o quitar contexto, al guardar la configuración
 del espacio y al cambiar de sesión.
@@ -129,9 +135,11 @@ composición web estándar. La mitad de cliente inyecta
 4. Guarda. La siguiente petición de cualquier sesión del espacio ya incluye el
    contexto.
 5. Para una sesión concreta, pulsa `+` → **Carpeta** y elige una carpeta. La
-   entrada aparece en la sección **Contexto** de la barra lateral y el contexto
-   se inyecta en el siguiente paso. La sección muestra esa carpeta junto a las
-   que ya herede del espacio.
+   entrada aparece en la tarjeta y la pestaña **Contexto** de la barra lateral
+   derecha, y el contexto se inyecta en el siguiente paso. La pestaña muestra
+   esa carpeta junto a las que ya herede del espacio.
+6. Para ver el detalle, abre la barra derecha, ve a *Empezar* y pulsa la
+   tarjeta **Contexto**. La pestaña se abre en esa misma barra.
 
 ## Pruebas
 
@@ -145,17 +153,18 @@ node test/render-check.mjs
   la ruta HTTP con su cabecera de mismo origen.
 - `render-check` ejecuta la mitad de cliente en una VM con un React mínimo:
   abre el diálogo desde el menú, edita campos, añade un archivo, guarda la
-  configuración, renderiza la sección **Contexto** de la barra lateral con el
-  contexto fusionado y ejecuta el comando **Carpeta**.
+  configuración, renderiza la tarjeta y la pestaña **Contexto** de la barra
+  derecha con el contexto fusionado y ejecuta el comando **Carpeta**.
 
 ## Límites conocidos
 
 - El contexto del espacio y las carpetas de sesión son datos del plugin: no
   forman parte del log de la sesión. Un fork, una sesión restaurada en otro
   equipo o una sesión que se abra con el plugin desinstalado no los hereda.
-- La sección **Contexto** vive en el pie de la barra lateral izquierda, no en
-  el panel derecho; se oculta con la barra colapsada y muestra solo la sesión
-  activa. El contexto de un espacio se ve al abrir cualquiera de sus sesiones.
+- El apartado **Contexto** vive en la barra lateral derecha; si esa barra está
+  cerrada hay que abrirla para verlo. La tarjeta de *Empezar* muestra solo las
+  primeras cuatro entradas; la pestaña muestra todas. El contexto de un espacio
+  se ve al abrir cualquiera de sus sesiones.
 - Las carpetas se leen en el momento de componer el prompt; no hay watcher
   dedicado. La caché de 5 segundos hace que un cambio tarde como mucho ese
   tiempo en reflejarse.

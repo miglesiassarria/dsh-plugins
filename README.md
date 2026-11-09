@@ -11,7 +11,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_dsh-backups`](local_dsh-backups/) | `@local/dsh-backups` | Ajustes → **Copias de seguridad** | Exporta a un ZIP las sesiones, la configuración del perfil y los plugins locales, y los restaura en otro equipo. |
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
 | [`local_hide-deepseek-defaults`](local_hide-deepseek-defaults/) | `@local/hide-deepseek-defaults` | — | Desactiva los proveedores integrados de DeepSeek (cuenta y clave API) para que no aparezcan ni en el selector de modelos del chat ni en **Ajustes → Modelos**. |
-| [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Menú del espacio → **Configurar espacio**, sección **Contexto** de la barra lateral y menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión; la sección **Contexto** muestra la suma de ambos. |
+| [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Menú del espacio → **Configurar espacio**, tarjeta y pestaña **Contexto** de la barra lateral derecha, y menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión; el apartado **Contexto** muestra la suma de ambos. |
 
 ## Requisitos
 
@@ -82,10 +82,10 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   instalarlo.
 - **Contexto de espacios**: clic derecho en un espacio → **Configurar espacio**
   para fijar descripción, prompt del sistema y archivos o carpetas de contexto.
-  Para una sesión suelta, pulsa `+` → **Carpeta**. La sección **Contexto** del
-  pie de la barra lateral muestra siempre la suma del contexto del espacio y el
-  de la sesión. La configuración se guarda en
-  `$DSH_HOME/workspace-context/context.json` (permisos `0600`).
+  Para una sesión suelta, pulsa `+` → **Carpeta**. La barra lateral derecha
+  muestra una tarjeta **Contexto** en *Empezar* y una pestaña completa con la
+  suma del contexto del espacio y el de la sesión. La configuración se guarda
+  en `$DSH_HOME/workspace-context/context.json` (permisos `0600`).
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
@@ -95,8 +95,9 @@ Los plugins traen comprobaciones que se ejecutan sin tocar tu instalación:
 la de `local_dsh-backups` construye un Harness desechable en un directorio
 temporal, la de `local_tools-mcp-servers` monta el árbol de React en una VM, la
 de `local_workspace-context` prueba el store, el filtrado de carpetas, la ruta
-HTTP, la herencia por ruta canónica, la sección **Contexto** y el diálogo del
-cliente, y la de `local_hide-deepseek-defaults` valida su parche y sus recursos.
+HTTP, la herencia por ruta canónica, la tarjeta y la pestaña **Contexto** y el
+diálogo del cliente, y la de `local_hide-deepseek-defaults` valida su parche y
+sus recursos.
 
 ```bash
 node local_dsh-backups/test/host-check.mjs

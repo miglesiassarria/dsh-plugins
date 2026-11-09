@@ -126,7 +126,10 @@ const sandbox = {
         workspace: { workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project' },
         workspaceEntries: [{ id: 'folder-1', kind: 'folder', name: 'project', path: '/tmp/project' }],
         sessionEntries: [{ id: 'session-folder-1', kind: 'folder', name: 'notes', path: '/tmp/notes' }],
-        merged: [],
+        merged: [
+          { id: 'folder-1', kind: 'folder', name: 'project', path: '/tmp/project', source: 'workspace' },
+          { id: 'session-folder-1', kind: 'folder', name: 'notes', path: '/tmp/notes', source: 'session' },
+        ],
       })
     }
     if (String(url).startsWith('/dsh-workspace-context/session?sessionId=s1')) {
@@ -152,17 +155,8 @@ const plugin = moduleDefinition.factory((name) => {
   throw new Error(`unexpected module import: ${name}`)
 })
 
-let mountedSession = 's1'
-const mountedListeners = new Set()
-const mountedObservable = {
-  getSnapshot: () => mountedSession,
-  subscribe(listener) {
-    mountedListeners.add(listener)
-    return () => mountedListeners.delete(listener)
-  },
-}
-
 const registrations = []
+const tabDefinitions = []
 const dicts = new Map()
 const menuRegistrations = []
 const commandRegistrations = []
@@ -214,8 +208,11 @@ const fakeContext = {
       return folderPicker.value
     },
   },
-  sidebarRight: {
-    mounted: mountedObservable,
+  sidebarRightTabs: {
+    register(definition) {
+      tabDefinitions.push(definition)
+      return () => {}
+    },
   },
   effect(callback) {
     const dispose = callback()
@@ -234,10 +231,15 @@ if (menu.target !== 'workspace') throw new Error(`unexpected menu target ${menu.
 if (menu.order !== 150) throw new Error(`unexpected menu order ${menu.order}`)
 
 overlayComponent = registrations.find(entry => entry.options.name === 'shell.overlay')?.component
-sidebarComponent = registrations.find(entry => entry.options.name === 'sidebar.footer.action')?.component
+const guideComponent = registrations.find(entry => entry.options.name === 'sidebar.right.tab.guide.entry')?.component
+const tabComponent = registrations.find(entry => entry.options.name === 'sidebar.right.pane.tab')?.component
 const iconRegistration = registrations.find(entry => entry.options.name === 'contextMenu.icon')
 if (overlayComponent === undefined) throw new Error('the plugin registered no shell.overlay dialog')
-if (sidebarComponent === undefined) throw new Error('the plugin registered no sidebar.footer.action section')
+if (guideComponent === undefined) throw new Error('the plugin registered no right sidebar guide card')
+if (tabComponent === undefined) throw new Error('the plugin registered no right sidebar Context tab')
+if (tabDefinitions.length !== 1) throw new Error(`expected one tab definition, got ${tabDefinitions.length}`)
+if (tabDefinitions[0].kind !== 'workspace-context') throw new Error(`unexpected tab kind ${tabDefinitions[0].kind}`)
+if (tabDefinitions[0].guide?.[0]?.id !== 'context') throw new Error('the tab definition has no Context guide entry')
 if (iconRegistration === undefined || iconRegistration.options.key !== 'workspace-context.settings') {
   throw new Error('the plugin registered no context menu icon')
 }
@@ -340,17 +342,24 @@ if (!notices.some(notice => notice.text === 'Espacio guardado.' && notice.succes
   throw new Error('saving the dialog showed no success notice')
 }
 
-// ---- Sidebar context section -------------------------------------------------
-/** Render the sidebar section and flush its fetch. */
-async function renderSidebar() {
-  const props = {
-    wide: true,
-    useSessions: (selector) => selector({ byId: { s1: { id: 's1', cwd: '/tmp/project' } } }),
-    useWorkspaces: (selector) => selector({ items: [{ workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project', sessionIds: ['s1'] }] }),
-  }
+// ---- Right Sidebar guide card and tab -----------------------------------------
+const useSessions = (selector) => selector({ byId: { s1: { id: 's1', cwd: '/tmp/project' } } })
+const useWorkspaces = (selector) => selector({ items: [{ workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project', sessionIds: ['s1'] }] })
+const translate = (key, params) => {
+  const dictionaries = dicts.get('@local/workspace-context') ?? {}
+  const table = dictionaries.es ?? dictionaries.en ?? {}
+  const template = table[key] ?? key
+  if (params === undefined) return template
+  return template.replace(/\{(\w+)\}/gu, (match, name) => (name in params ? String(params[name]) : match))
+}
+const openedTabs = []
+const useTabInfo = () => ({ tab: { actions: { openTab(kind, options) { openedTabs.push({ kind, options }) } } } })
+
+/** Render a component and flush its effects. */
+async function renderWith(component, props, path) {
   collected.length = 0
   output = []
-  renderNode(React.createElement(sidebarComponent, props), 'sidebar', output)
+  renderNode(React.createElement(component, props), path, output)
   for (let pass = 0; pass < 5; pass += 1) {
     const effects = pendingEffects.filter(entry => !effectKeys.has(entry.key))
     if (effects.length === 0) break
@@ -362,24 +371,47 @@ async function renderSidebar() {
     await new Promise(resolve => setTimeout(resolve, 0))
     collected.length = 0
     output = []
-    renderNode(React.createElement(sidebarComponent, props), 'sidebar', output)
+    renderNode(React.createElement(component, props), path, output)
   }
   return output.join(' | ')
 }
 
-text = await renderSidebar()
+text = await renderWith(guideComponent, {
+  title: 'Contexto',
+  description: 'Contexto del espacio y de la sesión',
+  kind: 'workspace-context',
+  sessionId: 's1',
+  useTabInfo,
+  useSessions,
+  useWorkspaces,
+  t: translate,
+}, 'guide')
+for (const fragment of ['Contexto', 'project', 'notes', 'espacio', 'sesión']) {
+  if (!text.includes(fragment)) {
+    console.error('Rendered guide: ' + text)
+    throw new Error(`guide card is missing ${fragment}`)
+  }
+}
+const guideButton = collected.find(node => node.props?.className === 'wsc-guide')
+if (guideButton === undefined) throw new Error('the guide card rendered no button')
+guideButton.props.onClick()
+if (openedTabs.length !== 1 || openedTabs[0].kind !== 'workspace-context' || openedTabs[0].options?.replaceTab !== true) {
+  throw new Error(`the guide card opened no Context tab: ${JSON.stringify(openedTabs)}`)
+}
+
+text = await renderWith(tabComponent, { sessionId: 's1', useSessions, useWorkspaces, t: translate }, 'tab')
 for (const fragment of ['Contexto', 'Docs project', 'project', 'notes', 'Sesión']) {
   if (!text.includes(fragment)) {
-    console.error('Rendered sidebar: ' + text)
-    throw new Error(`sidebar is missing ${fragment}`)
+    console.error('Rendered tab: ' + text)
+    throw new Error(`context tab is missing ${fragment}`)
   }
 }
 const removeButton = collected.find(node => node.props?.className === 'wsc-side-remove')
-if (removeButton === undefined) throw new Error('the sidebar section rendered no remove button')
+if (removeButton === undefined) throw new Error('the Context tab rendered no remove button')
 removeButton.props.onClick()
 await new Promise(resolve => setTimeout(resolve, 0))
 const removeCall = fetchCalls.find(call => call.url.endsWith('/session/entries/remove') && call.options.method === 'POST')
-if (removeCall === undefined) throw new Error('removing the sidebar entry sent no POST')
+if (removeCall === undefined) throw new Error('removing the context entry sent no POST')
 const removeBody = JSON.parse(removeCall.options.body)
 if (removeBody.sessionId !== 's1' || removeBody.entryId !== 'session-folder-1') {
   throw new Error(`unexpected remove body ${removeCall.options.body}`)
@@ -400,6 +432,6 @@ if (!notices.some(notice => notice.text.includes('context-folder') && notice.suc
 
 console.log('render check passed:', {
   dialogEntries: saveBody.entries.length,
-  sidebar: 'ok',
+  rightSidebar: 'ok',
   command: folderCommand.name,
 })
