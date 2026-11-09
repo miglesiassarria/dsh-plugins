@@ -10,11 +10,14 @@ autocontenido con su mitad de host (`index.js`), su mitad de cliente web
 |---|---|---|---|
 | [`local_dsh-backups`](local_dsh-backups/) | `@local/dsh-backups` | Ajustes → **Copias de seguridad** | Exporta a un ZIP las sesiones, la configuración del perfil y los plugins locales, y los restaura en otro equipo. |
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
+| [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Menú del espacio → **Configurar espacio** y menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. |
 
 ## Requisitos
 
-- DeepSeek Harness con la GUI web (los dos plugins inyectan
-  `@deepseek-ai/dsh-client-ui-settings` y `@deepseek-ai/dsh-client-locale`).
+- DeepSeek Harness con la GUI web (los plugins de Ajustes inyectan
+  `@deepseek-ai/dsh-client-ui-settings` y `@deepseek-ai/dsh-client-locale`; el
+  de espacios de trabajo inyecta los paquetes de menú contextual, comandos,
+  espacios de trabajo y conversación).
 - Node.js y pnpm, los mismos que usa tu instalación de Harness.
 
 ## Instalación
@@ -23,7 +26,7 @@ autocontenido con su mitad de host (`index.js`), su mitad de cliente web
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -33,7 +36,8 @@ autocontenido con su mitad de host (`index.js`), su mitad de cliente web
    {
      "dependencies": {
        "@local/dsh-backups": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-backups",
-       "@local/tools-mcp-servers": "link:/Users/tu-usuario/.dsh/local-plugins/local_tools-mcp-servers"
+       "@local/tools-mcp-servers": "link:/Users/tu-usuario/.dsh/local-plugins/local_tools-mcp-servers",
+       "@local/workspace-context": "link:/Users/tu-usuario/.dsh/local-plugins/local_workspace-context"
      },
      "dsh": {
        "profile": {
@@ -41,7 +45,8 @@ autocontenido con su mitad de host (`index.js`), su mitad de cliente web
            "@deepseek-ai/dsh-base",
            "@deepseek-ai/dsh-web-app",
            "@local/tools-mcp-servers",
-           "@local/dsh-backups"
+           "@local/dsh-backups",
+           "@local/workspace-context"
          ]
        }
      }
@@ -67,19 +72,27 @@ autocontenido con su mitad de host (`index.js`), su mitad de cliente web
   conéctalo y decide por herramienta si se permite siempre, pide aprobación o
   se deniega. La lista se guarda en `$DSH_HOME/mcp-tools/servers.json`
   (permisos `0600`).
+- **Contexto de espacios**: clic derecho en un espacio → **Configurar espacio**
+  para fijar descripción, prompt del sistema y archivos o carpetas de contexto.
+  Para una sesión suelta, pulsa `+` → **Carpeta**. La configuración se guarda en
+  `$DSH_HOME/workspace-context/context.json` (permisos `0600`).
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
 ## Pruebas
 
-Los dos plugins traen comprobaciones que se ejecutan sin tocar tu instalación:
+Los plugins traen comprobaciones que se ejecutan sin tocar tu instalación:
 la de `local_dsh-backups` construye un Harness desechable en un directorio
-temporal y la de `local_tools-mcp-servers` monta el árbol de React en una VM.
+temporal, la de `local_tools-mcp-servers` monta el árbol de React en una VM y
+la de `local_workspace-context` prueba el store, el filtrado de carpetas, la
+ruta HTTP y el diálogo del cliente.
 
 ```bash
 node local_dsh-backups/test/host-check.mjs
 node local_dsh-backups/test/render-check.mjs
 node local_tools-mcp-servers/test/render-check.mjs
+node local_workspace-context/test/host-check.mjs
+node local_workspace-context/test/render-check.mjs
 ```
 
 ## Estructura
@@ -97,6 +110,12 @@ local_tools-mcp-servers/
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
   test/               comprobación de render y servidores MCP de ejemplo
+local_workspace-context/
+  index.js            mitad de host: store, ruta y contexto de prompt
+  client.js           mitad de cliente: menú, diálogo, comando + y rail
+  cordis.patch.yml    entrada de bundle
+  locale/{en,es}.json textos
+  test/               comprobaciones de host y de render
 ```
 
 ## Seguridad
@@ -113,6 +132,11 @@ Lo que sí puede contener secretos son tus **datos**, que nunca entran aquí:
   archivo se incluye a propósito en la copia de seguridad para poder restaurar
   los servidores MCP en otro equipo: trata los ZIP de copia como material
   sensible y no los adjuntes a incidencias, PRs ni conversaciones públicas.
+- **Contexto de espacios** guarda en `$DSH_HOME/workspace-context/context.json`
+  la configuración y los archivos de texto que añadas, con permisos `0600`. Las
+  carpetas se leen en el momento de componer el prompt, omitiendo archivos
+  ocultos y con nombre de credencial, pero un archivo de texto elegido a mano
+  puede contener secretos: revísalo antes de compartir una copia del perfil.
 - `.gitignore` bloquea `.env`, claves privadas, `servers.json`, credenciales y
   archivos `.zip` para que no se suban por descuido.
 

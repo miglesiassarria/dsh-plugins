@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Workspace context">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f7cf6"/>
+      <stop offset="1" stop-color="#123c8f"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="18" y1="22" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dce8ff"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bg)"/>
+  <path d="M14 23.5A4.5 4.5 0 0 1 18.5 19h8.2c1.4 0 2.7.64 3.55 1.73l1.55 2.02c.42.55 1.08.87 1.78.87h10.9A4.5 4.5 0 0 1 49 28.12V43.5A4.5 4.5 0 0 1 44.5 48h-26A4.5 4.5 0 0 1 14 43.5z" fill="url(#folder)"/>
+  <path d="M14 28.5h35" stroke="#9fc0ff" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="45.5" cy="20.5" r="7.5" fill="#0d2a63" stroke="#ffffff" stroke-width="2.4"/>
+  <path d="M45.5 16.4v8.2M41.4 20.5h8.2" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round"/>
+  <path d="M22 35h16M22 40h10" stroke="#5d8df2" stroke-width="2.1" stroke-linecap="round"/>
+</svg>

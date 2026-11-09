@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Contexto de espacios de trabajo",
+    "description": "Añade una descripción, un prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión desde el compositor."
+  }
+}

@@ -1,0 +1,3 @@
+- insert:
+    - id: workspace-context
+      name: '@local/workspace-context'

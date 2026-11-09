@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Workspace context",
+    "description": "Add a description, a system prompt, and file or folder context to each workspace, and add folders as session context from the composer."
+  }
+}
