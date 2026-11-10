@@ -367,7 +367,9 @@ window.__ModuleLoader__.load({
 .wsc-project-desc{margin:0;font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;}
 .wsc-project-muted{color:var(--dsw-alias-label-secondary);}
 .wsc-project-composer{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1);}
-.wsc-project-composerhead{display:flex;align-items:center;gap:6px;min-height:28px;}
+.wsc-project-composerstack{display:flex;flex-direction:column;gap:6px;}
+.wsc-project-composerhead{display:flex;align-items:center;gap:6px;min-height:28px;padding:0 16px;}
+.wsc-project-modetrigger{font-size:13px;font-weight:500;padding:0 8px;max-width:min(240px,100%);}
 .wsc-project-input{width:100%;min-height:54px;max-height:200px;box-sizing:border-box;padding:0;border:0;outline:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:1.5;resize:vertical;}
 .wsc-project-input::placeholder{color:var(--dsw-alias-label-secondary);}
 .wsc-project-composerbar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -1411,7 +1413,7 @@ window.__ModuleLoader__.load({
         const modeTool = h('div', { className: 'wsc-project-tool' },
                               h('button', {
                                 type: 'button',
-                                className: 'wsc-project-trigger',
+                                className: 'wsc-project-trigger wsc-project-modetrigger',
                                 onClick: openModeMenu,
                                 'aria-expanded': modeOpen,
                                 title: t('mode.label'),
@@ -1455,8 +1457,9 @@ window.__ModuleLoader__.load({
                   h('button', { type: 'button', className: 'wsc-btn', onClick: openWorkspaceDialog }, t('menu.configure')))),
               h('p', { className: config.description ? 'wsc-project-desc' : 'wsc-project-desc wsc-project-muted' }, config.description || t('overview.noDescription')),
               state.phase === 'error' ? h('div', { className: 'wsc-project-error' }, state.error) : null,
-              h('form', { className: 'wsc-project-composer', onSubmit: send, ref: menusRef },
+              h('div', { className: 'wsc-project-composerstack', ref: menusRef },
                 h('div', { className: 'wsc-project-composerhead' }, modeTool),
+                h('form', { className: 'wsc-project-composer', onSubmit: send },
                 h('textarea', {
                   className: 'wsc-project-input',
                   rows: 2,
@@ -1537,6 +1540,7 @@ window.__ModuleLoader__.load({
                       'aria-label': t('overview.send'),
                     }, h('svg', { viewBox: '0 0 16 16', width: 15, height: 15, fill: 'none', 'aria-hidden': true },
                       h('path', { d: 'M8 13V3M4 7l4-4 4 4', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' })))),
+              ),
               ),
               ),
               composerError === null ? null : h('div', { className: 'wsc-project-composererror' }, composerError),

@@ -706,7 +706,7 @@ if (startedSessions.length !== 1 || startedSessions[0] !== 'ws-1') {
 }
 
 // The mode menu lists the healthy host presets and applies the chosen one.
-let triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
+let triggers = collected.filter(node => node.props?.className?.split(' ').includes('wsc-project-trigger'))
 if (triggers.length !== 3) throw new Error(`expected three composer triggers, got ${triggers.length}`)
 await triggers[0].props.onClick()
 text = await renderWith(overviewComponent, {
@@ -729,7 +729,7 @@ text = await renderWith(overviewComponent, {
   useSessions: overviewUseSessions,
   t: translate,
 }, 'overview')
-triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
+triggers = collected.filter(node => node.props?.className?.split(' ').includes('wsc-project-trigger'))
 if (triggers.length !== 3) throw new Error(`expected three composer triggers, got ${triggers.length}`)
 await triggers[1].props.onClick()
 text = await renderWith(overviewComponent, {
@@ -751,7 +751,7 @@ text = await renderWith(overviewComponent, {
   useSessions: overviewUseSessions,
   t: translate,
 }, 'overview')
-triggers = collected.filter(node => node.props?.className === 'wsc-project-trigger')
+triggers = collected.filter(node => node.props?.className?.split(' ').includes('wsc-project-trigger'))
 if (triggers.length !== 3) throw new Error(`expected three composer triggers, got ${triggers.length}`)
 await triggers[2].props.onClick()
 text = await renderWith(overviewComponent, {

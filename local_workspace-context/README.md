@@ -34,7 +34,8 @@ Al hacer clic en la fila de un espacio de trabajo (o en el botón `...` →
   **Enviar**; se crea una sesión en el espacio, se envía el mensaje y la vista
   pasa directamente a esa sesión;
 - **selector de modo** con los presets del host (estándar, PTC, mínimo,
-  creador y los personalizados), con su descripción;
+  creador y los personalizados), con su descripción; queda **fuera de la
+  tarjeta**, encima de la caja de texto, como en el compositor normal;
 - **selector de modelo** con el catálogo del host, agrupado por proveedor;
   muestra el nombre del modelo predeterminado cuando no hay una elección
   explícita, y **selector de permisos** (sólo lectura, escritura en el espacio de trabajo y
