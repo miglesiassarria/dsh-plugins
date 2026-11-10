@@ -82,7 +82,6 @@ window.__ModuleLoader__.load({
         composer: {
           model: 'Model',
           defaultModel: 'Default model',
-          defaultBadge: 'Default',
           selectModel: 'Select model',
           modelLoading: 'Loading models…',
           modelEmpty: 'No models available.',
@@ -205,7 +204,6 @@ window.__ModuleLoader__.load({
         composer: {
           model: 'Modelo',
           defaultModel: 'Modelo predeterminado',
-          defaultBadge: 'Predeterminado',
           selectModel: 'Seleccionar modelo',
           modelLoading: 'Cargando modelos…',
           modelEmpty: 'No hay modelos disponibles.',
@@ -369,6 +367,7 @@ window.__ModuleLoader__.load({
 .wsc-project-desc{margin:0;font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;}
 .wsc-project-muted{color:var(--dsw-alias-label-secondary);}
 .wsc-project-composer{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1);}
+.wsc-project-composerhead{display:flex;align-items:center;gap:6px;min-height:28px;}
 .wsc-project-input{width:100%;min-height:54px;max-height:200px;box-sizing:border-box;padding:0;border:0;outline:none;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:1.5;resize:vertical;}
 .wsc-project-input::placeholder{color:var(--dsw-alias-label-secondary);}
 .wsc-project-composerbar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -376,7 +375,6 @@ window.__ModuleLoader__.load({
 .wsc-project-tool{position:relative;min-width:0;}
 .wsc-project-trigger{display:inline-flex;align-items:center;gap:4px;max-width:240px;height:28px;padding:0 7px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;line-height:1;cursor:pointer;}
 .wsc-project-trigger:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);}
-.wsc-project-defaultbadge{flex:none;padding:1px 5px;border-radius:4px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:9px;line-height:1.35;}
 .wsc-project-triggericon{flex:none;display:inline-flex;color:var(--dsw-alias-label-caption);}
 .wsc-project-triggerlabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wsc-project-triggerchevron{flex:none;font-size:10px;line-height:1;color:var(--dsw-alias-label-caption);}
@@ -1132,7 +1130,9 @@ window.__ModuleLoader__.load({
         }, [workspaceId, version]);
 
         if (workspaceId === undefined) {
-          return h('div', { className: 'wsc-project' }, h('style', null, CSS), h('div', { className: 'wsc-project-empty' }, t('overview.selectWorkspace')));
+
+
+        return h('div', { className: 'wsc-project' }, h('style', null, CSS), h('div', { className: 'wsc-project-empty' }, t('overview.selectWorkspace')));
         }
 
         const meta = workspace ?? state.meta;
@@ -1373,7 +1373,6 @@ window.__ModuleLoader__.load({
         const selectedModel = modelSnapshot.current;
         const selectedGroup = modelSnapshot.groups.find((group) => group.id === selectedModel?.provider);
         const selectedEntry = selectedGroup?.models?.find((model) => model.id === selectedModel?.model);
-        const isDefaultModel = defaultModel !== null && (selectedModel === null || (selectedModel.provider === defaultModel.provider && selectedModel.model === defaultModel.model));
         const modelLabel = selectedEntry?.name ?? defaultModel?.name ?? (modelLoading ? t('composer.modelLoading') : t('composer.defaultModel'));
         const modelErrorText = modelError ?? (modelSnapshot.status === 'error' ? modelSnapshot.error : null);
         const permissionText = permissionCurrent === null
@@ -1409,6 +1408,38 @@ window.__ModuleLoader__.load({
           void send();
         };
 
+        const modeTool = h('div', { className: 'wsc-project-tool' },
+                              h('button', {
+                                type: 'button',
+                                className: 'wsc-project-trigger',
+                                onClick: openModeMenu,
+                                'aria-expanded': modeOpen,
+                                title: t('mode.label'),
+                              },
+                              h('svg', { viewBox: '0 0 16 16', width: 12, height: 12, fill: 'none', 'aria-hidden': true, className: 'wsc-project-triggericon' },
+                                h('path', { d: 'M8 1.8l1.3 3.4 3.4 1.3-3.4 1.3L8 11.2 6.7 7.8 3.3 6.5l3.4-1.3L8 1.8z', stroke: 'currentColor', strokeWidth: 1.2, strokeLinejoin: 'round' })),
+                              h('span', { className: 'wsc-project-triggerlabel' }, modeLabel),
+                              h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
+                              modeOpen ? h('div', { className: 'wsc-project-menu' },
+                                modeLoading ? h('div', { className: 'wsc-project-menunote' }, t('mode.loading')) : null,
+                                modeError === null ? null : h('div', { className: 'wsc-project-menuerror' }, modeError),
+                                modeRoster.map((preset) => {
+                                  const text = modeDisplayText(preset, t);
+                                  return h('button', {
+                                    type: 'button',
+                                    className: 'wsc-project-option wsc-project-modeoption',
+                                    key: preset.id,
+                                    onClick: () => void selectMode(preset.id),
+                                  },
+                                  h('span', { className: 'wsc-project-modecopy' },
+                                    h('span', { className: 'wsc-project-optionname' }, text.name),
+                                    text.description === undefined ? null : h('span', { className: 'wsc-project-optiondesc' }, text.description)),
+                                  modeCurrent === preset.id ? h('span', { className: 'wsc-project-optioncheck' }, '✓') : null);
+                                }),
+                                !modeLoading && modeError === null && modeRoster.length === 0
+                                  ? h('div', { className: 'wsc-project-menunote' }, t('mode.empty'))
+                                  : null) : null);
+
         return h('div', { className: 'wsc-project' },
           h('style', null, CSS),
           h('div', { className: 'wsc-project-inner' },
@@ -1424,7 +1455,8 @@ window.__ModuleLoader__.load({
                   h('button', { type: 'button', className: 'wsc-btn', onClick: openWorkspaceDialog }, t('menu.configure')))),
               h('p', { className: config.description ? 'wsc-project-desc' : 'wsc-project-desc wsc-project-muted' }, config.description || t('overview.noDescription')),
               state.phase === 'error' ? h('div', { className: 'wsc-project-error' }, state.error) : null,
-              h('form', { className: 'wsc-project-composer', onSubmit: send },
+              h('form', { className: 'wsc-project-composer', onSubmit: send, ref: menusRef },
+                h('div', { className: 'wsc-project-composerhead' }, modeTool),
                 h('textarea', {
                   className: 'wsc-project-input',
                   rows: 2,
@@ -1434,39 +1466,8 @@ window.__ModuleLoader__.load({
                   onChange: (event) => setDraft(event.target.value),
                   onKeyDown: onComposerKeyDown,
                 }),
-                h('div', { className: 'wsc-project-composerbar', ref: menusRef },
+                h('div', { className: 'wsc-project-composerbar' },
                   h('div', { className: 'wsc-project-tools' },
-                    h('div', { className: 'wsc-project-tool' },
-                      h('button', {
-                        type: 'button',
-                        className: 'wsc-project-trigger',
-                        onClick: openModeMenu,
-                        'aria-expanded': modeOpen,
-                        title: t('mode.label'),
-                      },
-                      h('svg', { viewBox: '0 0 16 16', width: 12, height: 12, fill: 'none', 'aria-hidden': true, className: 'wsc-project-triggericon' },
-                        h('path', { d: 'M8 1.8l1.3 3.4 3.4 1.3-3.4 1.3L8 11.2 6.7 7.8 3.3 6.5l3.4-1.3L8 1.8z', stroke: 'currentColor', strokeWidth: 1.2, strokeLinejoin: 'round' })),
-                      h('span', { className: 'wsc-project-triggerlabel' }, modeLabel),
-                      h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
-                      modeOpen ? h('div', { className: 'wsc-project-menu' },
-                        modeLoading ? h('div', { className: 'wsc-project-menunote' }, t('mode.loading')) : null,
-                        modeError === null ? null : h('div', { className: 'wsc-project-menuerror' }, modeError),
-                        modeRoster.map((preset) => {
-                          const text = modeDisplayText(preset, t);
-                          return h('button', {
-                            type: 'button',
-                            className: 'wsc-project-option wsc-project-modeoption',
-                            key: preset.id,
-                            onClick: () => void selectMode(preset.id),
-                          },
-                          h('span', { className: 'wsc-project-modecopy' },
-                            h('span', { className: 'wsc-project-optionname' }, text.name),
-                            text.description === undefined ? null : h('span', { className: 'wsc-project-optiondesc' }, text.description)),
-                          modeCurrent === preset.id ? h('span', { className: 'wsc-project-optioncheck' }, '✓') : null);
-                        }),
-                        !modeLoading && modeError === null && modeRoster.length === 0
-                          ? h('div', { className: 'wsc-project-menunote' }, t('mode.empty'))
-                          : null) : null),
                     h('div', { className: 'wsc-project-tool' },
                       h('button', {
                         type: 'button',
@@ -1508,7 +1509,6 @@ window.__ModuleLoader__.load({
                         title: t('composer.model'),
                       },
                       h('span', { className: 'wsc-project-triggerlabel' }, modelLabel),
-                      isDefaultModel ? h('span', { className: 'wsc-project-defaultbadge' }, t('composer.defaultBadge')) : null,
                       h('span', { className: 'wsc-project-triggerchevron' }, '⌄')),
                       modelOpen ? h('div', { className: 'wsc-project-menu wsc-project-menu-right' },
                         modelLoading || modelSnapshot.status === 'loading' ? h('div', { className: 'wsc-project-menunote' }, t('composer.modelLoading')) : null,

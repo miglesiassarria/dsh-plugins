@@ -683,7 +683,6 @@ for (const fragment of [
   'First chat',
   'Second chat',
   'Model One',
-  'Predeterminado',
 ]) {
   if (!text.includes(fragment)) {
     console.error('Rendered overview: ' + text)
