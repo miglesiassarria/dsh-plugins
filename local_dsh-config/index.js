@@ -1,10 +1,10 @@
 /**
  * DSH Config — Host half.
  *
- * Owns the durable preferences of the plugin. The first one is the order of the
- * categories shown in the left rail of the Settings panel: the browser half
- * edits that order by dragging the categories, and this half stores it in
- * `$DSH_HOME/dsh-config/settings.json` so it survives page reloads, profile
+ * Owns the durable preferences of the plugin: the order of the categories shown
+ * in the left rail of the Settings panel and one switch per behavior the plugin
+ * adds. The browser half edits them, and this half stores them in
+ * `$DSH_HOME/dsh-config/settings.json` so they survive page reloads, profile
  * edits and Harness restarts. The document is served over a same-origin route;
  * it holds no secrets.
  *
@@ -36,10 +36,18 @@ const MAX_ORDER_ENTRIES = 128
 /** Maximum length of one category id. */
 const MAX_ID_LENGTH = 200
 
+/** One switch per behavior the plugin adds; every behavior starts enabled. */
+const FEATURES = Object.freeze({
+  reorderSections: true,
+  githubFolders: true,
+  hideDefaultEffort: true,
+})
+
 /** Persisted document defaults. */
 const DEFAULTS = Object.freeze({
   version: 1,
   settingsOrder: [],
+  features: FEATURES,
 })
 
 /**
@@ -93,43 +101,69 @@ function sanitizeOrder(input) {
 }
 
 /**
+ * Narrow the switches of a stored or submitted settings document.
+ * @param {unknown} input Untrusted value.
+ * @returns {{ reorderSections: boolean, githubFolders: boolean, hideDefaultEffort: boolean }} Valid switches.
+ */
+function sanitizeFeatures(input) {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) throw fail('invalid-features')
+  const features = { ...FEATURES }
+  for (const key of Object.keys(FEATURES)) {
+    if (input[key] === undefined) continue
+    if (typeof input[key] !== 'boolean') throw fail('invalid-feature')
+    features[key] = input[key]
+  }
+  return features
+}
+
+/**
  * Narrow a stored or submitted settings document.
  * @param {unknown} input Untrusted value.
- * @returns {{ version: number, settingsOrder: string[] }} Valid settings.
+ * @returns {{ version: number, settingsOrder: string[], features: object }} Valid settings.
  */
 function sanitize(input) {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) throw fail('invalid-settings')
   const order = input.settingsOrder === undefined ? DEFAULTS.settingsOrder : sanitizeOrder(input.settingsOrder)
-  return { version: DEFAULTS.version, settingsOrder: order }
+  const features = input.features === undefined ? { ...FEATURES } : sanitizeFeatures(input.features)
+  return { version: DEFAULTS.version, settingsOrder: order, features }
+}
+
+/**
+ * @returns {{ version: number, settingsOrder: string[], features: object }} A fresh default document.
+ */
+function defaultSettings() {
+  return { version: DEFAULTS.version, settingsOrder: [], features: { ...FEATURES } }
 }
 
 /**
  * Read the stored settings, tolerating a missing or malformed file.
- * @returns {{ version: number, settingsOrder: string[] }} Valid settings.
+ * @returns {{ version: number, settingsOrder: string[], features: object }} Valid settings.
  */
 export function readSettings() {
   let text
   try {
     text = readFileSync(storeFile(), 'utf8')
   } catch {
-    return { version: DEFAULTS.version, settingsOrder: [...DEFAULTS.settingsOrder] }
+    return defaultSettings()
   }
   try {
     return sanitize(JSON.parse(text))
   } catch {
-    return { version: DEFAULTS.version, settingsOrder: [...DEFAULTS.settingsOrder] }
+    return defaultSettings()
   }
 }
 
 /**
  * Write the settings durably: private permissions, temporary file then rename.
- * @param {{ settingsOrder?: string[] }} patch Fields to replace.
- * @returns {{ version: number, settingsOrder: string[] }} The stored document.
+ * @param {{ settingsOrder?: string[], features?: object }} patch Fields to replace.
+ * @returns {{ version: number, settingsOrder: string[], features: object }} The stored document.
  */
 export function writeSettings(patch) {
+  const current = readSettings()
   const next = sanitize({
     version: DEFAULTS.version,
-    settingsOrder: patch?.settingsOrder ?? readSettings().settingsOrder,
+    settingsOrder: patch?.settingsOrder ?? current.settingsOrder,
+    features: patch?.features ?? current.features,
   })
   mkdirSync(storeDirectory(), { recursive: true, mode: 0o700 })
   const file = storeFile()
@@ -199,6 +233,15 @@ export async function handleRequest(request, response) {
       const body = await readJsonBody(request)
       const patch = {
         ...(body.settingsOrder === undefined ? {} : { settingsOrder: sanitizeOrder(body.settingsOrder) }),
+        ...(body.features === undefined ? {} : {
+          features: sanitizeFeatures({
+            ...readSettings().features,
+            ...(typeof body.features === 'object' && body.features !== null && !Array.isArray(body.features) ? body.features : {}),
+          }),
+        }),
+      }
+      if (body.features !== undefined && (typeof body.features !== 'object' || body.features === null || Array.isArray(body.features))) {
+        throw fail('invalid-features')
       }
       reply(200, { ok: true, data: writeSettings(patch) })
       return

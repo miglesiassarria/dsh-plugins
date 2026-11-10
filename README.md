@@ -15,7 +15,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Clic en el espacio → página de proyecto; menú del espacio → **Configurar espacio**; tarjeta y pestaña **Contexto** de la barra derecha; menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. La página de proyecto muestra esos datos y sus chats. |
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
 | [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. |
-| [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → barra lateral de categorías (arrastrar); Complementos → Agregar complemento; compositor → selector de modelo | Reordena las categorías de Ajustes arrastrándolas (también con `Alt+↑`/`Alt+↓`) y guarda ese orden en el Host. Además, **Agregar complemento** acepta URLs de carpeta de GitHub (`.../tree/rama/carpeta`) y las instala como paquete local, y el selector de modelo del compositor oculta el sufijo «Predeterminado». |
+| [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → **DSH Config**; barra lateral de categorías (arrastrar); Complementos → Agregar complemento; compositor → selector de modelo | Reordena las categorías de Ajustes arrastrándolas (también con `Alt+↑`/`Alt+↓`) y guarda ese orden en el Host. Además, **Agregar complemento** acepta URLs de carpeta de GitHub (`.../tree/rama/carpeta`) y las instala como paquete local, el selector de modelo del compositor oculta el sufijo «Predeterminado», y **Ajustes → DSH Config** permite activar o desactivar cada uno de esos tres comportamientos. |
 | [`local_dsh-mobile`](local_dsh-mobile/) | `@local/dsh-mobile` | Ajustes → **Acceso desde el móvil** | Control remoto por QR: acceso desde la red local o por internet (túnel de Cloudflare), con la misma interfaz del ordenador sincronizada en tiempo real. Traducción al español de DSH Pocket. |
 
 ## Requisitos
@@ -154,12 +154,16 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   local. Solo repositorios públicos y sujeto al límite anónimo de la API de
   GitHub. En el compositor, el selector de modelo ya no muestra el sufijo
   «Predeterminado» del esfuerzo del proveedor.
+  **Ajustes → DSH Config** tiene un interruptor para cada comportamiento (los
+  tres empiezan activados), de modo que puedes desactivar el reordenado, la
+  instalación desde GitHub o el ocultado del esfuerzo por separado.
   **Qué modifica:** (1) el orden de las categorías de Ajustes, con arrastre,
   teclado y persistencia en el Host; (2) el diálogo **Agregar complemento**,
   para aceptar carpetas de GitHub y resolverlas a un paquete local; (3) el
   selector de modelo del compositor, para ocultar solo el esfuerzo
-  predeterminado. La lista completa, con los recursos y las rutas que toca, está
-  en [su README](local_dsh-config/README.md#qué-modifica).
+  predeterminado; (4) una categoría propia en Ajustes con esos interruptores.
+  La lista completa, con los recursos y las rutas que toca, está en
+  [su README](local_dsh-config/README.md#qué-modifica).
   Recarga la pestaña tras instalarlo para que cargue la mitad de cliente.
 
 Cada plugin documenta su comportamiento en su propio `README.md`.

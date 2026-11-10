@@ -1,8 +1,8 @@
 {
   "name": "@local/dsh-config",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
-  "description": "Reorder the Settings categories by dragging them, and install plugins from a folder in a public GitHub repository.",
+  "description": "Reorder the Settings categories, install plugins from GitHub folders and hide the default effort label, each with a switch in Settings → DSH Config.",
   "type": "module",
   "exports": {
     ".": "./index.js",

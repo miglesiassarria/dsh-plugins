@@ -1,21 +1,36 @@
 # DSH Config
 
 Complemento para ajustar el comportamiento por defecto del Harness. Ahora
-mismo ofrece tres cosas: reordenar las categorías de la barra izquierda de
-**Ajustes** arrastrándolas, permitir que **Agregar un complemento** acepte una
-URL de GitHub que apunte a una carpeta dentro de un repositorio y limpiar la
-etiqueta de esfuerzo predeterminado del selector de modelo del compositor.
+mismo ofrece tres comportamientos, cada uno con su interruptor en **Ajustes →
+DSH Config**: reordenar las categorías de la barra izquierda de Ajustes
+arrastrándolas, permitir que **Agregar un complemento** acepte una URL de GitHub
+que apunte a una carpeta dentro de un repositorio y limpiar la etiqueta de
+esfuerzo predeterminado del selector de modelo del compositor.
 
 | Elemento | Valor |
 |---|---|
 | Paquete | `@local/dsh-config` |
 | Fila del perfil | `dsh-config` |
 | Rutas del Host | `/dsh-config/settings`, `/dsh-config/github` |
-| Documento persistido | `$DSH_HOME/dsh-config/settings.json` |
+| Documento persistido | `$DSH_HOME/dsh-config/settings.json` (orden + interruptores `features`) |
 | Copia de carpetas de GitHub | `$DSH_HOME/dsh-config/github/<propietario>__<repo>/<commit>/<carpeta>` |
 | Mitad de cliente | sí (`client.js`), se carga con la página |
 
 ## Qué hace
+
+### Página DSH Config
+
+- La barra izquierda de **Ajustes** incluye una categoría **DSH Config**, con su
+  propio icono y una página con un interruptor por cada comportamiento del
+  complemento.
+- Los tres interruptores empiezan activados. Al desactivar uno, ese
+  comportamiento deja de aplicarse al momento; al volver a activarlo, se aplica
+  de nuevo con las preferencias guardadas.
+- Los cambios se guardan en el Host (`features` de
+  `$DSH_HOME/dsh-config/settings.json`), así que sobreviven a recargas y
+  reinicios.
+- La propia categoría se puede reordenar como las demás cuando la opción de
+  reordenar está activa.
 
 ### Orden de las categorías de Ajustes
 
@@ -77,6 +92,8 @@ Todo lo que el complemento toca en el Harness, superficie por superficie:
 
 | Superficie | Cambio |
 |---|---|
+| Categoría de Ajustes | Registra la sección `dsh-config` con la etiqueta «DSH Config» y su icono en la barra izquierda de Ajustes, con una página propia. |
+| Interruptores | La página tiene un `role="switch"` por comportamiento; cada cambio se aplica al momento y se guarda en `features` dentro de `$DSH_HOME/dsh-config/settings.json`. |
 | Barra de categorías de Ajustes | Reordena las entradas reales del slot `settings.section` cambiando su `options.order`; el orden se aplica al instante y al volver a cargar la página. |
 | Arrastre en la barra | Añade arrastre con puntero (ratón o dedo, umbral de 5 px), línea de inserción, copia flotante, auto-scroll cerca de los bordes y cancelación con Escape. |
 | Teclado | `Alt+↑` y `Alt+↓` mueven la categoría enfocada; se anuncia la nueva posición por `aria-live`. |
@@ -87,7 +104,7 @@ Todo lo que el complemento toca en el Harness, superficie por superficie:
 | Diálogo Agregar complemento | Envuelve `inspect` e `installBundle` del namespace remoto `remote.pluginManager`; solo cambia los specs que son URLs de carpeta de GitHub, el resto pasa intacto. |
 | Instalación desde GitHub | Descarga solo la carpeta, la fija al commit y la guarda en `$DSH_HOME/dsh-config/github/...`; el diálogo instala esa ruta local como cualquier paquete local, con su progreso y sus errores. |
 | Errores del diálogo | Traduce los fallos del resolutor a los mensajes del propio diálogo: URL no válida, repositorio/rama/carpeta inexistente, carpeta sin `package.json`, límite de la API, tamaño excesivo, symlinks o submódulos. |
-| Selector de modelo del compositor | Oculta el sufijo de esfuerzo solo cuando vale el valor predeterminado del proveedor; los demás esfuerzos y el menú no cambian. |
+| Selector de modelo del compositor | Oculta el sufijo de esfuerzo solo cuando vale el valor predeterminado del proveedor; los demás esfuerzos y el menú no cambian. Se puede desactivar desde la página DSH Config. |
 | Textos | Registra el namespace de locale `dsh-config` (inglés y español) para los avisos del arrastre y los errores de GitHub. |
 | Recursos de página | Añade un `<style>` en `head`, una región `aria-live` y los nodos de línea de inserción y copia flotante en `body`; todo se retira al descargar el complemento. |
 | Host | Registra las rutas de mismo origen `/dsh-config/settings` y `/dsh-config/github`, ambas con la cabecera `x-dsh-config: 1`. |
@@ -125,6 +142,9 @@ Todo lo que el complemento toca en el Harness, superficie por superficie:
   avisa al shell con una mutación de versión del slot. También vigila el
   selector de modelo del compositor y oculta el sufijo de esfuerzo cuando vale
   el valor predeterminado del proveedor; el resto de esfuerzos sigue visible.
+  Registra además la sección `dsh-config` de Ajustes, su icono y la página con
+  los tres interruptores; cada interruptor activa o desactiva su efecto y
+  persiste el cambio.
 - **Textos**: `locale/en.json` y `locale/es.json` (incluye `meta.title` y
   `meta.description` para la ficha del complemento).
 
@@ -149,7 +169,8 @@ node test/github-check.mjs
 ```
 
 - `host-check.mjs`: documento por defecto, escritura atómica, `GET`/`POST`,
-  rechazo sin cabecera, validación y recuperación ante un fichero corrupto.
+  rechazo sin cabecera, validación del orden y de los interruptores, mezcla de
+  cambios parciales y recuperación ante un fichero corrupto.
 - `github-check.mjs`: análisis de URLs, resolución de rama, descarga simulada,
   caché por commit, enlaces simbólicos, carpeta sin `package.json` y límite de
   la API.

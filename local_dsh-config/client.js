@@ -1,6 +1,8 @@
 window.__ModuleLoader__.load({
   id: '@local/dsh-config',
   factory(require) {
+    const React = require('react');
+    const h = React.createElement;
     const NS = 'dsh-config';
     const ROUTE = '/dsh-config';
     const HEADER = 'x-dsh-config';
@@ -25,6 +27,17 @@ window.__ModuleLoader__.load({
         'github.unsupported': 'The folder contains symlinks or submodules, which cannot be copied.',
         'github.network': 'The folder could not be downloaded from GitHub. Check the connection.',
         'github.cancelled': 'The check was cancelled.',
+        'nav': 'DSH Config',
+        'page.title': 'DSH Config',
+        'page.intro': 'Enable or disable each behavior this plugin adds to the Harness. The switches are saved in the Host configuration.',
+        'page.features': 'DSH Config behaviors',
+        'page.foot': 'Changes apply immediately and are stored in $DSH_HOME/dsh-config/settings.json.',
+        'feature.reorder.title': 'Reorder Settings categories',
+        'feature.reorder.desc': 'Drag the categories in the Settings rail to change their order. Alt+↑ and Alt+↓ move the focused category with the keyboard.',
+        'feature.github.title': 'Install from GitHub folders',
+        'feature.github.desc': 'Accept a URL that points to a folder in a public GitHub repository in Add plugin.',
+        'feature.effort.title': 'Hide the default effort label',
+        'feature.effort.desc': 'Do not show “Default” next to the model name in the composer. Other effort labels stay visible.',
       },
       es: {
         'meta.title': 'DSH Config',
@@ -40,6 +53,17 @@ window.__ModuleLoader__.load({
         'github.unsupported': 'La carpeta contiene enlaces simbólicos o submódulos, que no se pueden copiar.',
         'github.network': 'No se pudo descargar la carpeta desde GitHub. Comprueba la conexión.',
         'github.cancelled': 'La comprobación se canceló.',
+        'nav': 'DSH Config',
+        'page.title': 'DSH Config',
+        'page.intro': 'Activa o desactiva cada comportamiento que este complemento añade al Harness. Los interruptores se guardan en la configuración del Host.',
+        'page.features': 'Comportamientos de DSH Config',
+        'page.foot': 'Los cambios se aplican al momento y se guardan en $DSH_HOME/dsh-config/settings.json.',
+        'feature.reorder.title': 'Reordenar categorías de Ajustes',
+        'feature.reorder.desc': 'Arrastra las categorías de la barra de Ajustes para cambiar su orden. Alt+↑ y Alt+↓ mueven la categoría enfocada con el teclado.',
+        'feature.github.title': 'Instalar desde carpetas de GitHub',
+        'feature.github.desc': 'Acepta en Agregar complemento una URL que apunte a una carpeta de un repositorio público de GitHub.',
+        'feature.effort.title': 'Ocultar la etiqueta de esfuerzo predeterminado',
+        'feature.effort.desc': 'No muestra «Predeterminado» junto al nombre del modelo en el compositor. Los demás esfuerzos siguen visibles.',
       },
     };
 
@@ -79,8 +103,24 @@ window.__ModuleLoader__.load({
         white-space: nowrap;
         border: 0;
       }
+      .dshc-page { max-width: 680px; padding: 8px 0 24px; color: var(--dsw-alias-label-primary); }
+      .dshc-page-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+      .dshc-page-intro { margin: 6px 0 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 20px; }
+      .dshc-list { margin-top: 16px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); overflow: hidden; }
+      .dshc-row { display: flex; gap: 20px; align-items: flex-start; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+      .dshc-row:last-child { border-bottom: 0; }
+      .dshc-row-copy { min-width: 0; }
+      .dshc-row-title { font-size: 13px; font-weight: 600; line-height: 20px; }
+      .dshc-row-desc { margin: 2px 0 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+      .dshc-page-foot { margin: 12px 0 0; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }
+      .dshc-switch { position: relative; flex: none; width: 38px; height: 22px; margin-top: 1px; padding: 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 999px; background: var(--dsw-alias-bg-layer-2); cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+      .dshc-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s ease; }
+      .dshc-switch[aria-checked="true"] { background: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); }
+      .dshc-switch[aria-checked="true"]::after { transform: translateX(16px); }
+      .dshc-switch:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
       @media (prefers-reduced-motion: reduce) {
         .dshc-ghost { transform: none; }
+        .dshc-switch, .dshc-switch::after { transition: none; }
       }
     `;
 
@@ -109,6 +149,50 @@ window.__ModuleLoader__.load({
         let announceTimer = 0;
         let saveChain = Promise.resolve();
         let drag = null;
+
+        /** One switch per behavior; the Host persists them. */
+        const DEFAULT_FEATURES = { reorderSections: true, githubFolders: true, hideDefaultEffort: true };
+        const FEATURE_ROWS = [
+          { key: 'reorderSections', title: 'feature.reorder.title', desc: 'feature.reorder.desc' },
+          { key: 'githubFolders', title: 'feature.github.title', desc: 'feature.github.desc' },
+          { key: 'hideDefaultEffort', title: 'feature.effort.title', desc: 'feature.effort.desc' },
+        ];
+        let features = { ...DEFAULT_FEATURES };
+        let settingsReady = false;
+        const featureListeners = new Set();
+        const originalOrders = new Map();
+        let captionRefresh = () => {};
+
+        /** @returns {typeof DEFAULT_FEATURES} */
+        function getFeatures() {
+          return features;
+        }
+
+        /** @param {() => void} listener @returns {() => void} */
+        function subscribeFeatures(listener) {
+          featureListeners.add(listener);
+          return () => featureListeners.delete(listener);
+        }
+
+        function notifyFeatures() {
+          for (const listener of [...featureListeners]) listener();
+        }
+
+        /** Apply every switch to the live page; persistence is the caller's job. */
+        function applyFeatures() {
+          syncOrder();
+          captionRefresh();
+          if (!features.reorderSections) cancelDrag();
+        }
+
+        /** @param {string} key @param {boolean} enabled */
+        function setFeature(key, enabled) {
+          if (!(key in DEFAULT_FEATURES) || features[key] === enabled) return;
+          features = { ...features, [key]: enabled };
+          notifyFeatures();
+          applyFeatures();
+          persistSettings({ features });
+        }
 
         const style = document.createElement('style');
         style.id = STYLE_ID;
@@ -205,11 +289,27 @@ window.__ModuleLoader__.load({
           return result;
         }
 
-        /** Apply the saved order to the live registrations, then refresh the rail. */
+        /** Apply the saved order, or restore the registered one when reordering is off. */
         function syncOrder() {
-          if (saved.length === 0) return;
+          if (!settingsReady) return;
           const rows = readEntries();
           if (rows.length === 0) return;
+          if (!features.reorderSections) {
+            let restored = false;
+            for (const row of rows) {
+              const original = originalOrders.get(row.id);
+              if (original !== undefined && row.entry.options.order !== original) {
+                row.entry.options.order = original;
+                restored = true;
+              }
+            }
+            if (restored) nudgeVersion();
+            return;
+          }
+          if (saved.length === 0) return;
+          for (const row of rows) {
+            if (!originalOrders.has(row.id)) originalOrders.set(row.id, row.entry.options.order ?? 0);
+          }
           const target = mergeOrder(saved, rows.map((row) => row.id));
           const byId = new Map(rows.map((row) => [row.id, row.entry]));
           let changed = false;
@@ -223,14 +323,14 @@ window.__ModuleLoader__.load({
           if (changed) nudgeVersion();
         }
 
-        /** @param {string[]} order */
-        function persist(order) {
+        /** @param {{ settingsOrder?: string[], features?: object }} patch */
+        function persistSettings(patch) {
           saveChain = saveChain.then(async () => {
             try {
               const response = await fetch(`${ROUTE}/settings`, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json', [HEADER]: '1' },
-                body: JSON.stringify({ settingsOrder: order }),
+                body: JSON.stringify(patch),
               });
               if (!response.ok) throw new Error(`HTTP ${response.status}`);
             } catch (error) {
@@ -239,22 +339,36 @@ window.__ModuleLoader__.load({
           });
         }
 
-        /** Load the durable order once; failures leave the shipped order intact. */
-        async function loadOrder() {
+        /** Load the durable order and switches once; failures keep the shipped defaults. */
+        async function loadSettings() {
+          let payload = null;
           try {
             const response = await fetch(`${ROUTE}/settings`, {
               headers: { [HEADER]: '1' },
               cache: 'no-store',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const payload = await response.json();
-            const order = payload?.data?.settingsOrder;
-            if (!Array.isArray(order)) return;
-            saved = order.filter((id) => typeof id === 'string' && id.length > 0);
-            syncOrder();
+            payload = await response.json();
           } catch (error) {
             console.warn(`[dsh-config] ${t('loadError')}`, error);
           }
+          const data = payload?.data;
+          if (data !== null && typeof data === 'object') {
+            if (Array.isArray(data.settingsOrder)) {
+              saved = data.settingsOrder.filter((id) => typeof id === 'string' && id.length > 0);
+            }
+            if (data.features !== null && typeof data.features === 'object' && !Array.isArray(data.features)) {
+              const next = { ...DEFAULT_FEATURES };
+              for (const key of Object.keys(DEFAULT_FEATURES)) {
+                if (typeof data.features[key] === 'boolean') next[key] = data.features[key];
+              }
+              features = next;
+            }
+          }
+          settingsReady = true;
+          notifyFeatures();
+          syncOrder();
+          captionRefresh();
         }
 
         // ------------------------------------------------------------------
@@ -325,6 +439,7 @@ window.__ModuleLoader__.load({
          */
         async function resolveGithubSpec(spec, signal) {
           if (typeof spec !== 'string' || !GITHUB_SPEC.test(spec.trim())) return { installSpec: spec };
+          if (!features.githubFolders) return { installSpec: spec };
           const key = spec.trim();
           let pending = githubPaths.get(key);
           if (pending === undefined) {
@@ -433,6 +548,10 @@ window.__ModuleLoader__.load({
 
           /** Hide the caption only while it carries the provider-default name. */
           function sync() {
+            if (!settingsReady || !features.hideDefaultEffort) {
+              restore();
+              return;
+            }
             if (bar !== null && !bar.isConnected) {
               barObserver?.disconnect();
               barObserver = null;
@@ -491,8 +610,10 @@ window.__ModuleLoader__.load({
           }
 
           const offLocale = ctx.locale.subscribe(schedule);
+          captionRefresh = schedule;
           attachBar();
           return () => {
+            captionRefresh = () => {};
             offLocale();
             bodyObserver?.disconnect();
             barObserver?.disconnect();
@@ -532,6 +653,7 @@ window.__ModuleLoader__.load({
           if (!(dialog instanceof HTMLElement)) return;
           const list = navListOf(dialog);
           if (list === null || cell.parentElement !== list) return;
+          if (!features.reorderSections) return;
 
           cancelDrag();
           const rect = cell.getBoundingClientRect();
@@ -677,7 +799,7 @@ window.__ModuleLoader__.load({
           rest.splice(index, 0, id);
           saved = rest;
           syncOrder();
-          persist(rest);
+          persistSettings({ settingsOrder: rest });
           announce(
             t('moved')
               .replace('{position}', String(index + 1))
@@ -738,6 +860,7 @@ window.__ModuleLoader__.load({
         /** Alt+Arrow moves the focused category for keyboard users. */
         function onKeyDown(event) {
           if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+          if (!features.reorderSections) return;
           const target = event.target;
           if (!(target instanceof Element) || target.tagName !== 'BUTTON') return;
           const dialog = target.closest(DIALOG);
@@ -758,7 +881,7 @@ window.__ModuleLoader__.load({
           ids.splice(next, 0, id);
           saved = ids;
           syncOrder();
-          persist(ids);
+          persistSettings({ settingsOrder: ids });
           announce(
             t('moved')
               .replace('{position}', String(next + 1))
@@ -787,7 +910,67 @@ window.__ModuleLoader__.load({
           }, 'dsh-config section order');
         }
 
-        void loadOrder();
+        /** The Settings → DSH Config page: one switch per behavior. */
+        function DshConfigPage() {
+          const [current, setCurrent] = React.useState(getFeatures);
+          React.useEffect(() => {
+            const update = () => setCurrent(getFeatures());
+            update();
+            return subscribeFeatures(update);
+          }, []);
+          return h('section', { className: 'dshc-page', 'aria-labelledby': 'dshc-page-title' },
+            h('header', { className: 'dshc-page-head' },
+              h('h2', { className: 'dshc-page-title', id: 'dshc-page-title' }, t('page.title')),
+              h('p', { className: 'dshc-page-intro' }, t('page.intro'))),
+            h('div', { className: 'dshc-list', role: 'group', 'aria-label': t('page.features') },
+              FEATURE_ROWS.map((row) => h('div', { key: row.key, className: 'dshc-row' },
+                h('div', { className: 'dshc-row-copy' },
+                  h('div', { className: 'dshc-row-title', id: `dshc-title-${row.key}` }, t(row.title)),
+                  h('p', { className: 'dshc-row-desc' }, t(row.desc))),
+                h('button', {
+                  type: 'button',
+                  role: 'switch',
+                  'aria-checked': current[row.key] === true,
+                  'aria-labelledby': `dshc-title-${row.key}`,
+                  className: 'dshc-switch',
+                  onClick: () => setFeature(row.key, current[row.key] !== true),
+                })))),
+            h('p', { className: 'dshc-page-foot' }, t('page.foot')));
+        }
+
+        /** Sliders glyph for the Settings rail. */
+        function DshConfigIcon({ size = 16 }) {
+          return h('svg', {
+            viewBox: '0 0 24 24',
+            width: size,
+            height: size,
+            fill: 'none',
+            stroke: 'currentColor',
+            strokeWidth: 1.8,
+            strokeLinecap: 'round',
+            'aria-hidden': true,
+          },
+            h('path', { d: 'M4 7h9M17 7h3M4 12h4M12 12h8M4 17h11M19 17h1' }),
+            h('circle', { cx: 15, cy: 7, r: 2 }),
+            h('circle', { cx: 10, cy: 12, r: 2 }),
+            h('circle', { cx: 17, cy: 17, r: 2 }));
+        }
+
+        ctx.slots.inject('settings.section', () => ctx.slots.register({
+          name: 'settings.section',
+          id: 'dsh-config',
+          order: 90,
+          label: () => t('nav'),
+          locale: NS,
+        }, DshConfigPage));
+
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+          name: 'settings.section.icon',
+          id: 'dsh-config',
+          locale: NS,
+        }, DshConfigIcon));
+
+        void loadSettings();
       },
     };
   },
