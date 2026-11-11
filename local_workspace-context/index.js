@@ -60,6 +60,29 @@ const MAX_DESCRIPTION = 8_000
 /** Characters accepted in the Workspace system prompt. */
 const MAX_SYSTEM_PROMPT = 40_000
 
+/** Largest custom icon data URL accepted. */
+const MAX_ICON_CHARS = 200_000
+
+/** Shipped workspace icon ids accepted from the browser. */
+const PRESET_ICON_IDS = new Set([
+  'briefcase',
+  'code',
+  'book',
+  'rocket',
+  'star',
+  'heart',
+  'bolt',
+  'globe',
+  'flask',
+  'terminal',
+  'palette',
+  'chat',
+  'music',
+  'camera',
+  'lightbulb',
+  'flag',
+])
+
 /** Model context budget for one assembled section. */
 const MAX_CONTEXT_CHARS = 120_000
 
@@ -206,15 +229,39 @@ export function publicEntry(entry) {
 }
 
 /**
+ * Normalize one accent color.
+ * @param {unknown} value Untrusted color.
+ * @returns {string} `#rrggbb`, or an empty string for automatic.
+ */
+export function normalizeWorkspaceColor(value) {
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : ''
+}
+
+/**
+ * Normalize one workspace icon: a shipped icon id, a small raster data URL, or
+ * an empty string for the default folder.
+ * @param {unknown} value Untrusted icon.
+ * @returns {string} Normalized icon.
+ */
+export function normalizeWorkspaceIcon(value) {
+  if (typeof value !== 'string' || value === '') return ''
+  if (PRESET_ICON_IDS.has(value)) return value
+  if (value.length > MAX_ICON_CHARS) return ''
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(value) ? value : ''
+}
+
+/**
  * Normalize an untrusted Workspace patch.
  * @param {object} input Untrusted patch.
  * @param {object} previous Previous Workspace record.
- * @returns {{ description: string, systemPrompt: string, entries: object[] }} Normalized record.
+ * @returns {{ description: string, systemPrompt: string, entries: object[], color: string, icon: string }} Normalized record.
  */
 export function normalizeWorkspacePatch(input, previous = { entries: [] }) {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) throw fail('invalid-patch')
   const description = typeof input.description === 'string' ? input.description.slice(0, MAX_DESCRIPTION) : ''
   const systemPrompt = typeof input.systemPrompt === 'string' ? input.systemPrompt.slice(0, MAX_SYSTEM_PROMPT) : ''
+  const color = normalizeWorkspaceColor(input.color === undefined ? previous.color : input.color)
+  const icon = normalizeWorkspaceIcon(input.icon === undefined ? previous.icon : input.icon)
   const rawEntries = input.entries === undefined ? previous.entries ?? [] : input.entries
   if (!Array.isArray(rawEntries)) throw fail('invalid-patch')
   const previousById = new Map((previous.entries ?? []).map(entry => [entry.id, entry]))
@@ -261,7 +308,7 @@ export function normalizeWorkspacePatch(input, previous = { entries: [] }) {
       addedAt: typeof known?.addedAt === 'string' ? known.addedAt : new Date().toISOString(),
     })
   }
-  return { description, systemPrompt, entries }
+  return { description, systemPrompt, entries, color, icon }
 }
 
 /**
@@ -294,7 +341,7 @@ export class WorkspaceContextStore {
    * so re-creating a Workspace does not orphan its context.
    * @param {string} workspaceId Workspace id.
    * @param {string} [workspacePath] Canonical Workspace path.
-   * @returns {{ description: string, systemPrompt: string, entries: object[] }} Record.
+   * @returns {{ description: string, systemPrompt: string, entries: object[], color: string, icon: string }} Record.
    */
   workspace(workspaceId, workspacePath) {
     const state = this.load()
@@ -304,11 +351,13 @@ export class WorkspaceContextStore {
         && typeof candidate.path === 'string'
         && sameWorkspacePath(candidate.path, workspacePath))
     }
-    if (!isWorkspaceRecord(record)) return { description: '', systemPrompt: '', entries: [] }
+    if (!isWorkspaceRecord(record)) return { description: '', systemPrompt: '', entries: [], color: '', icon: '' }
     return {
       description: typeof record.description === 'string' ? record.description : '',
       systemPrompt: typeof record.systemPrompt === 'string' ? record.systemPrompt : '',
       entries: Array.isArray(record.entries) ? record.entries.filter(isStoredEntry) : [],
+      color: normalizeWorkspaceColor(record.color),
+      icon: normalizeWorkspaceIcon(record.icon),
     }
   }
 
@@ -316,7 +365,7 @@ export class WorkspaceContextStore {
    * Read one Workspace record as the browser sees it.
    * @param {string} workspaceId Workspace id.
    * @param {string} [workspacePath] Canonical Workspace path.
-   * @returns {{ description: string, systemPrompt: string, entries: object[] }} Public record.
+   * @returns {{ description: string, systemPrompt: string, entries: object[], color: string, icon: string }} Public record.
    */
   publicWorkspace(workspaceId, workspacePath) {
     const record = this.workspace(workspaceId, workspacePath)
@@ -324,6 +373,8 @@ export class WorkspaceContextStore {
       description: record.description,
       systemPrompt: record.systemPrompt,
       entries: record.entries.map(publicEntry),
+      color: record.color,
+      icon: record.icon,
     }
   }
 
@@ -333,7 +384,7 @@ export class WorkspaceContextStore {
    * @param {string} workspaceId Workspace id.
    * @param {object} input Untrusted patch.
    * @param {{ path?: string, title?: string }} [meta] Workspace identity.
-   * @returns {{ description: string, systemPrompt: string, entries: object[] }} Public record.
+   * @returns {{ description: string, systemPrompt: string, entries: object[], color: string, icon: string }} Public record.
    */
   saveWorkspace(workspaceId, input, meta = {}) {
     const state = this.load()
@@ -709,7 +760,7 @@ async function readJsonBody(request) {
  * @param {import('node:http').ServerResponse} response Outgoing response.
  * @returns {Promise<void>} Resolves when the response ends.
  */
-export async function handleRequest(store, lookupWorkspace, lookupWorkspaceForSession, request, response) {
+export async function handleRequest(store, lookupWorkspace, lookupWorkspaceForSession, request, response, lookupWorkspaces = () => []) {
   const reply = (status, payload) => {
     const body = JSON.stringify(payload)
     response.writeHead(status, {
@@ -731,6 +782,24 @@ export async function handleRequest(store, lookupWorkspace, lookupWorkspaceForSe
 
     if (segments[0] === 'health' && method === 'GET') {
       reply(200, { ok: true, data: store.stats() })
+      return
+    }
+
+    if (segments[0] === 'presentation' && method === 'GET') {
+      const workspaces = []
+      for (const workspace of lookupWorkspaces()) {
+        if (typeof workspace?.id !== 'string' || workspace.id === '') continue
+        const record = store.workspace(workspace.id, workspace.path)
+        if (record.color === '' && record.icon === '') continue
+        workspaces.push({
+          workspaceId: workspace.id,
+          title: typeof workspace.title === 'string' ? workspace.title : '',
+          path: typeof workspace.path === 'string' ? workspace.path : '',
+          color: record.color,
+          icon: record.icon,
+        })
+      }
+      reply(200, { ok: true, data: { workspaces } })
       return
     }
 
@@ -871,6 +940,16 @@ export function apply(ctx) {
     ctx.logger?.warn?.(`workspace-context: cannot backfill workspace paths: ${error instanceof Error ? error.message : String(error)}`)
   }
 
+  const lookupWorkspaces = () => {
+    try {
+      return (ctx.get('workspaceRegistry')?.list?.() ?? [])
+        .filter(workspace => typeof workspace?.id === 'string' && workspace.id !== '')
+        .map(workspace => ({ id: workspace.id, path: workspace.path, title: workspace.title }))
+    } catch {
+      return []
+    }
+  }
+
   const lookupWorkspaceForSession = (sessionId) => {
     if (typeof sessionId !== 'string' || sessionId === '') return undefined
     try {
@@ -889,7 +968,7 @@ export function apply(ctx) {
       kind: 'prefix',
       path: ROUTE,
       handler: (request, response) => {
-        void handleRequest(store, lookupWorkspace, lookupWorkspaceForSession, request, response)
+        void handleRequest(store, lookupWorkspace, lookupWorkspaceForSession, request, response, lookupWorkspaces)
       },
     })
     return () => disposeRoute()

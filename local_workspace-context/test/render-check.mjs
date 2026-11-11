@@ -212,6 +212,12 @@ const sandbox = {
   fetch: async (url, options = {}) => {
     fetchCalls.push({ url: String(url), options })
     if (String(url).startsWith('/dsh-workspace-context/state')) return response(workspaceState)
+    if (String(url).startsWith('/dsh-workspace-context/presentation')) {
+      return response({ workspaces: [
+        { workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project', color: '#ff8800', icon: 'code' },
+        { workspaceId: 'ws-2', title: 'Image project', path: '/tmp/image', color: '', icon: 'data:image/png;base64,iVBORw0KGgo=' },
+      ] })
+    }
     if (String(url).startsWith('/dsh-workspace-context/session/context')) {
       return response({
         workspace: { workspaceId: 'ws-1', title: 'Docs project', path: '/tmp/project' },
@@ -415,6 +421,11 @@ const sidebarStyle = injectedStyles.find(style => style.dataset?.workspaceContex
 if (sidebarStyle === undefined || !sidebarStyle.textContent.includes('order:-1') || !sidebarStyle.textContent.includes('display:inline-flex !important')) {
   throw new Error('the plugin did not inject the persistent workspace chevron style')
 }
+await new Promise(resolve => setTimeout(resolve, 0))
+const appearanceStyle = injectedStyles.find(style => style.dataset?.workspaceContext === 'workspace-appearance')
+if (appearanceStyle === undefined || !appearanceStyle.textContent.includes('#ff8800') || !appearanceStyle.textContent.includes('mask-image') || !appearanceStyle.textContent.includes('background-image:url("data:image/png')) {
+  throw new Error('the plugin did not inject the workspace appearance style')
+}
 
 // ---- Registration inventory --------------------------------------------------
 const menu = menuRegistrations.find(entry => entry.id === 'workspace-context.configure')
@@ -488,6 +499,9 @@ for (const fragment of [
   '/tmp/project',
   'Descripción',
   'Prompt del sistema',
+  'Aspecto',
+  'Color',
+  'Icono',
   'Archivos y carpetas de contexto',
   'Añadir carpeta',
   'Añadir archivos',
@@ -500,6 +514,12 @@ for (const fragment of [
   }
 }
 
+const colorInput = collected.find(node => node.type === 'input' && node.props?.type === 'color')
+if (colorInput === undefined) throw new Error('the dialog rendered no color input')
+colorInput.props.onChange({ target: { value: '#123abc' } })
+const iconButton = collected.find(node => node.props?.className?.split(' ').includes('wsc-iconchoice') && node.props?.title === 'Código')
+if (iconButton === undefined) throw new Error('the dialog rendered no code icon')
+iconButton.props.onClick()
 const textareas = collected.filter(node => node.props?.className === 'wsc-textarea')
 if (textareas.length !== 2) throw new Error(`expected two textareas, got ${textareas.length}`)
 textareas[0].props.onChange({ target: { value: 'Updated description' } })
@@ -507,7 +527,7 @@ textareas[1].props.onChange({ target: { value: 'Updated system prompt' } })
 text = renderOverlay()
 
 // Add one text file through the file input.
-const fileInput = collected.find(node => node.type === 'input' && node.props?.type === 'file')
+const fileInput = collected.find(node => node.type === 'input' && node.props?.type === 'file' && node.props?.multiple === true)
 if (fileInput === undefined) throw new Error('the dialog rendered no file input')
 const bytes = new TextEncoder().encode('# Notes\n\nNew context.\n')
 await fileInput.props.onChange({
@@ -530,6 +550,8 @@ if (saveCall === undefined) throw new Error('saving the dialog sent no POST')
 const saveBody = JSON.parse(saveCall.options.body)
 if (saveBody.description !== 'Updated description') throw new Error(`unexpected description ${saveBody.description}`)
 if (saveBody.systemPrompt !== 'Updated system prompt') throw new Error(`unexpected prompt ${saveBody.systemPrompt}`)
+if (saveBody.color !== '#123abc') throw new Error(`unexpected color ${saveBody.color}`)
+if (saveBody.icon !== 'code') throw new Error(`unexpected icon ${saveBody.icon}`)
 if (!saveBody.entries.some(entry => entry.kind === 'file' && entry.name === 'notes.md' && entry.text.includes('New context'))) {
   throw new Error('the saved entries did not carry the added file text')
 }

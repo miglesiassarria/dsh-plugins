@@ -53,6 +53,26 @@ pulsar la **flecha**, que queda siempre visible a la izquierda de la carpeta
 (no solo al pasar el ratón), de modo que también se puede usar en pantallas
 táctiles.
 
+## Aspecto de los espacios
+
+En **Configurar espacio → Aspecto** cada espacio puede llevar un color y un
+icono propios:
+
+- **Color**: una paleta rápida, un selector de color libre o **Automático** para
+  volver al color del tema. Se aplica a la carpeta y a los iconos predefinidos.
+- **Icono**: una carpeta (por defecto) o uno de los iconos incluidos (maletín,
+  código, libro, cohete, estrella, corazón, rayo, mundo, laboratorio, terminal,
+  paleta, chat, música, cámara, idea y bandera).
+- **Imagen propia**: se puede subir un PNG, JPEG, WebP o GIF. La imagen se
+  reduce a 64×64 y se guarda como data URL en el propio registro del espacio.
+  Las imágenes conservan sus colores; el color elegido afecta a la carpeta y a
+  los iconos predefinidos.
+
+El color y el icono se ven en la fila de la barra lateral y en la cabecera de la
+página del proyecto. La configuración vive en
+`$DSH_HOME/workspace-context/context.json` (permisos `0600`) en los campos
+`color` e `icon`; no se crean archivos de imagen aparte.
+
 ## El apartado «Contexto» de la barra derecha
 
 La barra lateral derecha muestra el contexto de la sesión activa de dos formas:

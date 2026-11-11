@@ -39,6 +39,8 @@ const store = new plugin.WorkspaceContextStore({ file: join(home, 'workspace-con
 const saved = store.saveWorkspace('ws-1', {
   description: 'Product documentation workspace.',
   systemPrompt: 'Prefer TypeScript and explain tradeoffs.',
+  color: '#FF8800',
+  icon: 'code',
   entries: [
     { kind: 'folder', path: project },
     { kind: 'file', name: 'notes.md', text: '# Notes\n\nShip it.\n' },
@@ -47,6 +49,8 @@ const saved = store.saveWorkspace('ws-1', {
 assert.equal(saved.description, 'Product documentation workspace.')
 assert.equal(saved.systemPrompt, 'Prefer TypeScript and explain tradeoffs.')
 assert.equal(saved.entries.length, 2)
+assert.equal(saved.color, '#ff8800')
+assert.equal(saved.icon, 'code')
 assert.ok(saved.entries.every(entry => entry.kind === 'folder' || entry.text === undefined))
 
 const publicConfig = store.publicWorkspace('ws-1')
@@ -61,6 +65,21 @@ store.saveWorkspace('ws-1', {
   entries: publicConfig.entries,
 })
 assert.equal(store.workspace('ws-1').entries[1].text, '# Notes\n\nShip it.\n')
+assert.equal(store.workspace('ws-1').color, '#ff8800')
+assert.equal(store.workspace('ws-1').icon, 'code')
+
+// Appearance validation: colors are lowercase hex, preset ids are finite, and
+// custom icons are bounded raster data URLs.
+const appearanceStore = new plugin.WorkspaceContextStore({ file: join(home, 'workspace-context', 'appearance.json') })
+const invalidAppearance = appearanceStore.saveWorkspace('style', { color: 'orange', icon: 'not-an-icon' })
+assert.equal(invalidAppearance.color, '')
+assert.equal(invalidAppearance.icon, '')
+const customIcon = 'data:image/png;base64,iVBORw0KGgo='
+const withIcon = appearanceStore.saveWorkspace('style', { icon: customIcon, color: '#123abc' })
+assert.equal(withIcon.icon, customIcon)
+assert.equal(withIcon.color, '#123abc')
+const oversizedIcon = appearanceStore.saveWorkspace('style', { icon: 'data:image/png;base64,' + 'A'.repeat(200_001) })
+assert.equal(oversizedIcon.icon, '')
 
 // ---- Stable workspace path ---------------------------------------------------
 const legacy = join(home, 'legacy-project')
@@ -203,6 +222,22 @@ assert.equal(pair.result.status, 200)
 const state = JSON.parse(pair.result.body).data
 assert.equal(state.workspace.title, 'Docs project')
 assert.equal(state.config.entries[1].text, undefined)
+assert.equal(state.config.color, '#ff8800')
+assert.equal(state.config.icon, 'code')
+
+pair = requestPair({
+  url: '/dsh-workspace-context/presentation',
+  headers: { 'x-dsh-workspace-context': '1' },
+})
+await plugin.handleRequest(store, lookup, lookupForSession, pair.request, pair.response, () => [workspace])
+assert.equal(pair.result.status, 200)
+assert.deepEqual(JSON.parse(pair.result.body).data.workspaces, [{
+  workspaceId: 'ws-1',
+  title: 'Docs project',
+  path: project,
+  color: '#ff8800',
+  icon: 'code',
+}])
 
 pair = requestPair({
   method: 'POST',
@@ -274,6 +309,8 @@ assert.equal(JSON.parse(pair.result.body).error, 'workspace-unknown')
 const persisted = JSON.parse(readFileSync(join(home, 'workspace-context', 'context.json'), 'utf8'))
 assert.equal(persisted.version, 1)
 assert.equal(persisted.workspaces['ws-1'].description, 'Updated')
+assert.equal(persisted.workspaces['ws-1'].color, '#ff8800')
+assert.equal(persisted.workspaces['ws-1'].icon, 'code')
 
 console.log('host check passed:', {
   contextCharacters: context.length,

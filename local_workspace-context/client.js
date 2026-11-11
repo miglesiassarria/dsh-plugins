@@ -12,6 +12,58 @@ window.__ModuleLoader__.load({
     const HEADER = 'x-dsh-workspace-context';
     const MAX_FILE_BYTES = 128 * 1024;
 
+    /** Shipped workspace icon set. Paths use a 24×24 stroke grid. */
+    const ICON_DEFS = [
+      { id: 'briefcase', path: 'M4 8h16v10H4zM9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M4 12h16' },
+      { id: 'code', path: 'M9 7l-5 5 5 5M15 7l5 5-5 5' },
+      { id: 'book', path: 'M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4zM8 20a3 3 0 0 1 0-6h9' },
+      { id: 'rocket', path: 'M14 4c3 0 5 2 5 5 0 4-4 8-7 10l-3-3c2-3 5-7 5-12zM9 15l-4 4M7 11l-3 2 3 3 2-3' },
+      { id: 'star', path: 'M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9L12 3z' },
+      { id: 'heart', path: 'M12 20s-7-4.3-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.7-7 9-7 9z' },
+      { id: 'bolt', path: 'M13 2L4 14h7l-2 8 9-12h-7l2-8z' },
+      { id: 'globe', path: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18' },
+      { id: 'flask', path: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9' },
+      { id: 'terminal', path: 'M4 5h16v14H4zM7 9l3 3-3 3M13 15h4' },
+      { id: 'palette', path: 'M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 0-4 2 2 0 0 1 2-2h2a4 4 0 0 0 4-4 9 9 0 0 0-9-8zM8 9h.01M6.5 13h.01M10 16h.01' },
+      { id: 'chat', path: 'M4 5h16v11H9l-5 4V5z' },
+      { id: 'music', path: 'M9 18V5l10-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM19 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z' },
+      { id: 'camera', path: 'M4 8h3l2-3h6l2 3h3v11H4V8zM12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
+      { id: 'lightbulb', path: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3 11c1 1 1 2 1 3h4c0-1 0-2 1-3a6 6 0 0 0-3-11z' },
+      { id: 'flag', path: 'M5 21V4M5 4h11l-2 4 2 4H5' },
+    ];
+
+    /** Preset accent colors offered beside the custom color input. */
+    const ICON_COLORS = ['#e55353', '#e8912a', '#d4b106', '#3fa45b', '#2f9e9e', '#3b82f6', '#7c5cff', '#d946ef', '#8b8f98'];
+
+    /** Inline mask for one preset icon; the CSS background color supplies its tone. */
+    function presetIconDataUri(def) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${def.path}"/></svg>`;
+      return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    }
+
+    /** Build the sidebar rules that repaint configured workspace rows. */
+    function buildAppearanceCss(workspaces) {
+      const rules = [];
+      for (const workspace of Array.isArray(workspaces) ? workspaces : []) {
+        if (typeof workspace?.workspaceId !== 'string' || workspace.workspaceId === '') continue;
+        const row = `[data-row-key=${JSON.stringify(`workspace:${workspace.workspaceId}`)}]`;
+        const color = typeof workspace.color === 'string' && /^#[0-9a-f]{6}$/i.test(workspace.color) ? workspace.color : '';
+        const icon = typeof workspace.icon === 'string' ? workspace.icon : '';
+        if (color !== '') rules.push(`${row} [class*="_folder"]{color:${color} !important;}`);
+        if (icon.startsWith('data:image/')) {
+          rules.push(`${row} [class*="_folder"]{background-image:url("${icon}");background-size:16px 16px;background-position:center;background-repeat:no-repeat;}`);
+          rules.push(`${row} [class*="_folder"] svg{display:none !important;}`);
+          continue;
+        }
+        const def = ICON_DEFS.find(entry => entry.id === icon);
+        if (def === undefined) continue;
+        const uri = presetIconDataUri(def);
+        rules.push(`${row} [class*="_folder"]{-webkit-mask-image:url("${uri}");-webkit-mask-position:center;-webkit-mask-size:16px 16px;-webkit-mask-repeat:no-repeat;mask-image:url("${uri}");mask-position:center;mask-size:16px 16px;mask-repeat:no-repeat;background-color:currentColor;}`);
+        rules.push(`${row} [class*="_folder"] svg{display:none !important;}`);
+      }
+      return rules.join('\n');
+    }
+
     const STRINGS = {
       en: {
         menu: { configure: 'Configure workspace', openWorkspace: 'Open workspace' },
@@ -40,6 +92,37 @@ window.__ModuleLoader__.load({
           chars: '{count} / {max}',
           saved: 'Workspace saved.',
           truncated: 'Context is capped; very large folders keep their first readable files.',
+          appearance: 'Appearance',
+          appearanceHint: 'Color and icon shown in the sidebar and on the project page.',
+          color: 'Color',
+          automatic: 'Automatic',
+          customColor: 'Custom color',
+          icon: 'Icon',
+          defaultIcon: 'Folder',
+          uploadIcon: 'Upload image',
+          removeIcon: 'Remove image',
+          iconHint: 'Preset icons take the chosen color. Uploaded images keep their own colors.',
+          iconInvalid: 'Choose a PNG, JPEG, WebP or GIF image.',
+          iconTooLarge: 'That image is too large.',
+          preview: 'Preview',
+        },
+        iconNames: {
+          briefcase: 'Briefcase',
+          code: 'Code',
+          book: 'Book',
+          rocket: 'Rocket',
+          star: 'Star',
+          heart: 'Heart',
+          bolt: 'Bolt',
+          globe: 'Globe',
+          flask: 'Laboratory',
+          terminal: 'Terminal',
+          palette: 'Palette',
+          chat: 'Chat',
+          music: 'Music',
+          camera: 'Camera',
+          lightbulb: 'Idea',
+          flag: 'Flag',
         },
         session: {
           contextLabel: 'Session context',
@@ -162,6 +245,37 @@ window.__ModuleLoader__.load({
           chars: '{count} / {max}',
           saved: 'Espacio guardado.',
           truncated: 'El contexto tiene un límite; las carpetas muy grandes conservan los primeros archivos legibles.',
+          appearance: 'Aspecto',
+          appearanceHint: 'Color e icono que se muestran en la barra lateral y en la página del proyecto.',
+          color: 'Color',
+          automatic: 'Automático',
+          customColor: 'Otro color',
+          icon: 'Icono',
+          defaultIcon: 'Carpeta',
+          uploadIcon: 'Subir imagen',
+          removeIcon: 'Quitar imagen',
+          iconHint: 'Los iconos predefinidos usan el color elegido. Las imágenes mantienen sus colores.',
+          iconInvalid: 'Elige una imagen PNG, JPEG, WebP o GIF.',
+          iconTooLarge: 'La imagen es demasiado grande.',
+          preview: 'Vista previa',
+        },
+        iconNames: {
+          briefcase: 'Maletín',
+          code: 'Código',
+          book: 'Libro',
+          rocket: 'Cohete',
+          star: 'Estrella',
+          heart: 'Corazón',
+          bolt: 'Rayo',
+          globe: 'Mundo',
+          flask: 'Laboratorio',
+          terminal: 'Terminal',
+          palette: 'Paleta',
+          chat: 'Chat',
+          music: 'Música',
+          camera: 'Cámara',
+          lightbulb: 'Idea',
+          flag: 'Bandera',
         },
         session: {
           contextLabel: 'Contexto de sesión',
@@ -280,7 +394,29 @@ window.__ModuleLoader__.load({
 .wsc-subtitle{margin:6px 0 0;font-size:12.5px;line-height:1.45;color:var(--dsw-alias-label-secondary);}
 .wsc-close{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:18px;line-height:1;}
 .wsc-close:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
-.wsc-body{display:flex;flex-direction:column;gap:16px;padding:18px 22px 4px;}
+".wsc-body{display:flex;flex-direction:column;gap:16px;padding:18px 22px 4px;}
+.wsc-appearance{display:flex;flex-direction:column;gap:10px;}
+.wsc-appearancepreview{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);}
+.wsc-appearanceicon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;color:var(--dsw-alias-label-secondary);}
+.wsc-appearancename{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wsc-colorchoices{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.wsc-sublabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-right:2px;}
+.wsc-colorchoice{width:20px;height:20px;padding:0;border:2px solid transparent;border-radius:50%;cursor:pointer;}
+.wsc-colorchoice.selected{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-bg-overlay);}
+.wsc-colorauto{height:22px;padding:0 7px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:10px;cursor:pointer;}
+.wsc-colorauto.selected{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary);}
+.wsc-colorcustom{display:inline-flex;align-items:center;width:26px;height:22px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:6px;cursor:pointer;}
+.wsc-colorcustom input{width:100%;height:100%;padding:0;border:0;background:transparent;cursor:pointer;}
+.wsc-iconrow{display:flex;flex-direction:column;gap:6px;}
+.wsc-icongrid{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
+.wsc-iconchoice{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;}
+.wsc-iconchoice:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
+.wsc-iconchoice.selected{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2);}
+.wsc-iconuploadrow{display:flex;align-items:center;gap:6px;}
+.wsc-iconuploadbtn{height:26px;padding:0 8px;font-size:11px;}
+.wsc-iconremove{height:26px;padding:0 8px;font-size:11px;}
+.wsc-workspaceiconimg{border-radius:5px;object-fit:contain;display:block;}
+.wsc-workspaceiconfolder{display:inline-flex;align-items:center;justify-content:center;}
 .wsc-field{display:flex;flex-direction:column;gap:6px;}
 .wsc-labelrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
 .wsc-label{font-size:12.5px;font-weight:600;}
@@ -565,6 +701,35 @@ window.__ModuleLoader__.load({
       }));
     }
 
+    /** Render a configured workspace icon at one size. */
+    function workspaceIconNode(icon, color, size) {
+      if (typeof icon === 'string' && icon.startsWith('data:image/')) {
+        return h('img', {
+          className: 'wsc-workspaceiconimg',
+          src: icon,
+          width: size,
+          height: size,
+          alt: '',
+          style: { width: `${size}px`, height: `${size}px` },
+        });
+      }
+      const def = ICON_DEFS.find(entry => entry.id === icon);
+      if (def !== undefined) {
+        return h('svg', {
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: color || 'currentColor',
+          strokeWidth: 2,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': 'true',
+        }, h('path', { d: def.path }));
+      }
+      return h('span', { className: 'wsc-workspaceiconfolder', style: color ? { color } : undefined }, h(FolderGlyph, { size }));
+    }
+
     /** Document glyph used by file rows. */
     function FileGlyph(props) {
       const size = props && props.size ? props.size : 15;
@@ -591,6 +756,32 @@ window.__ModuleLoader__.load({
       }));
     }
 
+    /** Downscale one uploaded icon to a small square PNG data URL. */
+    async function resizeIconFile(file, size) {
+      const url = URL.createObjectURL(file);
+      try {
+        const image = await new Promise((resolve, reject) => {
+          const element = new Image();
+          element.onload = () => resolve(element);
+          element.onerror = () => reject(new Error('decode'));
+          element.src = url;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (context === null) throw new Error('canvas');
+        const scale = Math.min(size / image.width, size / image.height);
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        context.clearRect(0, 0, size, size);
+        context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+        return canvas.toDataURL('image/png');
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
     /** Modal that edits one Workspace's context configuration. */
     function createWorkspaceDialog(options) {
       const { api, t, closeDialog, uiWorkspace, bump } = options;
@@ -603,7 +794,10 @@ window.__ModuleLoader__.load({
         const [description, setDescription] = React.useState('');
         const [systemPrompt, setSystemPrompt] = React.useState('');
         const [entries, setEntries] = React.useState([]);
+        const [draftColor, setDraftColor] = React.useState('');
+        const [draftIcon, setDraftIcon] = React.useState('');
         const fileInput = React.useRef(null);
+        const iconInput = React.useRef(null);
 
         React.useEffect(() => {
           let cancelled = false;
@@ -617,6 +811,8 @@ window.__ModuleLoader__.load({
               setDescription(data.config.description || '');
               setSystemPrompt(data.config.systemPrompt || '');
               setEntries(Array.isArray(data.config.entries) ? data.config.entries : []);
+              setDraftColor(typeof data.config.color === 'string' ? data.config.color : '');
+              setDraftIcon(typeof data.config.icon === 'string' ? data.config.icon : '');
               setPhase('ready');
             })
             .catch((reason) => {
@@ -668,6 +864,26 @@ window.__ModuleLoader__.load({
           }
         };
 
+        const pickIcon = async (event) => {
+          const file = event.target.files === null || event.target.files === undefined ? undefined : event.target.files[0];
+          event.target.value = '';
+          if (file === undefined) return;
+          if (!/^image\/(?:png|jpeg|webp|gif)$/i.test(file.type)) {
+            setError(t('dialog.iconInvalid'));
+            return;
+          }
+          if (file.size > 5 * 1024 * 1024) {
+            setError(t('dialog.iconTooLarge'));
+            return;
+          }
+          try {
+            setDraftIcon(await resizeIconFile(file, 64));
+            setError(null);
+          } catch {
+            setError(t('dialog.iconInvalid'));
+          }
+        };
+
         const removeEntry = (entry, index) => {
           setEntries((current) => current.filter((candidate, candidateIndex) => candidateIndex !== index));
         };
@@ -682,6 +898,8 @@ window.__ModuleLoader__.load({
               workspaceId: request.workspaceId,
               description,
               systemPrompt,
+              color: draftColor,
+              icon: draftIcon,
               entries: entries.map((entry) => entry.kind === 'folder'
                 ? { id: entry.id, kind: 'folder', path: entry.path, name: entry.name }
                 : { id: entry.id, kind: 'file', name: entry.name, text: entry.text, bytes: entry.bytes }),
@@ -724,9 +942,77 @@ window.__ModuleLoader__.load({
             h('div', { className: 'wsc-field' },
               h('span', { className: 'wsc-label' }, t('dialog.name')),
               h('div', { className: 'wsc-readonly' },
-                h(FolderGlyph, { size: 15 }),
+                workspaceIconNode(draftIcon, draftColor, 15),
                 h('span', null, title)),
               path === '' ? null : h('span', { className: 'wsc-path' }, path)),
+            h('div', { className: 'wsc-field' },
+              h('span', { className: 'wsc-label' }, t('dialog.appearance')),
+              h('div', { className: 'wsc-appearance' },
+                h('div', { className: 'wsc-appearancepreview' },
+                  h('span', { className: 'wsc-appearanceicon' }, workspaceIconNode(draftIcon, draftColor, 20)),
+                  h('span', { className: 'wsc-appearancename' }, title || path || t('dialog.name'))),
+                h('div', { className: 'wsc-colorchoices' },
+                  h('span', { className: 'wsc-sublabel' }, t('dialog.color')),
+                  h('button', {
+                    type: 'button',
+                    className: draftColor === '' ? 'wsc-colorauto selected' : 'wsc-colorauto',
+                    title: t('dialog.automatic'),
+                    onClick: () => setDraftColor(''),
+                  }, t('dialog.automatic')),
+                  ICON_COLORS.map(color => h('button', {
+                    type: 'button',
+                    key: color,
+                    className: draftColor === color ? 'wsc-colorchoice selected' : 'wsc-colorchoice',
+                    style: { background: color },
+                    title: color,
+                    'aria-label': color,
+                    onClick: () => setDraftColor(color),
+                  })),
+                  h('label', { className: 'wsc-colorcustom', title: t('dialog.customColor') },
+                    h('input', {
+                      type: 'color',
+                      value: draftColor || '#8b8f98',
+                      'aria-label': t('dialog.customColor'),
+                      onChange: (event) => setDraftColor(event.target.value),
+                    }))),
+                h('div', { className: 'wsc-iconrow' },
+                  h('span', { className: 'wsc-sublabel' }, t('dialog.icon')),
+                  h('div', { className: 'wsc-icongrid' },
+                    h('button', {
+                      type: 'button',
+                      className: draftIcon === '' ? 'wsc-iconchoice selected' : 'wsc-iconchoice',
+                      title: t('dialog.defaultIcon'),
+                      'aria-label': t('dialog.defaultIcon'),
+                      onClick: () => setDraftIcon(''),
+                    }, h(FolderGlyph, { size: 16 })),
+                    ICON_DEFS.map(def => h('button', {
+                      type: 'button',
+                      key: def.id,
+                      className: draftIcon === def.id ? 'wsc-iconchoice selected' : 'wsc-iconchoice',
+                      title: t(`iconNames.${def.id}`),
+                      'aria-label': t(`iconNames.${def.id}`),
+                      onClick: () => setDraftIcon(def.id),
+                    }, h('svg', {
+                      width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true,
+                      stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+                    }, h('path', { d: def.path })))),
+                    h('input', {
+                      ref: iconInput,
+                      type: 'file',
+                      accept: 'image/png,image/jpeg,image/webp,image/gif',
+                      hidden: true,
+                      onChange: pickIcon,
+                    })),
+                  h('div', { className: 'wsc-iconuploadrow' },
+                    h('button', {
+                      type: 'button',
+                      className: 'wsc-btn wsc-btn-ghost wsc-iconuploadbtn',
+                      onClick: () => iconInput.current?.click(),
+                    }, t('dialog.uploadIcon')),
+                    draftIcon.startsWith('data:image/')
+                      ? h('button', { type: 'button', className: 'wsc-btn wsc-btn-ghost wsc-iconremove', onClick: () => setDraftIcon('') }, t('dialog.removeIcon'))
+                      : null))),
+              h('span', { className: 'wsc-hint' }, t('dialog.iconHint'))),
             h('label', { className: 'wsc-field' },
               h('span', { className: 'wsc-labelrow' },
                 h('span', { className: 'wsc-label' }, t('dialog.description')),
@@ -1448,7 +1734,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'wsc-project-main' },
               h('header', { className: 'wsc-project-head' },
                 h('div', { className: 'wsc-project-titlewrap' },
-                  h('span', { className: 'wsc-project-icon' }, h(FolderGlyph, { size: 26 })),
+                  h('span', { className: 'wsc-project-icon' }, workspaceIconNode(config.icon, config.color, 26)),
                   h('div', { style: { minWidth: 0 } },
                     h('h1', { className: 'wsc-project-title' }, meta.title || meta.path),
                     h('p', { className: 'wsc-project-path' }, meta.path))),
@@ -1648,8 +1934,46 @@ window.__ModuleLoader__.load({
           },
         };
 
+        const appearanceStyle = typeof document !== 'undefined' && document.head !== undefined && typeof document.createElement === 'function'
+          ? document.createElement('style')
+          : null;
+        let appearanceRequest = 0;
+        const refreshAppearance = async () => {
+          if (appearanceStyle === null) return;
+          const request = ++appearanceRequest;
+          try {
+            const data = await api.get('/presentation');
+            if (request !== appearanceRequest) return;
+            appearanceStyle.textContent = buildAppearanceCss(data?.workspaces);
+          } catch {
+            // Keep the previous appearance if the Host is unavailable.
+          }
+        };
+        if (appearanceStyle !== null) {
+          appearanceStyle.dataset.plugin = NS;
+          appearanceStyle.dataset.workspaceContext = 'workspace-appearance';
+          document.head.appendChild(appearanceStyle);
+          ctx.effect(() => () => appearanceStyle.remove(), 'workspace-context workspace appearance');
+        }
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+          const onFocus = () => { void refreshAppearance(); };
+          window.addEventListener('focus', onFocus);
+          ctx.effect(() => () => window.removeEventListener('focus', onFocus), 'workspace-context appearance focus');
+        }
+        void refreshAppearance();
+        try {
+          const workspaces = ctx.get('workspaces');
+          const unsubscribe = workspaces?.list?.subscribe?.(() => { void refreshAppearance(); });
+          if (typeof unsubscribe === 'function') ctx.effect(() => unsubscribe, 'workspace-context appearance list');
+        } catch {
+          // The Workspace list may not expose a snapshot in every client build.
+        }
+
         const contextBumps = createStore(0);
-        const bumpContext = () => contextBumps.set(contextBumps.get() + 1);
+        const bumpContext = () => {
+          contextBumps.set(contextBumps.get() + 1);
+          void refreshAppearance();
+        };
 
         /** Pick one folder and attach it to a Session's context. */
         const addFolderToSession = async (sessionId) => {
