@@ -65,7 +65,11 @@ window.__ModuleLoader__.load({
         reveal: 'Reveal values',
         hide: 'Hide values',
         permissions: 'Tool permissions',
-        permissionsHint: 'Always allow runs the tool without asking. Requires approval pauses before every call. Deny removes the tool from your agents entirely.',
+        permissionsHint: 'Always allow runs the tool without asking. Requires approval pauses before every call. Deny hides that specific tool from your agents; the block selector sets the policy for a whole group.',
+        groupPolicyHint: 'The block selector sets a durable policy: it also applies to tools the server discovers later. A single tool choice overrides it.',
+        overlapTitle: 'Another destructive tool is still allowed',
+        overlapBody: 'Denying one tool does not block the operation when the same server exposes another tool that does the same. Still allowed:',
+        overlapAction: 'Deny the whole write/delete block',
         groupRead: 'Read-only tools',
         groupWrite: 'Write/delete tools',
         groupOther: 'Other tools',
@@ -133,7 +137,11 @@ window.__ModuleLoader__.load({
         reveal: 'Mostrar valores',
         hide: 'Ocultar valores',
         permissions: 'Permisos de herramientas',
-        permissionsHint: 'Permitir siempre ejecuta la herramienta sin preguntar. Requiere aprobación te pide confirmar antes de cada llamada. Denegar retira la herramienta de tus agentes por completo.',
+        permissionsHint: 'Permitir siempre ejecuta la herramienta sin preguntar. Requiere aprobación te pide confirmar antes de cada llamada. Denegar oculta esa herramienta concreta a tus agentes; el selector de bloque fija la política de todo un grupo.',
+        groupPolicyHint: 'El selector de bloque fija una política duradera: también se aplica a las herramientas que el servidor descubra más adelante. La elección de una herramienta concreta tiene prioridad.',
+        overlapTitle: 'Otra herramienta destructiva sigue permitida',
+        overlapBody: 'Denegar una herramienta no bloquea la operación si el mismo servidor ofrece otra que hace lo mismo. Siguen permitidas:',
+        overlapAction: 'Denegar todo el bloque de escritura/borrado',
         groupRead: 'Herramientas de solo lectura',
         groupWrite: 'Herramientas de escritura/eliminación',
         groupOther: 'Otras herramientas',
@@ -251,6 +259,11 @@ window.__ModuleLoader__.load({
 .tms-detailname strong{font-size:15px;font-weight:600;line-height:21px}
 .tms-sectiontitle{margin:0;font-size:14px;font-weight:600;line-height:20px}
 .tms-intro{margin:0;font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-secondary)}
+.tms-overlap{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent);color:var(--dsw-alias-state-warn-primary);font-size:12.5px;line-height:17px}
+.tms-overlaptext{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.tms-overlaptext strong{font-weight:600}
+.tms-overlapbtn{flex:none;align-self:center;border:1px solid currentColor;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;padding:4px 8px;cursor:pointer;white-space:nowrap}
+.tms-overlapbtn:hover{background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent)}
 .tms-groups{display:flex;flex-direction:column;gap:10px}
 .tms-group{border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
 .tms-grouphead{display:flex;align-items:center;gap:8px;padding:10px 12px;min-width:0}
@@ -490,6 +503,34 @@ window.__ModuleLoader__.load({
         }
       }, []);
 
+      /**
+       * Set the durable policy for one block and drop the per-tool overrides it
+       * replaces, so the dropdown means "apply to the whole block" even for
+       * tools the server adds later.
+       */
+      const setGroupPolicy = React.useCallback(async (server, group, value) => {
+        const groupPolicies = Object.assign({}, server.groupPolicies || {});
+        groupPolicies[group] = value;
+        const permissions = Object.assign({}, server.permissions || {});
+        const tools = Array.isArray(server.tools) ? server.tools : [];
+        for (const tool of tools) {
+          if ((tool.group || classifyTool(tool)) === group) delete permissions[tool.name];
+        }
+        setServers((current) => current.map((entry) => (entry.id === server.id
+          ? Object.assign({}, entry, { permissions: permissions, groupPolicies: groupPolicies })
+          : entry)));
+        setError(null);
+        try {
+          const data = await request('/servers/' + encodeURIComponent(server.id) + '/permissions', {
+            method: 'PUT',
+            body: { permissions: permissions, groupPolicies: groupPolicies },
+          });
+          if (data && data.servers) setServers(data.servers);
+        } catch (failure) {
+          setError(String(failure && failure.message ? failure.message : failure));
+        }
+      }, []);
+
       const submit = async (payload) => {
         const editing = view.kind === 'form' && view.server !== null;
         const id = editing ? view.server.id : 'new';
@@ -518,6 +559,7 @@ window.__ModuleLoader__.load({
             server: current,
             onBack: () => { setError(null); setView({ kind: 'list' }); },
             onSet: (names, value) => setPermission(current, names, value),
+            onSetGroup: (group, value) => setGroupPolicy(current, group, value),
           }));
       }
 
@@ -895,6 +937,7 @@ window.__ModuleLoader__.load({
      * @returns {'read' | 'write' | 'other'} Block key.
      */
     function classifyTool(tool) {
+      if (tool.group === 'read' || tool.group === 'write' || tool.group === 'other') return tool.group;
       if (tool.destructive === true) return 'write';
       if (tool.readOnly === true) return 'read';
       const words = String(tool.name)
@@ -930,10 +973,15 @@ window.__ModuleLoader__.load({
       const [collapsed, setCollapsed] = React.useState({});
       const tools = Array.isArray(server.tools) ? server.tools : [];
       const permissions = server.permissions || {};
+      const groupPolicies = server.groupPolicies || {};
 
-      const valueOf = (name) => {
-        const value = permissions[name];
-        return value === 'ask' || value === 'deny' ? value : 'allow';
+      // Mirrors the host: an explicit per-tool value wins, then the durable
+      // block policy, then allow.
+      const valueOf = (tool) => {
+        const explicit = permissions[tool.name];
+        if (explicit === 'allow' || explicit === 'ask' || explicit === 'deny') return explicit;
+        const policy = groupPolicies[tool.group || classifyTool(tool)];
+        return policy === 'ask' || policy === 'deny' ? policy : 'allow';
       };
 
       const blocks = [
@@ -953,14 +1001,21 @@ window.__ModuleLoader__.load({
       ];
 
       const groupValue = (block) => {
-        const values = new Set(block.tools.map((tool) => valueOf(tool.name)));
-        return values.size === 1 ? block.tools.map((tool) => valueOf(tool.name))[0] : 'mixed';
+        const values = new Set(block.tools.map((tool) => valueOf(tool)));
+        return values.size === 1 ? block.tools.map((tool) => valueOf(tool))[0] : 'mixed';
       };
+
+      // A single denied tool does not stop an operation when the same server
+      // exposes another destructive tool that does it too (Kubernetes publishes
+      // both pods_delete and the generic resources_delete). Surface it instead
+      // of letting the deny look stronger than it is.
+      const destructiveTools = tools.filter((tool) => tool.destructive === true);
+      const deniedDestructive = destructiveTools.filter((tool) => valueOf(tool) === 'deny');
+      const openDestructive = destructiveTools.filter((tool) => valueOf(tool) !== 'deny');
 
       const blockView = (block) => {
         const isCollapsed = collapsed[block.key] === true;
         const current = groupValue(block);
-        const names = block.tools.map((tool) => tool.name);
         const head = h('div', { className: 'tms-grouphead' + (isCollapsed ? ' is-collapsed' : '') },
           h('button', {
             type: 'button',
@@ -977,7 +1032,7 @@ window.__ModuleLoader__.load({
             value: current,
             onChange: (event) => {
               if (event.target.value === 'mixed') return;
-              props.onSet(names, event.target.value);
+              props.onSetGroup(block.key, event.target.value);
             },
           },
           current === 'mixed' ? h('option', { value: 'mixed', disabled: true }, t('permMixed')) : null,
@@ -988,7 +1043,7 @@ window.__ModuleLoader__.load({
         return h('div', { className: 'tms-group', key: block.key },
           head,
           block.tools.map((tool) => {
-            const value = valueOf(tool.name);
+            const value = valueOf(tool);
             return h('div', { className: 'tms-permrow', key: tool.name },
               h('span', { className: 'tms-permname', title: tool.description || tool.name }, humanizeTool(tool.name)),
               h('div', { className: 'tms-seg', role: 'radiogroup', 'aria-label': humanizeTool(tool.name) },
@@ -1016,6 +1071,21 @@ window.__ModuleLoader__.load({
         identity,
         h('h3', { className: 'tms-sectiontitle' }, t('permissions')),
         h('p', { className: 'tms-intro' }, t('permissionsHint')),
+        h('p', { className: 'tms-hint' }, t('groupPolicyHint')),
+        deniedDestructive.length > 0 && openDestructive.length > 0
+          ? h('div', { className: 'tms-overlap' },
+            h('div', { className: 'tms-overlaptext' },
+              h('strong', null, t('overlapTitle')),
+              h('span', null, t('overlapBody') + ' ' + openDestructive
+                .slice(0, 4)
+                .map((tool) => humanizeTool(tool.name))
+                .join(', ') + (openDestructive.length > 4 ? '…' : ''))),
+            h('button', {
+              type: 'button',
+              className: 'tms-overlapbtn',
+              onClick: () => props.onSetGroup('write', 'deny'),
+            }, t('overlapAction')))
+          : null,
         server.status !== 'connected' && tools.length > 0
           ? h('p', { className: 'tms-hint' }, t('lastKnownTools'))
           : null,

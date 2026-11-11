@@ -4,6 +4,9 @@
   "private": true,
   "description": "Settings page that manages MCP tool servers and registers their tools for your agents.",
   "type": "module",
+  "scripts": {
+    "test": "node --test test/permissions.test.mjs && node test/render-check.mjs"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",

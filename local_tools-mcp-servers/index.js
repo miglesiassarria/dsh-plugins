@@ -858,6 +858,7 @@ class ToolServerManager {
       env: typeof row.env === 'object' && row.env !== null ? { ...row.env } : {},
       autoConnect: row.autoConnect !== false,
       permissions: normalizePermissions(row.permissions),
+      groupPolicies: normalizeGroupPolicies(row.groupPolicies),
       runtime: {
         status: 'idle',
         tools: [],
@@ -901,14 +902,19 @@ class ToolServerManager {
   }
 
   /**
-   * Effective permission for one tool of one server.
+   * Effective permission for one tool of one server. An explicit per-tool value
+   * wins; otherwise the durable block policy applies, so a tool the server adds
+   * later inherits the block decision instead of silently becoming allowed.
    * @param {Record<string, any>} server Server row.
    * @param {string} rawName The server's own tool name.
    * @returns {'allow' | 'ask' | 'deny'} Effective permission.
    */
   permissionFor(server, rawName) {
     const value = server.permissions?.[rawName]
-    return value === 'ask' || value === 'deny' ? value : 'allow'
+    if (PERMISSION_VALUES.has(value)) return value
+    const tool = server.runtime?.tools?.find(entry => entry.name === rawName)
+    const policy = server.groupPolicies?.[classifyTool(tool ?? { name: rawName })]
+    return policy === 'ask' || policy === 'deny' ? policy : 'allow'
   }
 
   /**
@@ -998,6 +1004,33 @@ class ToolServerManager {
    */
   async syncTools(server) {
     const runtime = server.runtime
+    // Serialize generations: a tools/list_changed notification can arrive while
+    // a permission change is already refreshing, and the two must not interleave
+    // their registrations.
+    if (runtime.syncing !== undefined) {
+      const queued = runtime.syncing.then(
+        () => this.refreshTools(server),
+        () => this.refreshTools(server),
+      ).finally(() => {
+        if (runtime.syncing === queued) runtime.syncing = undefined
+      })
+      runtime.syncing = queued
+      return queued
+    }
+    const run = this.refreshTools(server).finally(() => {
+      if (runtime.syncing === run) runtime.syncing = undefined
+    })
+    runtime.syncing = run
+    return run
+  }
+
+  /**
+   * Replace one server's registered tool generation.
+   * @param {Record<string, any>} server Server row.
+   * @returns {Promise<void>} Resolves after the swap.
+   */
+  async refreshTools(server) {
+    const runtime = server.runtime
     const connection = runtime.connection
     if (connection === undefined) return
     const tools = []
@@ -1008,6 +1041,36 @@ class ToolServerManager {
       cursor = result?.nextCursor
       if (typeof cursor !== 'string' || cursor.length === 0) break
     }
+
+    // Publish the descriptor list first: the effective permission reads block
+    // classification from it, including on the very first connection.
+    runtime.tools = tools
+      .filter(tool => typeof tool?.name === 'string' && tool.name.length > 0)
+      .map(tool => ({
+        name: tool.name,
+        description: typeof tool.description === 'string' ? tool.description : '',
+        readOnly: tool.annotations?.readOnlyHint === true,
+        destructive: tool.annotations?.destructiveHint === true,
+        group: classifyTool({
+          name: tool.name,
+          readOnly: tool.annotations?.readOnlyHint === true,
+          destructive: tool.annotations?.destructiveHint === true,
+        }),
+      }))
+
+    // Retire the previous generation before inserting the next one: the tool
+    // registry rejects a duplicate name, so registering first would silently
+    // drop every tool that stays enabled across a refresh.
+    for (const dispose of runtime.disposers.values()) {
+      try {
+        await dispose()
+      } catch (error) {
+        this.logger.warn(`${server.name}: no se pudo retirar una herramienta: ${errorMessage(error)}`)
+      }
+    }
+    runtime.disposers = new Map()
+    runtime.publicNames = new Map()
+    this.rebuildToolIndex()
 
     const nextDisposers = new Map()
     const nextNames = new Map()
@@ -1025,17 +1088,8 @@ class ToolServerManager {
         this.logger.warn(`${server.name}/${tool.name}: no se pudo registrar la herramienta: ${errorMessage(error)}`)
       }
     }
-    for (const dispose of runtime.disposers.values()) dispose()
     runtime.disposers = nextDisposers
     runtime.publicNames = nextNames
-    runtime.tools = tools
-      .filter(tool => typeof tool?.name === 'string')
-      .map(tool => ({
-        name: tool.name,
-        description: typeof tool.description === 'string' ? tool.description : '',
-        readOnly: tool.annotations?.readOnlyHint === true,
-        destructive: tool.annotations?.destructiveHint === true,
-      }))
     this.rebuildToolIndex()
   }
 
@@ -1066,6 +1120,11 @@ class ToolServerManager {
         render: (_args, value) => [{ type: 'text', text: extractText(value?.content, rawName) }],
       },
       execute: async (args, exec) => {
+        // Defense in depth: a registration made before a permission changed (or
+        // a duplicate registry entry) must not outlive its deny policy.
+        if (this.permissionFor(server, rawName) === 'deny') {
+          throw new Error(`La herramienta MCP «${rawName}» del servidor ${server.name} está denegada`)
+        }
         const connection = server.runtime.connection
         if (connection === undefined || server.runtime.status !== 'connected') {
           throw new Error(`El servidor MCP ${server.name} no está conectado`)
@@ -1092,7 +1151,13 @@ class ToolServerManager {
     if (runtime.status !== 'connected' && runtime.status !== 'connecting') return
     runtime.status = 'error'
     runtime.error = reason
-    for (const dispose of runtime.disposers.values()) dispose()
+    for (const dispose of runtime.disposers.values()) {
+      try {
+        void Promise.resolve(dispose()).catch(() => {})
+      } catch {
+        // The registration may already be gone.
+      }
+    }
     runtime.disposers = new Map()
     runtime.publicNames = new Map()
     runtime.connection = undefined
@@ -1107,7 +1172,13 @@ class ToolServerManager {
    */
   async disposeConnection(server) {
     const runtime = server.runtime
-    for (const dispose of runtime.disposers.values()) dispose()
+    for (const dispose of runtime.disposers.values()) {
+      try {
+        await dispose()
+      } catch (error) {
+        this.logger.warn(`${server.name}: no se pudo retirar una herramienta: ${errorMessage(error)}`)
+      }
+    }
     runtime.disposers = new Map()
     runtime.publicNames = new Map()
     this.rebuildToolIndex()
@@ -1153,6 +1224,7 @@ class ToolServerManager {
       hasToken: typeof server.token === 'string' && server.token.length > 0,
       autoConnect: server.autoConnect === true,
       permissions: server.permissions ?? {},
+      groupPolicies: server.groupPolicies ?? {},
       status: runtime.status,
       protocolVersion: runtime.protocolVersion,
       serverInfo: runtime.serverInfo,
@@ -1282,6 +1354,64 @@ function normalizeEnvironment(input) {
   return env
 }
 
+/** Permission vocabulary shared by tool and block policies. */
+const PERMISSION_VALUES = new Set(['allow', 'ask', 'deny'])
+
+/** The three permission blocks the page groups discovered tools into. */
+const GROUP_KEYS = new Set(['read', 'write', 'other'])
+
+/** Read-shaped tool names used when a server publishes no annotations. */
+const READ_WORDS = new Set([
+  'get', 'list', 'search', 'read', 'query', 'find', 'fetch', 'describe', 'inspect', 'health',
+  'export', 'preview', 'neighbors', 'proposals', 'view', 'status', 'count', 'show', 'history',
+  'catalog', 'lookup', 'check', 'info', 'snapshot', 'summarize', 'resolve', 'discover', 'trace',
+])
+
+/** Write-shaped tool names used when a server publishes no annotations. */
+const WRITE_WORDS = new Set([
+  'create', 'update', 'delete', 'remove', 'write', 'post', 'apply', 'put', 'patch', 'set',
+  'insert', 'upsert', 'capture', 'decide', 'archive', 'restore', 'upload', 'send', 'add', 'edit',
+  'modify', 'approve', 'reject', 'cancel', 'move', 'rename', 'publish', 'install', 'uninstall',
+  'grant', 'revoke', 'run', 'execute', 'start', 'stop', 'kill', 'restart', 'deploy', 'commit',
+  'push', 'merge', 'reply', 'comment', 'assign', 'close', 'open',
+])
+
+/**
+ * Classify one discovered tool for the permission blocks. Server annotations win;
+ * the name supplies the fallback. Kept in sync with the browser half so a tool
+ * always lands in the same block on both sides.
+ * @param {{ name?: string, readOnly?: boolean, destructive?: boolean, group?: string }} tool Tool descriptor.
+ * @returns {'read' | 'write' | 'other'} Block key.
+ */
+function classifyTool(tool) {
+  if (tool?.group === 'read' || tool?.group === 'write' || tool?.group === 'other') return tool.group
+  if (tool?.destructive === true) return 'write'
+  if (tool?.readOnly === true) return 'read'
+  const words = String(tool?.name ?? '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map(word => word.toLowerCase())
+  if (words.some(word => WRITE_WORDS.has(word))) return 'write'
+  if (words.some(word => READ_WORDS.has(word))) return 'read'
+  return 'other'
+}
+
+/**
+ * Validate the durable per-block permission policies.
+ * @param {unknown} input Untrusted map.
+ * @returns {Record<'read' | 'write' | 'other', 'allow' | 'ask' | 'deny'>} Normalized map.
+ */
+function normalizeGroupPolicies(input) {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) return {}
+  const out = {}
+  for (const [name, value] of Object.entries(input)) {
+    if (!GROUP_KEYS.has(name)) continue
+    if (PERMISSION_VALUES.has(value)) out[name] = value
+  }
+  return out
+}
+
 /**
  * Validate the per-tool permission map.
  * @param {unknown} input Untrusted map.
@@ -1292,7 +1422,7 @@ function normalizePermissions(input) {
   const out = {}
   for (const [name, value] of Object.entries(input)) {
     if (typeof name !== 'string' || name.length === 0) continue
-    if (value === 'allow' || value === 'ask' || value === 'deny') out[name] = value
+    if (PERMISSION_VALUES.has(value)) out[name] = value
   }
   return out
 }
@@ -1364,6 +1494,8 @@ async function handleRequest(manager, request, response) {
         const server = {
           id: randomBytes(8).toString('hex'),
           ...fields,
+          permissions: {},
+          groupPolicies: {},
           runtime: {
             status: 'idle',
             tools: [],
@@ -1402,7 +1534,8 @@ async function handleRequest(manager, request, response) {
 
       if (action === 'permissions' && method === 'PUT') {
         const body = await readJsonBody(request)
-        server.permissions = normalizePermissions(body?.permissions)
+        if (body?.permissions !== undefined) server.permissions = normalizePermissions(body.permissions)
+        if (body?.groupPolicies !== undefined) server.groupPolicies = normalizeGroupPolicies(body.groupPolicies)
         manager.persist()
         if (server.runtime.status === 'connected') await manager.syncTools(server)
         reply(200, { ok: true, data: { server: manager.view(server), servers: manager.list() } })
@@ -1486,7 +1619,16 @@ export function apply(ctx) {
       if (entry === undefined) return decision
       const server = manager.find(entry.serverId)
       if (server === undefined) return decision
-      if (manager.permissionFor(server, entry.rawName) !== 'ask') return decision
+      const permission = manager.permissionFor(server, entry.rawName)
+      // A deny is monotonic here: it must hold even if the tool is still
+      // registered through a stale generation or another registration path.
+      if (permission === 'deny') {
+        return {
+          kind: 'deny',
+          reason: `La herramienta MCP «${entry.rawName}» del servidor ${server.name} está denegada`,
+        }
+      }
+      if (permission !== 'ask') return decision
       // Never weaken a stronger decision taken further down the chain.
       if (decision?.kind !== 'allow') return decision
       return {

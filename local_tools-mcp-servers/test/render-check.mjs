@@ -33,12 +33,15 @@ const SERVERS = [
     status: 'connected',
     protocolVersion: '2025-06-18',
     serverInfo: { name: 'dsh-demo-tools', version: '1.0.0' },
-    toolCount: 3,
-    permissions: {},
+    toolCount: 5,
+    permissions: { pods_delete: 'deny' },
+    groupPolicies: {},
     tools: [
-      { name: 'echo', description: 'Echoes back the provided text.', readOnly: false, destructive: false },
-      { name: 'add', description: 'Adds two numbers and returns the sum.', readOnly: false, destructive: false },
-      { name: 'server_info', description: 'Reports the host process facts.', readOnly: true, destructive: false },
+      { name: 'echo', description: 'Echoes back the provided text.', readOnly: false, destructive: false, group: 'other' },
+      { name: 'add', description: 'Adds two numbers and returns the sum.', readOnly: false, destructive: false, group: 'write' },
+      { name: 'server_info', description: 'Reports the host process facts.', readOnly: true, destructive: false, group: 'read' },
+      { name: 'pods_delete', description: 'Delete a Pod.', readOnly: false, destructive: true, group: 'write' },
+      { name: 'resources_delete', description: 'Delete any resource.', readOnly: false, destructive: true, group: 'write' },
     ],
     error: undefined,
     target: 'node /tmp/demo-mcp-server.mjs',
@@ -171,9 +174,11 @@ const sandbox = {
     fetchCalls.push({ url, options })
     let servers = SERVERS
     if (typeof url === 'string' && url.endsWith('/permissions') && options && options.body !== undefined) {
-      const sent = JSON.parse(options.body).permissions
+      const sent = JSON.parse(options.body)
       const id = decodeURIComponent(url.split('/servers/')[1].split('/permissions')[0])
-      servers = SERVERS.map((server) => (server.id === id ? { ...server, permissions: sent } : server))
+      servers = SERVERS.map((server) => (server.id === id
+        ? { ...server, permissions: sent.permissions ?? server.permissions, groupPolicies: sent.groupPolicies ?? server.groupPolicies }
+        : server))
     }
     return {
       ok: true,
@@ -268,7 +273,7 @@ const expected = [
   'Da a tus agentes capacidades extra mediante servidores MCP.',
   'Demo',
   'MCP 2025-06-18',
-  'Conectado · 3 herramientas',
+  'Conectado · 5 herramientas',
   'node /tmp/demo-mcp-server.mjs',
   'echo',
   'add',
@@ -366,17 +371,27 @@ await settle()
 const namelink = findNode(node => node.props && node.props.className === 'tms-namelink')
 namelink.props.onClick()
 const permissionText = render()
-for (const fragment of ['Permisos de herramientas', 'Herramientas de solo lectura', 'Herramientas de escritura/eliminación', 'Otras herramientas', 'Echo', 'Server info', 'Permitir siempre']) {
+for (const fragment of ['Permisos de herramientas', 'Herramientas de solo lectura', 'Herramientas de escritura/eliminación', 'Otras herramientas', 'Echo', 'Server info', 'Resources delete', 'Otra herramienta destructiva sigue permitida', 'Permitir siempre']) {
   if (!permissionText.includes(fragment)) throw new Error(`permissions view is missing ${fragment}`)
 }
+
+// Denying one destructive tool while a sibling stays allowed must offer the
+// durable block action, and that action must send a block policy.
+const overlapButton = findNode(node => node.props && node.props.className === 'tms-overlapbtn')
+overlapButton.props.onClick()
+await settle()
+const overlapCall = fetchCalls.filter(call => call.options && call.options.method === 'PUT' && String(call.url).endsWith('/permissions')).at(-1)
+let permissionBody = JSON.parse(overlapCall.options.body)
+if (permissionBody.groupPolicies.write !== 'deny') throw new Error(`the overlap action sent no write block policy: ${overlapCall.options.body}`)
+if (permissionBody.permissions.pods_delete !== undefined) throw new Error('the block action left a per-tool override behind')
 
 const echoGroup = findNode(node => node.props && node.props.role === 'radiogroup' && node.props['aria-label'] === 'Echo')
 if (echoGroup.props.children.length !== 3) throw new Error('the permission control must offer three choices')
 echoGroup.props.children[2].props.onClick()
 await settle()
-const denyCall = fetchCalls.find(call => call.options && call.options.method === 'PUT' && String(call.url).endsWith('/permissions'))
+const denyCall = fetchCalls.filter(call => call.options && call.options.method === 'PUT' && String(call.url).endsWith('/permissions')).at(-1)
 if (denyCall === undefined) throw new Error('changing a tool permission sent no PUT')
-let permissionBody = JSON.parse(denyCall.options.body)
+permissionBody = JSON.parse(denyCall.options.body)
 if (permissionBody.permissions.echo !== 'deny') throw new Error(`unexpected permission body ${denyCall.options.body}`)
 
 const echoGroupAfter = findNode(node => node.props && node.props.role === 'radiogroup' && node.props['aria-label'] === 'Echo')
@@ -389,7 +404,8 @@ groupSelect.props.onChange({ target: { value: 'ask' } })
 await settle()
 const groupCall = fetchCalls.filter(call => call.options && call.options.method === 'PUT' && String(call.url).endsWith('/permissions')).at(-1)
 permissionBody = JSON.parse(groupCall.options.body)
-if (permissionBody.permissions.server_info !== 'ask') throw new Error(`the block choice missed its tools: ${groupCall.options.body}`)
+if (permissionBody.groupPolicies.read !== 'ask') throw new Error(`the block choice sent no read policy: ${groupCall.options.body}`)
+if (permissionBody.permissions.server_info !== undefined) throw new Error('the block choice left a per-tool override behind')
 
 const backLink = findNode(node => node.props && node.props.className === 'tms-backlink')
 backLink.props.onClick()

@@ -31,7 +31,31 @@ immediately:
   `tools/pre-execute` waterfall with an approval request before dispatch. It
   never weakens a stronger decision taken elsewhere in the chain.
 - **Deny** — the tool is removed from `ctx.tools`, so the model does not see it
-  and cannot call it. Re-allowing registers it again.
+  and cannot call it. Re-allowing registers it again. Denial is also re-checked
+  by the tool body, so a registration captured before the change cannot run.
+
+Permissions have two levels:
+
+- **Per tool** — the segment control on each row. It affects exactly that tool
+  name.
+- **Per block** — the selector on the *read-only*, *write/delete*, and *other*
+  group headers. It is a durable policy: it applies to the tools the server
+  publishes later and to any tool its name classifies into that block, and it
+  clears the per-tool overrides it replaces.
+
+A per-tool deny is not a guarantee about an operation when the same server
+exposes a second tool that performs it. Kubernetes, for instance, publishes both
+`pods_delete` and the generic `resources_delete`, so denying only the former
+still leaves pod deletion reachable. The page warns about that overlap and
+offers a one-click deny for the whole write/delete block.
+
+## Test
+
+`npm test` runs the permission suite against a real stdio MCP child — deny,
+ask and allow resolution, the block policy, the `tools/pre-execute` gate, and
+the dispose-before-register refresh that keeps allowed tools alive when a policy
+changes — followed by the browser render check, which also exercises the overlap
+warning and the block selector.
 
 ## Layout
 
