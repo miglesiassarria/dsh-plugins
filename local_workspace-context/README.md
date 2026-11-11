@@ -55,8 +55,9 @@ táctiles.
 
 ## Aspecto de los espacios
 
-En **Configurar espacio → Aspecto** cada espacio puede llevar un color y un
-icono propios:
+En **Configurar espacio**, pulsa el icono del espacio (lleva un pequeño lápiz)
+o el botón **Aspecto** para abrir el editor en un recuadro compacto.
+El recuadro tiene dos pestañas:
 
 - **Color**: una paleta rápida, un selector de color libre o **Automático** para
   volver al color del tema. Se aplica a la carpeta y a los iconos predefinidos.
@@ -67,6 +68,10 @@ icono propios:
   reduce a 64×64 y se guarda como data URL en el propio registro del espacio.
   Las imágenes conservan sus colores; el color elegido afecta a la carpeta y a
   los iconos predefinidos.
+
+El editor se cierra con su aspa, con Escape o volviendo a pulsar el icono o
+**Aspecto**; el resto del diálogo queda como antes, sin la parrilla de colores e
+iconos siempre visible.
 
 El color y el icono se ven en la fila de la barra lateral y en la cabecera de la
 página del proyecto. La configuración vive en

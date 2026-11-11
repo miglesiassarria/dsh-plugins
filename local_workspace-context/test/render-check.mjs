@@ -500,8 +500,6 @@ for (const fragment of [
   'Descripción',
   'Prompt del sistema',
   'Aspecto',
-  'Color',
-  'Icono',
   'Archivos y carpetas de contexto',
   'Añadir carpeta',
   'Añadir archivos',
@@ -513,10 +511,29 @@ for (const fragment of [
     throw new Error(`dialog is missing ${fragment}`)
   }
 }
+if (text.includes('Subir imagen') || text.includes('Automático')) {
+  throw new Error('the appearance editor should start collapsed')
+}
 
+const iconTrigger = collected.find(node => node.type === 'button' && String(node.props?.className).split(' ').includes('wsc-iconbutton'))
+const editTrigger = collected.find(node => node.type === 'button' && String(node.props?.className).split(' ').includes('wsc-editlink'))
+if (iconTrigger === undefined || editTrigger === undefined) throw new Error('the dialog rendered no appearance edit trigger')
+editTrigger.props.onClick()
+text = renderOverlay()
+for (const fragment of ['Icono', 'Color']) {
+  if (!text.includes(fragment)) throw new Error(`the appearance editor is missing ${fragment}`)
+}
+const colorTab = collected.find(node => node.type === 'button' && node.props?.role === 'tab' && String(node.props?.children).includes('Color'))
+if (colorTab === undefined) throw new Error('the appearance editor rendered no color tab')
+colorTab.props.onClick()
+text = renderOverlay()
 const colorInput = collected.find(node => node.type === 'input' && node.props?.type === 'color')
 if (colorInput === undefined) throw new Error('the dialog rendered no color input')
 colorInput.props.onChange({ target: { value: '#123abc' } })
+const iconTab = collected.find(node => node.type === 'button' && node.props?.role === 'tab' && String(node.props?.children).includes('Icono'))
+if (iconTab === undefined) throw new Error('the appearance editor rendered no icon tab')
+iconTab.props.onClick()
+text = renderOverlay()
 const iconButton = collected.find(node => node.props?.className?.split(' ').includes('wsc-iconchoice') && node.props?.title === 'Código')
 if (iconButton === undefined) throw new Error('the dialog rendered no code icon')
 iconButton.props.onClick()

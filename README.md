@@ -125,7 +125,9 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 - **Dictado con Groq**: en **Ajustes → General → Dictado con Groq**, pega tu
   clave de Groq, elige el modelo de Whisper y guarda. En el compositor aparece
   un micrófono entre el selector de modelo y Enviar: pulsa para grabar, habla
-  y vuelve a pulsar para que Groq transcriba y escriba el texto en el borrador.
+  y pulsa Enter (o vuelve a pulsar el micrófono) para que Groq transcriba y
+  escriba el texto en el borrador. El foco vuelve al compositor, así que un
+  segundo Enter envía el mensaje.
   La clave se guarda en `$DSH_HOME/groq-dictation/settings.json` (permisos
   `0600`); el audio solo sale del equipo al detener la grabación.
 - **Modelo predeterminado**: abre **Ajustes → Modelos**. Arriba del todo, junto

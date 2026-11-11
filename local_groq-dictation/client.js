@@ -39,11 +39,11 @@ window.__ModuleLoader__.load({
         },
         mic: {
           idle: 'Dictate with Groq',
-          recording: 'Stop dictation',
+          recording: 'Stop dictation (Enter)',
           requesting: 'Asking for microphone permission…',
           transcribing: 'Transcribing…',
           notConfigured: 'Add your Groq API key in Settings → General to use dictation.',
-          recordingAria: 'Recording, {time}',
+          recordingAria: 'Recording, {time}. Press Enter to finish.',
         },
         error: {
           generic: 'The dictation request failed.',
@@ -97,11 +97,11 @@ window.__ModuleLoader__.load({
         },
         mic: {
           idle: 'Dictar con Groq',
-          recording: 'Detener dictado',
+          recording: 'Detener dictado (Enter)',
           requesting: 'Pidiendo permiso al micrófono…',
           transcribing: 'Transcribiendo…',
           notConfigured: 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
-          recordingAria: 'Grabando, {time}',
+          recordingAria: 'Grabando, {time}. Pulsa Enter para terminar.',
         },
         error: {
           generic: 'La petición de dictado falló.',
@@ -487,6 +487,7 @@ window.__ModuleLoader__.load({
           const phaseRef = React.useRef('idle');
           const draftRef = React.useRef(draft);
           const actionsRef = React.useRef(props.inputActions);
+          const buttonRef = React.useRef(null);
           const insertionRef = React.useRef(null);
           const recorderRef = React.useRef(null);
           const streamRef = React.useRef(null);
@@ -505,6 +506,36 @@ window.__ModuleLoader__.load({
           function showNotice(text) {
             noticeSeqRef.current += 1;
             setNotice({ text, seq: noticeSeqRef.current });
+          }
+
+          /**
+           * Return the keyboard to the composer. The public input actions expose
+           * no focus verb, so mirror the shell's own focus sequence on the Lexical
+           * root: focus the contenteditable and then the editor, which restores
+           * the selection left by the insertion.
+           */
+          function focusComposer() {
+            if (typeof document === 'undefined') return;
+            const focusRoot = (root) => {
+              if (root === null || root === undefined) return;
+              try {
+                if (typeof root.focus === 'function') root.focus({ preventScroll: true });
+                const editor = root.__lexicalEditor;
+                if (editor && typeof editor.focus === 'function') editor.focus();
+              } catch {
+                // Focus can fail while the composer is being replaced.
+              }
+            };
+            let node = buttonRef.current ? buttonRef.current.parentElement : null;
+            while (node !== null && node !== document.body) {
+              const root = node.querySelector('[contenteditable="true"]');
+              if (root !== null) {
+                focusRoot(root);
+                return;
+              }
+              node = node.parentElement;
+            }
+            focusRoot(document.querySelector('[contenteditable="true"]'));
           }
 
           function releaseMedia() {
@@ -572,6 +603,7 @@ window.__ModuleLoader__.load({
             if (blob.size === 0) {
               changePhase('idle');
               showNotice(translate('error.empty-audio'));
+              focusComposer();
               return;
             }
             try {
@@ -581,10 +613,12 @@ window.__ModuleLoader__.load({
               if (text === '') throw Object.assign(new Error('empty-transcript'), { code: 'empty-transcript' });
               insertTranscript(text);
               changePhase('idle');
+              focusComposer();
             } catch (error) {
               if (cancelledRef.current) return;
               changePhase('idle');
               showNotice(describeError(error, translate));
+              focusComposer();
             }
           }
 
@@ -733,6 +767,20 @@ window.__ModuleLoader__.load({
           }, [phase, seconds]);
 
           React.useEffect(() => {
+            const onKeyDown = (event) => {
+              const currentPhase = phaseRef.current;
+              if (currentPhase === 'idle') return;
+              if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+              if (currentPhase === 'recording') stopRecording();
+            };
+            window.addEventListener('keydown', onKeyDown, true);
+            return () => window.removeEventListener('keydown', onKeyDown, true);
+          }, []);
+
+          React.useEffect(() => {
             if (notice === null) return undefined;
             const timer = setTimeout(() => setNotice(null), 8000);
             return () => clearTimeout(timer);
@@ -767,6 +815,7 @@ window.__ModuleLoader__.load({
             h('style', null, CSS),
             recording ? h('span', { className: 'grd-rec-time', 'aria-hidden': true }, time) : null,
             h('button', {
+              ref: buttonRef,
               type: 'button',
               className: 'grd-mic' + (recording ? ' is-recording' : ''),
               'aria-label': recording ? fill(translate('mic.recordingAria'), { time }) : label,

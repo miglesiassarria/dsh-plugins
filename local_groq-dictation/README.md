@@ -15,7 +15,7 @@ solo habla con una ruta local del Host, que es quien llama a Groq.
 - Un botón de micrófono en la barra de herramientas del compositor, entre el
   selector de modelo y el botón de Enviar. Durante la grabación muestra el
   tiempo y un cuadrado de parada; al terminar muestra un indicador de
-  transcripción.
+  transcripción. También puedes terminar la grabación pulsando **Enter**.
 - Inserción del texto en el borrador con una sola operación de deshacer. Si el
   borrador cambió mientras se transcribía, el texto se añade al final en lugar
   de pisar lo que hayas escrito.
@@ -41,9 +41,11 @@ primero que soporte el navegador.
    **Guardar**. La fila muestra `Clave guardada ···· <últimos 4>`.
 3. En un chat, pulsa el micrófono del compositor. El navegador pedirá permiso
    para usar el micrófono la primera vez.
-4. Habla y vuelve a pulsar el micrófono. Mientras transcribe verás el
-   indicador giratorio; al terminar, el texto aparece en el borrador.
-5. Revisa el texto y envíalo con Enter como cualquier otro mensaje.
+4. Habla y pulsa **Enter** para terminar (o vuelve a pulsar el micrófono). El
+   Enter se intercepta mientras grabas y mientras procesa la transcripción, así
+   que no envía el mensaje. Mientras transcribe verás el indicador giratorio;
+   al terminar, el texto aparece en el borrador y el foco vuelve al compositor,
+   así que puedes revisar y pulsar Enter otra vez para enviar.
 
 El dictado se puede usar en cualquier sesión. Si cierras Ajustes, la clave
 sigue guardada y el micrófono funciona sin recargar la página. Para desactivar

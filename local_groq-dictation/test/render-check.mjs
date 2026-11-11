@@ -50,14 +50,14 @@ const React = {
     if (deps === undefined) {
       if (effectKeys.has(key)) return
       effectKeys.add(key)
-      pendingEffects.push({ key, fn })
+      pendingEffects.push({ key, fn, deps })
       return
     }
     const previous = effectDeps.get(key)
     const changed = previous === undefined || previous.length !== deps.length || deps.some((value, index) => !Object.is(value, previous[index]))
     if (!changed) return
     effectDeps.set(key, deps)
-    pendingEffects.push({ key, fn })
+    pendingEffects.push({ key, fn, deps })
   },
   useRef(initial) {
     const key = `${currentPath}#${hooksIndex++}`
@@ -142,11 +142,11 @@ function translate(key, params) {
     'model.whisper-large-v3': 'Whisper Large v3 · el más preciso',
     'model.distil-whisper-large-v3-en': 'Distil Whisper Large v3 · solo inglés',
     'mic.idle': 'Dictar con Groq',
-    'mic.recording': 'Detener dictado',
+    'mic.recording': 'Detener dictado (Enter)',
     'mic.requesting': 'Pidiendo permiso al micrófono…',
     'mic.transcribing': 'Transcribiendo…',
     'mic.notConfigured': 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
-    'mic.recordingAria': 'Grabando, {time}',
+    'mic.recordingAria': 'Grabando, {time}. Pulsa Enter para terminar.',
     'error.generic': 'La petición de dictado falló.',
     'error.invalid-key': 'Groq ha rechazado la clave API. Revísala en Ajustes → General.',
     'error.not-configured': 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
@@ -186,10 +186,26 @@ class FakeMediaRecorder {
   }
 }
 
+const windowListeners = new Set()
+const activeIntervals = new Set()
+const focusCalls = { root: 0, editor: 0 }
+const editorRoot = {
+  focus() { focusCalls.root += 1 },
+  __lexicalEditor: {
+    focus() { focusCalls.editor += 1 },
+  },
+}
 const sandbox = {
   console,
-  document: { querySelector: () => null, head: { appendChild() {} } },
-  window: {},
+  document: { querySelector: (selector) => (selector === '[contenteditable="true"]' ? editorRoot : null), body: null, head: { appendChild() {} } },
+  window: {
+    addEventListener(type, listener) {
+      if (type === 'keydown') windowListeners.add(listener)
+    },
+    removeEventListener(type, listener) {
+      if (type === 'keydown') windowListeners.delete(listener)
+    },
+  },
   navigator: {
     mediaDevices: {
       async getUserMedia() {
@@ -203,6 +219,15 @@ const sandbox = {
   FormData,
   setTimeout,
   clearTimeout,
+  setInterval: (fn, ms) => {
+    const id = setInterval(fn, ms)
+    activeIntervals.add(id)
+    return id
+  },
+  clearInterval: (id) => {
+    activeIntervals.delete(id)
+    clearInterval(id)
+  },
   fetch: async (url, options = {}) => {
     const target = String(url)
     fetchCalls.push({ url: target, options })
@@ -393,12 +418,29 @@ micButton.props.onClick()
 text = await settle(mic, micProps, 'mic')
 micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
 if (micButton.props['aria-pressed'] !== true) throw new Error('the microphone did not enter the recording state')
+if (!String(micButton.props['aria-label']).includes('Pulsa Enter')) throw new Error('the recording label does not mention Enter')
 if (!text.includes('0:00')) throw new Error(`the recording timer is missing: ${text}`)
-micButton.props.onClick()
+if (windowListeners.size !== 1) throw new Error(`expected one Enter listener, got ${windowListeners.size}`)
+const enter = {
+  key: 'Enter',
+  code: 'Enter',
+  keyCode: 13,
+  isComposing: false,
+  defaultPrevented: false,
+  propagationStopped: false,
+  preventDefault() { this.defaultPrevented = true },
+  stopPropagation() { this.propagationStopped = true },
+  stopImmediatePropagation() {},
+}
+for (const listener of [...windowListeners]) listener(enter)
+if (!enter.defaultPrevented) throw new Error('Enter was not intercepted while recording')
+if (!enter.propagationStopped) throw new Error('Enter was not stopped from reaching the composer')
 text = await settle(mic, micProps, 'mic')
 if (insertions.length !== 1) throw new Error(`expected one transcript insertion, got ${insertions.length}`)
 if (insertions[0].value !== ' Hola mundo. ') throw new Error(`unexpected inserted text: ${JSON.stringify(insertions[0].value)}`)
 if (insertions[0].span.start !== 4 || insertions[0].span.draftRev !== 1) throw new Error('the insertion span was not reused')
+if (focusCalls.root !== 1) throw new Error(`expected the composer to regain focus, got ${focusCalls.root} focus calls`)
+if (focusCalls.editor !== 1) throw new Error(`expected the Lexical editor to regain focus, got ${focusCalls.editor} focus calls`)
 if (text.includes('La petición de dictado falló')) throw new Error('a successful transcript showed an error')
 
 // A rejected key becomes a localized notice and leaves the draft untouched.
@@ -420,4 +462,5 @@ micButton.props.onClick()
 text = await settle(mic, micProps, 'mic')
 if (!text.includes('Se ha denegado el acceso al micrófono')) throw new Error(`the permission notice is missing: ${text}`)
 
+for (const id of activeIntervals) clearInterval(id)
 console.log('Render check OK:', registrations.map(entry => entry.options.name).join(', '))

@@ -28,11 +28,11 @@
   },
   "mic": {
     "idle": "Dictate with Groq",
-    "recording": "Stop dictation",
+    "recording": "Stop dictation (Enter)",
     "requesting": "Asking for microphone permission…",
     "transcribing": "Transcribing…",
     "notConfigured": "Add your Groq API key in Settings → General to use dictation.",
-    "recordingAria": "Recording, {time}"
+    "recordingAria": "Recording, {time}. Press Enter to finish."
   },
   "error": {
     "generic": "The dictation request failed.",

@@ -28,11 +28,11 @@
   },
   "mic": {
     "idle": "Dictar con Groq",
-    "recording": "Detener dictado",
+    "recording": "Detener dictado (Enter)",
     "requesting": "Pidiendo permiso al micrófono…",
     "transcribing": "Transcribiendo…",
     "notConfigured": "Añade tu clave API de Groq en Ajustes → General para usar el dictado.",
-    "recordingAria": "Grabando, {time}"
+    "recordingAria": "Grabando, {time}. Pulsa Enter para terminar."
   },
   "error": {
     "generic": "La petición de dictado falló.",
