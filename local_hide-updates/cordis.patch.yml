@@ -1,0 +1,12 @@
+# Hide every in-page desktop update affordance.
+#
+# While this bundle is active its Client half owns a stylesheet that removes the
+# update button beside Settings and the new-version dot on the collapsed sidebar
+# expand button. Disable or remove the bundle to restore them.
+#
+# The native macOS menu item "Check for Updates…" and the shell-owned mandatory
+# update window are outside the Web page and are not affected.
+
+- insert:
+    - id: hide-updates
+      name: '@local/hide-updates'

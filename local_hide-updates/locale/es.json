@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Ocultar avisos de actualización",
+    "description": "Oculta el botón Actualizar que está junto a Configuración y el punto de nueva versión de la barra lateral plegada, para que la página web nunca anuncie una actualización pendiente."
+  }
+}

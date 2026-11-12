@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Hide update prompts",
+    "description": "Hides the update button beside Settings and the new-version dot on the collapsed sidebar, so the Web page never advertises a pending update."
+  }
+}
