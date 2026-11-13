@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DSH Sandbox",
+    "description": "Run a session inside a cage: only tools, no CLI, and files limited to the workspace and granted folders."
+  }
+}

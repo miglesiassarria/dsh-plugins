@@ -12,7 +12,7 @@ window.__ModuleLoader__.load({
     const MODELS = ['whisper-large-v3-turbo', 'whisper-large-v3', 'distil-whisper-large-v3-en'];
     const MAX_RECORDING_SECONDS = 600;
 
-    const DICTS = {
+    const STRINGS = {
       en: {
         settings: {
           title: 'Groq dictation',
@@ -31,6 +31,13 @@ window.__ModuleLoader__.load({
           clearDone: 'Key deleted.',
           needKey: 'Enter a key to turn dictation on.',
           privacy: 'Audio is sent to Groq only when you stop recording.',
+          secureContextHint: 'On a phone, open the GUI over HTTPS (the tunnel link): Safari and Chrome block the microphone on plain HTTP.',
+          hostMicLabel: 'Computer microphone',
+          hostMicDesc: 'When the browser cannot record (Safari on a phone over HTTP), dictation records with this computer\'s microphone. Useful when you are near it.',
+          hostMicOn: 'Allowed as a fallback',
+          hostMicOff: 'Never use it',
+          hostMicAvailable: 'Available: {device}',
+          hostMicUnavailable: 'No microphone this computer can record from.',
         },
         model: {
           'whisper-large-v3-turbo': 'Whisper Large v3 Turbo · fastest',
@@ -39,11 +46,16 @@ window.__ModuleLoader__.load({
         },
         mic: {
           idle: 'Dictate with Groq',
+          idleHost: 'Dictate with the computer microphone',
           recording: 'Stop dictation (Enter)',
+          recordingHost: 'Stop dictation (computer microphone)',
           requesting: 'Asking for microphone permission…',
+          startingHost: 'Opening the computer microphone…',
           transcribing: 'Transcribing…',
           notConfigured: 'Add your Groq API key in Settings → General to use dictation.',
           recordingAria: 'Recording, {time}. Press Enter to finish.',
+          recordingAriaHost: 'Recording with the computer microphone, {time}. Press Enter to finish.',
+          hostTag: 'computer',
         },
         error: {
           generic: 'The dictation request failed.',
@@ -65,7 +77,15 @@ window.__ModuleLoader__.load({
           'too-large': 'The request was too large.',
           'microphone-denied': 'Microphone access was denied. Allow it in the browser and try again.',
           'microphone-missing': 'No microphone was found.',
+          'microphone-insecure': 'The microphone needs HTTPS. Open the app with the tunnel link, not the LAN address.',
+          'microphone-unsupported': 'This browser does not expose a microphone to the page.',
+          'microphone-busy': 'The microphone is in use by another app or call. Close it and try again.',
           'microphone-failed': 'The microphone could not be opened.',
+          'host-mic-unavailable': 'This computer has no microphone dictation can use.',
+          'host-mic-disabled': 'The computer microphone is turned off in Settings → General.',
+          'host-mic-busy': 'A recording is already running.',
+          'host-mic-failed': 'The computer microphone could not be opened.',
+          'not-recording': 'There was no recording to stop.',
           'recorder-unavailable': 'This browser cannot record audio.',
           'recording-failed': 'The recording failed. Try again.',
           'not-configured': 'Add your Groq API key in Settings → General to use dictation.',
@@ -89,6 +109,13 @@ window.__ModuleLoader__.load({
           clearDone: 'Clave borrada.',
           needKey: 'Introduce una clave para activar el dictado.',
           privacy: 'El audio solo se envía a Groq cuando detienes la grabación.',
+          secureContextHint: 'En el móvil, abre la GUI por HTTPS (el enlace del túnel): Safari y Chrome bloquean el micrófono en HTTP.',
+          hostMicLabel: 'Micrófono del ordenador',
+          hostMicDesc: 'Cuando el navegador no puede grabar (Safari en el móvil por HTTP), el dictado graba con el micrófono de este ordenador. Útil si estás cerca de él.',
+          hostMicOn: 'Permitido como alternativa',
+          hostMicOff: 'No usarlo nunca',
+          hostMicAvailable: 'Disponible: {device}',
+          hostMicUnavailable: 'Este ordenador no tiene un micrófono que el dictado pueda usar.',
         },
         model: {
           'whisper-large-v3-turbo': 'Whisper Large v3 Turbo · el más rápido',
@@ -97,11 +124,16 @@ window.__ModuleLoader__.load({
         },
         mic: {
           idle: 'Dictar con Groq',
+          idleHost: 'Dictar con el micrófono del ordenador',
           recording: 'Detener dictado (Enter)',
+          recordingHost: 'Detener dictado (micrófono del ordenador)',
           requesting: 'Pidiendo permiso al micrófono…',
+          startingHost: 'Abriendo el micrófono del ordenador…',
           transcribing: 'Transcribiendo…',
           notConfigured: 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
           recordingAria: 'Grabando, {time}. Pulsa Enter para terminar.',
+          recordingAriaHost: 'Grabando con el micrófono del ordenador, {time}. Pulsa Enter para terminar.',
+          hostTag: 'ordenador',
         },
         error: {
           generic: 'La petición de dictado falló.',
@@ -123,13 +155,38 @@ window.__ModuleLoader__.load({
           'too-large': 'La petición era demasiado grande.',
           'microphone-denied': 'Se ha denegado el acceso al micrófono. Permítelo en el navegador y vuelve a intentarlo.',
           'microphone-missing': 'No se ha encontrado ningún micrófono.',
+          'microphone-insecure': 'El micrófono necesita HTTPS. Abre la app con el enlace del túnel, no con la dirección de la red local.',
+          'microphone-unsupported': 'Este navegador no expone ningún micrófono a la página.',
+          'microphone-busy': 'El micrófono está ocupado por otra app o llamada. Ciérrala y vuelve a intentarlo.',
           'microphone-failed': 'No se pudo abrir el micrófono.',
+          'host-mic-unavailable': 'Este ordenador no tiene un micrófono que el dictado pueda usar.',
+          'host-mic-disabled': 'El micrófono del ordenador está desactivado en Ajustes → General.',
+          'host-mic-busy': 'Ya hay una grabación en marcha.',
+          'host-mic-failed': 'No se pudo abrir el micrófono del ordenador.',
+          'not-recording': 'No había ninguna grabación que detener.',
           'recorder-unavailable': 'Este navegador no puede grabar audio.',
           'recording-failed': 'La grabación falló. Inténtalo de nuevo.',
           'not-configured': 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
         },
       },
     };
+
+    /**
+     * The locale runtime indexes dictionaries by dotted key, so the readable
+     * nested tree above is flattened once before registration. Registering it
+     * as-is made every lookup fall back to the key itself.
+     */
+    function flattenDict(source, prefix = '') {
+      const out = {};
+      for (const [key, value] of Object.entries(source)) {
+        const name = prefix === '' ? key : `${prefix}.${key}`;
+        if (typeof value === 'string') out[name] = value;
+        else if (value !== null && typeof value === 'object') Object.assign(out, flattenDict(value, name));
+      }
+      return out;
+    }
+
+    const DICTS = { en: flattenDict(STRINGS.en), es: flattenDict(STRINGS.es) };
 
     const CSS = `
       .grd-row{display:flex;flex-direction:column;gap:10px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2);}
@@ -138,6 +195,7 @@ window.__ModuleLoader__.load({
       .grd-title{font-size:14px;line-height:22px;color:var(--dsw-alias-label-primary);}
       .grd-desc{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:560px;}
       .grd-hint{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);}
+      .grd-hint-warn{color:var(--dsw-alias-state-error-primary);}
       .grd-badge{flex:none;font-size:11px;line-height:16px;color:var(--dsw-alias-state-success-primary);background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 12%,transparent);border-radius:999px;padding:3px 8px;white-space:nowrap;}
       .grd-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
       .grd-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
@@ -146,6 +204,9 @@ window.__ModuleLoader__.load({
       .grd-input,.grd-select{box-sizing:border-box;height:34px;border:.5px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;padding:0 10px;min-width:0;}
       .grd-select{min-width:220px;}
       .grd-input:focus-visible,.grd-select:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;}
+      .grd-check{display:inline-flex;align-items:center;gap:8px;height:34px;font-size:12px;color:var(--dsw-alias-label-primary);cursor:pointer;}
+      .grd-check input{width:15px;height:15px;margin:0;accent-color:var(--dsw-alias-brand-primary);}
+      .grd-field-check{flex:0 1 260px;}
       .grd-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
       .grd-btn{height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer;}
       .grd-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);}
@@ -164,8 +225,9 @@ window.__ModuleLoader__.load({
       .grd-mic.is-recording{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 16%,transparent);color:var(--dsw-alias-state-error-primary);}
       .grd-stop-icon{display:block;width:9px;height:9px;border-radius:2px;background:currentColor;}
       .grd-rec-time{font-size:11px;line-height:1;font-variant-numeric:tabular-nums;color:var(--dsw-alias-state-error-primary);white-space:nowrap;}
+      .grd-mic-tag{font-size:10px;line-height:1;padding:3px 6px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);white-space:nowrap;}
       .grd-spin{display:block;width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:grd-spin .8s linear infinite;}
-      .grd-mic-notice{font-size:11px;line-height:1.3;color:var(--dsw-alias-state-error-primary);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      .grd-mic-notice{font-size:11px;line-height:1.3;color:var(--dsw-alias-state-error-primary);max-width:240px;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
       .grd-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
       @keyframes grd-spin{to{transform:rotate(360deg);}}
       @media (prefers-reduced-motion:reduce){.grd-spin{animation:none;}}
@@ -217,9 +279,40 @@ window.__ModuleLoader__.load({
     }
 
     function microphoneErrorKey(error) {
-      if (error && (error.name === 'NotAllowedError' || error.name === 'SecurityError')) return 'error.microphone-denied';
-      if (error && (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError')) return 'error.microphone-missing';
+      const name = error && typeof error.name === 'string' ? error.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') return 'error.microphone-denied';
+      if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') return 'error.microphone-missing';
+      if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') return 'error.microphone-busy';
+      if (name === 'TypeError' || name === 'NotSupportedError') return 'error.microphone-unsupported';
       return 'error.microphone-failed';
+    }
+
+    /**
+     * Browsers hide `navigator.mediaDevices` on insecure origins. That is what
+     * an iPhone hits when the GUI is opened over plain HTTP on the LAN, and it
+     * says nothing about the microphone being absent or denied.
+     */
+    function microphoneSupport() {
+      if (typeof window !== 'undefined' && window.isSecureContext === false) return 'insecure';
+      const devices = typeof navigator === 'undefined' ? undefined : navigator.mediaDevices;
+      if (!devices || typeof devices.getUserMedia !== 'function') return 'unsupported';
+      return 'ok';
+    }
+
+    /** Safari on macOS and every browser on iOS record MP4/AAC only. */
+    function isWebKit() {
+      if (typeof navigator === 'undefined') return false;
+      const vendor = String(navigator.vendor ?? '');
+      const userAgent = String(navigator.userAgent ?? '');
+      if (!/apple/i.test(vendor)) return false;
+      return /safari/i.test(userAgent) && !/chrome|chromium|crios|android/i.test(userAgent);
+    }
+
+    /** Keep the platform failure visible in the console; the notice cannot show it. */
+    function reportMicrophoneError(error) {
+      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+        console.warn('[groq-dictation] microphone unavailable:', error);
+      }
     }
 
     function formatTime(total) {
@@ -254,14 +347,15 @@ window.__ModuleLoader__.load({
       return payload.data;
     }
 
-    async function sendAudio(blob) {
-      const type = String(blob.type || 'audio/webm').split(';')[0].trim() || 'audio/webm';
+    async function sendAudio(blob, type) {
+      const declared = String(blob.type || type || '').split(';')[0].trim().toLowerCase();
+      const headerType = declared === '' ? 'application/octet-stream' : declared;
       let response;
       try {
         response = await fetch(ENDPOINT + '/transcribe', {
           method: 'POST',
           cache: 'no-store',
-          headers: { [HEADER]: '1', 'content-type': type },
+          headers: { [HEADER]: '1', 'content-type': headerType },
           body: blob,
         });
       } catch {
@@ -314,19 +408,51 @@ window.__ModuleLoader__.load({
           model: DEFAULT_MODEL,
           models: MODELS,
           apiKeyHint: '',
+          hostMic: true,
+          hostMicInfo: { checked: false, available: false, device: '' },
           error: null,
         });
         let loading = null;
+        let hostMicLoading = null;
+
+        /**
+         * Probe the computer microphone once. The Host answers with the device it
+         * would use, so the composer can offer the fallback before recording.
+         */
+        function loadHostMic() {
+          const current = settingsStore.get().hostMicInfo;
+          if (current.checked) return Promise.resolve(current);
+          if (hostMicLoading !== null) return hostMicLoading;
+          hostMicLoading = request('GET', '/host-mic').then((data) => {
+            settingsStore.set({
+              ...settingsStore.get(),
+              hostMicInfo: {
+                checked: true,
+                available: data?.available === true,
+                device: typeof data?.device === 'string' ? data.device : '',
+              },
+            });
+            return settingsStore.get().hostMicInfo;
+          }, () => {
+            settingsStore.set({ ...settingsStore.get(), hostMicInfo: { checked: true, available: false, device: '' } });
+            return settingsStore.get().hostMicInfo;
+          }).finally(() => {
+            hostMicLoading = null;
+          });
+          return hostMicLoading;
+        }
 
         function loadSettings() {
           if (loading !== null) return loading;
           loading = request('GET', '/settings').then((data) => {
             const next = {
+              ...settingsStore.get(),
               ready: true,
               configured: data?.configured === true,
               model: typeof data?.model === 'string' ? data.model : DEFAULT_MODEL,
               models: Array.isArray(data?.models) && data.models.length > 0 ? data.models : MODELS,
               apiKeyHint: typeof data?.apiKeyHint === 'string' ? data.apiKeyHint : '',
+              hostMic: data?.hostMic !== false,
               error: null,
             };
             settingsStore.set(next);
@@ -345,6 +471,7 @@ window.__ModuleLoader__.load({
           const state = useStore(settingsStore);
           const [keyDraft, setKeyDraft] = React.useState('');
           const [modelDraft, setModelDraft] = React.useState(state.model);
+          const [hostMicDraft, setHostMicDraft] = React.useState(state.hostMic !== false);
           const [busy, setBusy] = React.useState(false);
           const [notice, setNotice] = React.useState(null);
 
@@ -353,11 +480,17 @@ window.__ModuleLoader__.load({
           }, [state.ready]);
 
           React.useEffect(() => {
+            loadHostMic().catch(() => {});
+          }, []);
+
+          React.useEffect(() => {
             setModelDraft(state.model);
-          }, [state.model]);
+            setHostMicDraft(state.hostMic !== false);
+          }, [state.model, state.hostMic]);
 
           const ids = Array.isArray(state.models) && state.models.length > 0 ? state.models.slice() : MODELS.slice();
           if (!ids.includes(modelDraft)) ids.push(modelDraft);
+          const insecureContext = typeof window !== 'undefined' && window.isSecureContext === false;
 
           const save = async () => {
             if (busy) return;
@@ -369,15 +502,17 @@ window.__ModuleLoader__.load({
             setBusy(true);
             setNotice(null);
             try {
-              const body = { model: modelDraft };
+              const body = { model: modelDraft, hostMic: hostMicDraft };
               if (key !== '') body.apiKey = key;
               const data = await request('POST', '/settings', body);
               settingsStore.set({
+                ...settingsStore.get(),
                 ready: true,
                 configured: data?.configured === true,
                 model: typeof data?.model === 'string' ? data.model : modelDraft,
                 models: Array.isArray(data?.models) && data.models.length > 0 ? data.models : MODELS,
                 apiKeyHint: typeof data?.apiKeyHint === 'string' ? data.apiKeyHint : '',
+                hostMic: data?.hostMic !== false,
                 error: null,
               });
               setKeyDraft('');
@@ -394,13 +529,15 @@ window.__ModuleLoader__.load({
             setBusy(true);
             setNotice(null);
             try {
-              const data = await request('POST', '/settings', { apiKey: '', model: modelDraft });
+              const data = await request('POST', '/settings', { apiKey: '', model: modelDraft, hostMic: hostMicDraft });
               settingsStore.set({
+                ...settingsStore.get(),
                 ready: true,
                 configured: data?.configured === true,
                 model: typeof data?.model === 'string' ? data.model : modelDraft,
                 models: Array.isArray(data?.models) && data.models.length > 0 ? data.models : MODELS,
                 apiKeyHint: '',
+                hostMic: data?.hostMic !== false,
                 error: null,
               });
               setKeyDraft('');
@@ -437,6 +574,26 @@ window.__ModuleLoader__.load({
               onChange: (event) => setModelDraft(event.target.value),
             }, ids.map((id) => h('option', { key: id, value: id }, modelLabel(id, translate)))));
 
+          const hostMicInfo = state.hostMicInfo;
+          const hostMicField = h('div', { className: 'grd-field grd-field-check' },
+            h('span', { className: 'grd-label' }, translate('settings.hostMicLabel')),
+            h('label', { className: 'grd-check' },
+              h('input', {
+                type: 'checkbox',
+                name: 'groq-host-mic',
+                checked: hostMicDraft,
+                disabled: busy || !state.ready,
+                onChange: (event) => setHostMicDraft(event.target.checked),
+              }),
+              h('span', null, hostMicDraft ? translate('settings.hostMicOn') : translate('settings.hostMicOff'))),
+            h('span', { className: 'grd-hint' }, translate('settings.hostMicDesc')),
+            h('span', { className: 'grd-hint' },
+              hostMicInfo.checked
+                ? hostMicInfo.available
+                  ? fill(translate('settings.hostMicAvailable'), { device: hostMicInfo.device })
+                  : translate('settings.hostMicUnavailable')
+                : translate('settings.loading')));
+
           const saveButton = h('button', {
             type: 'button',
             className: 'grd-btn grd-btn-primary',
@@ -469,11 +626,14 @@ window.__ModuleLoader__.load({
               h('div', { className: 'grd-copy' },
                 h('div', { className: 'grd-title' }, translate('settings.title')),
                 h('p', { className: 'grd-desc' }, translate('settings.desc')),
-                h('p', { className: 'grd-hint' }, translate('settings.privacy'))),
+                h('p', { className: 'grd-hint' }, translate('settings.privacy')),
+                insecureContext
+                  ? h('p', { className: 'grd-hint grd-hint-warn' }, translate('settings.secureContextHint'))
+                  : null),
               state.configured
                 ? h('span', { className: 'grd-badge' }, fill(translate('settings.configured'), { hint: state.apiKeyHint }))
                 : null),
-            h('div', { className: 'grd-fields' }, keyField, modelField),
+            h('div', { className: 'grd-fields' }, keyField, modelField, hostMicField),
             h('div', { className: 'grd-actions' }, saveButton, clearButton, status));
         }
 
@@ -491,6 +651,8 @@ window.__ModuleLoader__.load({
           const insertionRef = React.useRef(null);
           const recorderRef = React.useRef(null);
           const streamRef = React.useRef(null);
+          const mimeRef = React.useRef('');
+          const modeRef = React.useRef('browser');
           const chunksRef = React.useRef([]);
           const cancelledRef = React.useRef(false);
           const noticeSeqRef = React.useRef(0);
@@ -554,8 +716,10 @@ window.__ModuleLoader__.load({
           }
 
           function pickMime() {
-            if (typeof MediaRecorder === 'undefined') return '';
-            const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+            if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return '';
+            const candidates = isWebKit()
+              ? ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+              : ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
             for (const candidate of candidates) {
               try {
                 if (MediaRecorder.isTypeSupported(candidate)) return candidate;
@@ -564,6 +728,41 @@ window.__ModuleLoader__.load({
               }
             }
             return '';
+          }
+
+          /** The container the recorder really produces, even when it reports none. */
+          function recordedType(recorder, chosen) {
+            const declared = String((recorder && recorder.mimeType) || chosen || '').split(';')[0].trim().toLowerCase();
+            if (declared !== '') return declared;
+            return isWebKit() ? 'audio/mp4' : 'audio/webm';
+          }
+
+          function createRecorder(stream, mime) {
+            try {
+              return mime === '' ? new MediaRecorder(stream) : new MediaRecorder(stream, { mimeType: mime });
+            } catch {
+              // The requested container was refused; the default one may still work.
+            }
+            try {
+              return new MediaRecorder(stream);
+            } catch {
+              return null;
+            }
+          }
+
+          function startRecorder(recorder) {
+            try {
+              recorder.start(250);
+              return true;
+            } catch {
+              // Safari versions that reject the timeslice form still accept start().
+            }
+            try {
+              recorder.start();
+              return true;
+            } catch {
+              return false;
+            }
           }
 
           function insertTranscript(text) {
@@ -596,10 +795,20 @@ window.__ModuleLoader__.load({
               releaseMedia();
               return;
             }
+            // Safari can deliver the final dataavailable right after stop(); give
+            // it one short beat before deciding the clip is empty.
+            if (chunksRef.current.length === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 400));
+              if (cancelledRef.current || phaseRef.current !== 'transcribing') {
+                releaseMedia();
+                return;
+              }
+            }
             const chunks = chunksRef.current;
             chunksRef.current = [];
             releaseMedia();
-            const blob = new Blob(chunks, { type: String(type || 'audio/webm').split(';')[0].trim() || 'audio/webm' });
+            const blobType = String(type || '').split(';')[0].trim().toLowerCase();
+            const blob = new Blob(chunks, blobType === '' ? {} : { type: blobType });
             if (blob.size === 0) {
               changePhase('idle');
               showNotice(translate('error.empty-audio'));
@@ -607,7 +816,55 @@ window.__ModuleLoader__.load({
               return;
             }
             try {
-              const data = await sendAudio(blob);
+              const data = await sendAudio(blob, blobType);
+              if (cancelledRef.current) return;
+              const text = typeof data?.text === 'string' ? data.text.trim() : '';
+              if (text === '') throw Object.assign(new Error('empty-transcript'), { code: 'empty-transcript' });
+              insertTranscript(text);
+              changePhase('idle');
+              focusComposer();
+            } catch (error) {
+              if (cancelledRef.current) return;
+              changePhase('idle');
+              showNotice(describeError(error, translate));
+              focusComposer();
+            }
+          }
+
+          /**
+           * Record on the computer instead of the browser. This is the only way
+           * to dictate from a page Safari refuses to give a microphone to.
+           */
+          async function beginHost() {
+            const actions = actionsRef.current;
+            if (!actions || typeof actions.captureInsertion !== 'function' || typeof actions.insertText !== 'function') {
+              showNotice(translate('error.generic'));
+              return;
+            }
+            insertionRef.current = actions.captureInsertion();
+            cancelledRef.current = false;
+            modeRef.current = 'host';
+            setSeconds(0);
+            changePhase('requesting');
+            try {
+              await request('POST', '/host-mic/start');
+            } catch (error) {
+              modeRef.current = 'browser';
+              changePhase('idle');
+              showNotice(describeError(error, translate));
+              return;
+            }
+            if (cancelledRef.current) {
+              void request('POST', '/host-mic/cancel').catch(() => {});
+              return;
+            }
+            changePhase('recording');
+          }
+
+          async function stopHost() {
+            changePhase('transcribing');
+            try {
+              const data = await request('POST', '/host-mic/stop');
               if (cancelledRef.current) return;
               const text = typeof data?.text === 'string' ? data.text.trim() : '';
               if (text === '') throw Object.assign(new Error('empty-transcript'), { code: 'empty-transcript' });
@@ -624,16 +881,20 @@ window.__ModuleLoader__.load({
 
           function stopRecording() {
             if (phaseRef.current !== 'recording') return;
+            if (modeRef.current === 'host') {
+              void stopHost();
+              return;
+            }
             changePhase('transcribing');
             const recorder = recorderRef.current;
             if (!recorder || recorder.state === 'inactive') {
-              void complete('audio/webm');
+              void complete(recordedType(recorder, mimeRef.current));
               return;
             }
             try {
               recorder.stop();
             } catch {
-              void complete('audio/webm');
+              void complete(recordedType(recorder, mimeRef.current));
             }
           }
 
@@ -659,10 +920,23 @@ window.__ModuleLoader__.load({
               showNotice(translate('error.generic'));
               return;
             }
-            if (typeof navigator === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-              showNotice(translate('error.microphone-failed'));
+            const support = microphoneSupport();
+            if (support !== 'ok') {
+              if (support === 'insecure' && current.hostMic !== false) {
+                // Hold the phase while the Host answers, so a second tap cannot
+                // start a second recording.
+                changePhase('requesting');
+                const info = await loadHostMic();
+                if (info.available === true && !cancelledRef.current) {
+                  await beginHost();
+                  return;
+                }
+                changePhase('idle');
+              }
+              showNotice(translate(support === 'insecure' ? 'error.microphone-insecure' : 'error.microphone-unsupported'));
               return;
             }
+            modeRef.current = 'browser';
             if (typeof MediaRecorder === 'undefined') {
               showNotice(translate('error.recorder-unavailable'));
               return;
@@ -677,6 +951,7 @@ window.__ModuleLoader__.load({
               stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             } catch (error) {
               changePhase('idle');
+              reportMicrophoneError(error);
               showNotice(translate(microphoneErrorKey(error)));
               return;
             }
@@ -692,10 +967,9 @@ window.__ModuleLoader__.load({
             }
 
             const mime = pickMime();
-            let recorder;
-            try {
-              recorder = mime === '' ? new MediaRecorder(stream) : new MediaRecorder(stream, { mimeType: mime });
-            } catch {
+            mimeRef.current = mime;
+            const recorder = createRecorder(stream, mime);
+            if (recorder === null) {
               for (const track of stream.getTracks()) {
                 try {
                   track.stop();
@@ -731,11 +1005,9 @@ window.__ModuleLoader__.load({
                 return;
               }
               if (phaseRef.current === 'recording') changePhase('transcribing');
-              void complete(recorder.mimeType || mime || 'audio/webm');
+              void complete(recordedType(recorder, mime));
             };
-            try {
-              recorder.start(250);
-            } catch {
+            if (!startRecorder(recorder)) {
               releaseMedia();
               changePhase('idle');
               showNotice(translate('error.recording-failed'));
@@ -755,6 +1027,10 @@ window.__ModuleLoader__.load({
           React.useEffect(() => {
             if (!state.ready) loadSettings().catch(() => {});
           }, [state.ready]);
+
+          React.useEffect(() => {
+            if (typeof window !== 'undefined' && window.isSecureContext === false) loadHostMic().catch(() => {});
+          }, []);
 
           React.useEffect(() => {
             if (phase !== 'recording') return undefined;
@@ -788,6 +1064,7 @@ window.__ModuleLoader__.load({
 
           React.useEffect(() => () => {
             cancelledRef.current = true;
+            if (modeRef.current === 'host') void request('POST', '/host-mic/cancel').catch(() => {});
             const recorder = recorderRef.current;
             if (recorder && recorder.state !== 'inactive') {
               try {
@@ -802,23 +1079,31 @@ window.__ModuleLoader__.load({
           const recording = phase === 'recording';
           const requesting = phase === 'requesting';
           const transcribing = phase === 'transcribing';
+          const hostMode = modeRef.current === 'host' && (recording || requesting);
+          const hostFallback = !hostMode
+            && microphoneSupport() === 'insecure'
+            && state.hostMic !== false
+            && state.hostMicInfo.available === true;
           const label = recording
-            ? translate('mic.recording')
+            ? translate(hostMode ? 'mic.recordingHost' : 'mic.recording')
             : requesting
-              ? translate('mic.requesting')
+              ? translate(hostMode ? 'mic.startingHost' : 'mic.requesting')
               : transcribing
                 ? translate('mic.transcribing')
-                : translate('mic.idle');
+                : translate(hostFallback ? 'mic.idleHost' : 'mic.idle');
           const time = formatTime(seconds);
 
           return h('div', { className: 'grd-mic-wrap' },
             h('style', null, CSS),
+            hostMode && (recording || requesting)
+              ? h('span', { className: 'grd-mic-tag', 'aria-hidden': true }, translate('mic.hostTag'))
+              : null,
             recording ? h('span', { className: 'grd-rec-time', 'aria-hidden': true }, time) : null,
             h('button', {
               ref: buttonRef,
               type: 'button',
               className: 'grd-mic' + (recording ? ' is-recording' : ''),
-              'aria-label': recording ? fill(translate('mic.recordingAria'), { time }) : label,
+              'aria-label': recording ? fill(translate(hostMode ? 'mic.recordingAriaHost' : 'mic.recordingAria'), { time }) : label,
               'aria-pressed': recording,
               'aria-busy': requesting || transcribing,
               title: notice !== null ? notice.text : label,

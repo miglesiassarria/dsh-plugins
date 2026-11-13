@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DSH Sandbox",
+    "description": "Ejecuta una sesión dentro de una jaula: solo herramientas, sin CLI y con archivos limitados al espacio de trabajo y a las carpetas autorizadas."
+  }
+}

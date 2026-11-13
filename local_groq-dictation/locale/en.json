@@ -19,7 +19,14 @@
     "saved": "Saved.",
     "clearDone": "Key deleted.",
     "needKey": "Enter a key to turn dictation on.",
-    "privacy": "Audio is sent to Groq only when you stop recording."
+    "privacy": "Audio is sent to Groq only when you stop recording.",
+    "secureContextHint": "On a phone, open the GUI over HTTPS (the tunnel link): Safari and Chrome block the microphone on plain HTTP.",
+    "hostMicLabel": "Computer microphone",
+    "hostMicDesc": "When the browser cannot record (Safari on a phone over HTTP), dictation records with this computer's microphone. Useful when you are near it.",
+    "hostMicOn": "Allowed as a fallback",
+    "hostMicOff": "Never use it",
+    "hostMicAvailable": "Available: {device}",
+    "hostMicUnavailable": "No microphone this computer can record from."
   },
   "model": {
     "whisper-large-v3-turbo": "Whisper Large v3 Turbo · fastest",
@@ -32,7 +39,12 @@
     "requesting": "Asking for microphone permission…",
     "transcribing": "Transcribing…",
     "notConfigured": "Add your Groq API key in Settings → General to use dictation.",
-    "recordingAria": "Recording, {time}. Press Enter to finish."
+    "recordingAria": "Recording, {time}. Press Enter to finish.",
+    "idleHost": "Dictate with the computer microphone",
+    "recordingHost": "Stop dictation (computer microphone)",
+    "startingHost": "Opening the computer microphone…",
+    "recordingAriaHost": "Recording with the computer microphone, {time}. Press Enter to finish.",
+    "hostTag": "computer"
   },
   "error": {
     "generic": "The dictation request failed.",
@@ -54,9 +66,17 @@
     "too-large": "The request was too large.",
     "microphone-denied": "Microphone access was denied. Allow it in the browser and try again.",
     "microphone-missing": "No microphone was found.",
+    "microphone-insecure": "The microphone needs HTTPS. Open the app with the tunnel link, not the LAN address.",
+    "microphone-unsupported": "This browser does not expose a microphone to the page.",
+    "microphone-busy": "The microphone is in use by another app or call. Close it and try again.",
     "microphone-failed": "The microphone could not be opened.",
     "recorder-unavailable": "This browser cannot record audio.",
     "recording-failed": "The recording failed. Try again.",
-    "not-configured": "Add your Groq API key in Settings → General to use dictation."
+    "not-configured": "Add your Groq API key in Settings → General to use dictation.",
+    "host-mic-unavailable": "This computer has no microphone dictation can use.",
+    "host-mic-disabled": "The computer microphone is turned off in Settings → General.",
+    "host-mic-busy": "A recording is already running.",
+    "host-mic-failed": "The computer microphone could not be opened.",
+    "not-recording": "There was no recording to stop."
   }
 }

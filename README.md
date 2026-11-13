@@ -14,8 +14,9 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 | [`local_default-model`](local_default-model/) | `@local/default-model` | Ajustes → **Modelos** (arriba del todo) | Elige el modelo con el que empiezan los chats nuevos. Cada sesión puede cambiar de modelo después sin alterar el predeterminado. |
 | [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Clic en el espacio → página de proyecto; menú del espacio → **Configurar espacio**; tarjeta y pestaña **Contexto** de la barra derecha; menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. La página de proyecto muestra esos datos y sus chats. |
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cuatro estilos seleccionables, barra de estado y una mascota pixelada que refleja el estado real de la sesión. |
-| [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. |
+| [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. Si el navegador no puede grabar (Safari en el móvil por HTTP), graba con el micrófono del ordenador mediante `ffmpeg`. |
 | [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → **DSH Config**; barra lateral de categorías (arrastrar); Complementos → Agregar complemento; compositor → selector de modelo | Reordena las categorías de Ajustes arrastrándolas (también con `Alt+↑`/`Alt+↓`) y guarda ese orden en el Host. Además, **Agregar complemento** acepta URLs de carpeta de GitHub (`.../tree/rama/carpeta`) y las instala como paquete local, el selector de modelo del compositor oculta el sufijo «Predeterminado», y **Ajustes → DSH Config** permite activar o desactivar cada uno de esos tres comportamientos. |
+| [`local_dsh-sandbox`](local_dsh-sandbox/) | `@local/dsh-sandbox` | Compositor → jaula entre el `+` y el chip de permisos; Ajustes → **DSH Sandbox** | Enjaula una sesión: el agente pasa a herramientas nativas (sin `run_code`), sin CLI ni CUA, y sus herramientas de archivos solo acceden al espacio de trabajo y a las carpetas autorizadas. |
 | [`local_dsh-mobile`](local_dsh-mobile/) | `@local/dsh-mobile` | Ajustes → **Acceso desde el móvil** | Control remoto por QR: acceso desde la red local o por internet (túnel de Cloudflare), con la misma interfaz del ordenador sincronizada en tiempo real. Traducción al español de DSH Pocket. |
 
 ## Requisitos
@@ -37,7 +38,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config local_dsh-mobile ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config local_dsh-sandbox local_dsh-mobile ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -54,6 +55,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
        "@local/groq-dictation": "link:/Users/tu-usuario/.dsh/local-plugins/local_groq-dictation",
        "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model",
        "@local/dsh-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-config",
+       "@local/dsh-sandbox": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-sandbox",
        "@local/dsh-mobile": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-mobile"
      },
      "dsh": {
@@ -69,6 +71,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
            "@local/groq-dictation",
            "@local/default-model",
            "@local/dsh-config",
+           "@local/dsh-sandbox",
            "@local/dsh-mobile"
          ]
        }

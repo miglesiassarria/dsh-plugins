@@ -19,7 +19,14 @@
     "saved": "Guardado.",
     "clearDone": "Clave borrada.",
     "needKey": "Introduce una clave para activar el dictado.",
-    "privacy": "El audio solo se envía a Groq cuando detienes la grabación."
+    "privacy": "El audio solo se envía a Groq cuando detienes la grabación.",
+    "secureContextHint": "En el móvil, abre la GUI por HTTPS (el enlace del túnel): Safari y Chrome bloquean el micrófono en HTTP.",
+    "hostMicLabel": "Micrófono del ordenador",
+    "hostMicDesc": "Cuando el navegador no puede grabar (Safari en el móvil por HTTP), el dictado graba con el micrófono de este ordenador. Útil si estás cerca de él.",
+    "hostMicOn": "Permitido como alternativa",
+    "hostMicOff": "No usarlo nunca",
+    "hostMicAvailable": "Disponible: {device}",
+    "hostMicUnavailable": "Este ordenador no tiene un micrófono que el dictado pueda usar."
   },
   "model": {
     "whisper-large-v3-turbo": "Whisper Large v3 Turbo · el más rápido",
@@ -32,7 +39,12 @@
     "requesting": "Pidiendo permiso al micrófono…",
     "transcribing": "Transcribiendo…",
     "notConfigured": "Añade tu clave API de Groq en Ajustes → General para usar el dictado.",
-    "recordingAria": "Grabando, {time}. Pulsa Enter para terminar."
+    "recordingAria": "Grabando, {time}. Pulsa Enter para terminar.",
+    "idleHost": "Dictar con el micrófono del ordenador",
+    "recordingHost": "Detener dictado (micrófono del ordenador)",
+    "startingHost": "Abriendo el micrófono del ordenador…",
+    "recordingAriaHost": "Grabando con el micrófono del ordenador, {time}. Pulsa Enter para terminar.",
+    "hostTag": "ordenador"
   },
   "error": {
     "generic": "La petición de dictado falló.",
@@ -54,9 +66,17 @@
     "too-large": "La petición era demasiado grande.",
     "microphone-denied": "Se ha denegado el acceso al micrófono. Permítelo en el navegador y vuelve a intentarlo.",
     "microphone-missing": "No se ha encontrado ningún micrófono.",
+    "microphone-insecure": "El micrófono necesita HTTPS. Abre la app con el enlace del túnel, no con la dirección de la red local.",
+    "microphone-unsupported": "Este navegador no expone ningún micrófono a la página.",
+    "microphone-busy": "El micrófono está ocupado por otra app o llamada. Ciérrala y vuelve a intentarlo.",
     "microphone-failed": "No se pudo abrir el micrófono.",
     "recorder-unavailable": "Este navegador no puede grabar audio.",
     "recording-failed": "La grabación falló. Inténtalo de nuevo.",
-    "not-configured": "Añade tu clave API de Groq en Ajustes → General para usar el dictado."
+    "not-configured": "Añade tu clave API de Groq en Ajustes → General para usar el dictado.",
+    "host-mic-unavailable": "Este ordenador no tiene un micrófono que el dictado pueda usar.",
+    "host-mic-disabled": "El micrófono del ordenador está desactivado en Ajustes → General.",
+    "host-mic-busy": "Ya hay una grabación en marcha.",
+    "host-mic-failed": "No se pudo abrir el micrófono del ordenador.",
+    "not-recording": "No había ninguna grabación que detener."
   }
 }

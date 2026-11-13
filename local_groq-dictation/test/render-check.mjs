@@ -100,6 +100,7 @@ function renderNode(node, path, output) {
 
 const settings = {
   configured: false,
+  hostMic: true,
   model: 'whisper-large-v3-turbo',
   models: ['whisper-large-v3-turbo', 'whisper-large-v3', 'distil-whisper-large-v3-en'],
   apiKeyHint: '',
@@ -111,6 +112,9 @@ const drafts = []
 let transcribeStatus = 200
 let transcribeBody = { text: '  Hola mundo.  ' }
 let microphoneError = null
+let hostMicProbe = { available: true, device: 'Micrófono del test' }
+let hostTranscript = '  Texto del ordenador.  '
+const hostCalls = []
 
 function response(data, ok = true, status = 200) {
   return {
@@ -137,12 +141,23 @@ function translate(key, params) {
     'settings.saved': 'Guardado.',
     'settings.clearDone': 'Clave borrada.',
     'settings.needKey': 'Introduce una clave para activar el dictado.',
+    'settings.hostMicLabel': 'Micrófono del ordenador',
+    'settings.hostMicDesc': 'Cuando el navegador no puede grabar, el dictado graba con el micrófono de este ordenador.',
+    'settings.hostMicOn': 'Permitido como alternativa',
+    'settings.hostMicOff': 'No usarlo nunca',
+    'settings.hostMicAvailable': 'Disponible: {device}',
+    'settings.hostMicUnavailable': 'Este ordenador no tiene un micrófono que el dictado pueda usar.',
     'settings.privacy': 'El audio solo se envía a Groq cuando detienes la grabación.',
     'model.whisper-large-v3-turbo': 'Whisper Large v3 Turbo · el más rápido',
     'model.whisper-large-v3': 'Whisper Large v3 · el más preciso',
     'model.distil-whisper-large-v3-en': 'Distil Whisper Large v3 · solo inglés',
     'mic.idle': 'Dictar con Groq',
+    'mic.idleHost': 'Dictar con el micrófono del ordenador',
     'mic.recording': 'Detener dictado (Enter)',
+    'mic.recordingHost': 'Detener dictado (micrófono del ordenador)',
+    'mic.startingHost': 'Abriendo el micrófono del ordenador…',
+    'mic.recordingAriaHost': 'Grabando con el micrófono del ordenador, {time}. Pulsa Enter para terminar.',
+    'mic.hostTag': 'ordenador',
     'mic.requesting': 'Pidiendo permiso al micrófono…',
     'mic.transcribing': 'Transcribiendo…',
     'mic.notConfigured': 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
@@ -152,6 +167,9 @@ function translate(key, params) {
     'error.not-configured': 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
     'error.microphone-denied': 'Se ha denegado el acceso al micrófono. Permítelo en el navegador y vuelve a intentarlo.',
     'error.microphone-missing': 'No se ha encontrado ningún micrófono.',
+    'error.microphone-insecure': 'El micrófono necesita HTTPS. Abre la app con el enlace del túnel, no con la dirección de la red local.',
+    'error.microphone-unsupported': 'Este navegador no expone ningún micrófono a la página.',
+    'error.microphone-busy': 'El micrófono está ocupado por otra app o llamada. Ciérrala y vuelve a intentarlo.',
     'error.microphone-failed': 'No se pudo abrir el micrófono.',
     'error.recorder-unavailable': 'Este navegador no puede grabar audio.',
     'error.recording-failed': 'La grabación falló. Inténtalo de nuevo.',
@@ -170,6 +188,10 @@ class FakeMediaRecorder {
     return type === 'audio/webm' || type === 'audio/webm;codecs=opus'
   }
   constructor(_stream, options) {
+    if (options?.mimeType !== undefined && FakeMediaRecorder.failWithOptions > 0) {
+      FakeMediaRecorder.failWithOptions -= 1
+      throw Object.assign(new Error('unsupported container'), { name: 'NotSupportedError' })
+    }
     this.mimeType = options?.mimeType ?? 'audio/webm'
     this.state = 'inactive'
     this.ondataavailable = null
@@ -181,10 +203,20 @@ class FakeMediaRecorder {
   }
   stop() {
     this.state = 'inactive'
+    if (FakeMediaRecorder.lateChunk) {
+      // WebKit can deliver the last chunk after the stop event.
+      if (this.onstop !== null) this.onstop()
+      setTimeout(() => {
+        if (this.ondataavailable !== null) this.ondataavailable({ data: new Blob(['audio'], { type: 'audio/webm' }) })
+      }, 60)
+      return
+    }
     if (this.ondataavailable !== null) this.ondataavailable({ data: new Blob(['audio'], { type: 'audio/webm' }) })
     if (this.onstop !== null) this.onstop()
   }
 }
+FakeMediaRecorder.failWithOptions = 0
+FakeMediaRecorder.lateChunk = false
 
 const windowListeners = new Set()
 const activeIntervals = new Set()
@@ -195,8 +227,9 @@ const editorRoot = {
     focus() { focusCalls.editor += 1 },
   },
 }
+const warnings = []
 const sandbox = {
-  console,
+  console: { ...console, warn: (...args) => warnings.push(args) },
   document: { querySelector: (selector) => (selector === '[contenteditable="true"]' ? editorRoot : null), body: null, head: { appendChild() {} } },
   window: {
     addEventListener(type, listener) {
@@ -239,7 +272,23 @@ const sandbox = {
         settings.apiKeyHint = body.apiKey === '' ? '' : body.apiKey.slice(-4)
       }
       if (body.model !== undefined) settings.model = body.model
+      if (body.hostMic !== undefined) settings.hostMic = body.hostMic
       return response({ ...settings })
+    }
+    if (target === '/dsh-groq-dictation/host-mic' && options.method === 'GET') {
+      return response({ enabled: settings.hostMic !== false, available: hostMicProbe.available, device: hostMicProbe.device, maxSeconds: 600 })
+    }
+    if (target === '/dsh-groq-dictation/host-mic/start' && options.method === 'POST') {
+      hostCalls.push('start')
+      return response({ started: true, device: hostMicProbe.device, maxSeconds: 600 })
+    }
+    if (target === '/dsh-groq-dictation/host-mic/stop' && options.method === 'POST') {
+      hostCalls.push('stop')
+      return response({ text: hostTranscript, model: settings.model, seconds: 2 })
+    }
+    if (target === '/dsh-groq-dictation/host-mic/cancel' && options.method === 'POST') {
+      hostCalls.push('cancel')
+      return response({ cancelled: true })
     }
     if (target === '/dsh-groq-dictation/transcribe') {
       if (transcribeStatus !== 200) return response({ code: 'invalid-key', error: 'Invalid API Key' }, false, transcribeStatus)
@@ -275,8 +324,8 @@ const fakeContext = {
       const table = dicts.get(namespace) ?? {}
       const dict = table.es ?? table.en ?? {}
       return (key, params) => {
-        const read = (source, dotted) => dotted.split('.').reduce((value, part) => value?.[part], source)
-        const template = read(dict, key) ?? key
+        // The real runtime indexes dictionaries by dotted key, not by nesting.
+        const template = dict[key] ?? key
         if (params === undefined) return template
         return template.replace(/\{(\w+)\}/gu, (match, name) => (name in params ? String(params[name]) : match))
       }
@@ -306,6 +355,40 @@ if (settingsRegistration === undefined) throw new Error('the plugin registered n
 if (micRegistration === undefined) throw new Error('the plugin registered no composer microphone')
 if (settingsRegistration.options.locale !== 'groq-dictation') throw new Error('the settings row has no locale binding')
 if (micRegistration.options.locale !== 'groq-dictation') throw new Error('the microphone has no locale binding')
+
+const pluginDicts = dicts.get('groq-dictation')
+if (pluginDicts === undefined) throw new Error('the plugin registered no dictionaries')
+for (const locale of ['es', 'en']) {
+  const table = pluginDicts[locale]
+  if (table === undefined) throw new Error(`the plugin registered no ${locale} dictionary`)
+  for (const key of ['settings.title', 'mic.idle', 'error.microphone-failed', 'error.microphone-insecure']) {
+    if (typeof table[key] !== 'string') throw new Error(`the ${locale} dictionary does not resolve "${key}" (dotted keys are required)`)
+  }
+}
+if (pluginDicts.es['settings.title'] !== 'Dictado con Groq') throw new Error('the Spanish dictionary was not flattened')
+
+// The client dictionaries and the package locale files must not drift apart.
+function flatten(source, prefix = '') {
+  const out = {}
+  for (const [key, value] of Object.entries(source)) {
+    const name = prefix === '' ? key : `${prefix}.${key}`
+    if (typeof value === 'string') out[name] = value
+    else if (value !== null && typeof value === 'object') Object.assign(out, flatten(value, name))
+  }
+  return out
+}
+for (const locale of ['es', 'en']) {
+  const packageText = flatten(JSON.parse(readFileSync(join(here, '..', 'locale', `${locale}.json`), 'utf8')))
+  for (const [key, value] of Object.entries(packageText)) {
+    if (key.startsWith('meta.')) continue
+    if (pluginDicts[locale][key] !== value) {
+      throw new Error(`locale/${locale}.json and client.js disagree about "${key}"`)
+    }
+  }
+  for (const key of Object.keys(pluginDicts[locale])) {
+    if (packageText[key] === undefined) throw new Error(`client.js has "${key}" but locale/${locale}.json does not`)
+  }
+}
 
 function labelOf(node) {
   const children = node.props?.children
@@ -410,6 +493,15 @@ const micProps = {
 }
 const mic = micRegistration.component
 
+// Without an injected translator the component falls back to the plugin
+// namespace: the composer label must read in Spanish, not as a raw key.
+text = await settle(mic, { ...micProps, t: undefined }, 'mic')
+const boundButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+if (boundButton === undefined) throw new Error('the plugin-bound microphone button is missing')
+if (boundButton.props['aria-label'] !== 'Dictar con Groq') {
+  throw new Error(`the plugin dictionary is not resolving: ${JSON.stringify(boundButton.props['aria-label'])}`)
+}
+
 text = await settle(mic, micProps, 'mic')
 let micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
 if (micButton === undefined) throw new Error('the composer microphone button is missing')
@@ -461,6 +553,96 @@ micButton = collected.find(node => node.type === 'button' && String(node.props.c
 micButton.props.onClick()
 text = await settle(mic, micProps, 'mic')
 if (!text.includes('Se ha denegado el acceso al micrófono')) throw new Error(`the permission notice is missing: ${text}`)
+
+microphoneError = null
+
+// A browser that hides mediaDevices reads as unsupported, not as a failure.
+const mediaDevices = sandbox.navigator.mediaDevices
+delete sandbox.navigator.mediaDevices
+micButton.props.onClick()
+text = await settle(mic, micProps, 'mic')
+if (!text.includes('no expone ningún micrófono')) throw new Error(`the unsupported-browser notice is missing: ${text}`)
+sandbox.navigator.mediaDevices = mediaDevices
+
+// A microphone held by another app is reported as busy.
+microphoneError = Object.assign(new Error('busy'), { name: 'NotReadableError' })
+micButton.props.onClick()
+text = await settle(mic, micProps, 'mic')
+if (!text.includes('ocupado por otra app')) throw new Error(`the busy-microphone notice is missing: ${text}`)
+microphoneError = null
+
+// A refused container still records: the recorder is retried without options.
+FakeMediaRecorder.failWithOptions = 1
+const beforeRetry = insertions.length
+micButton.props.onClick()
+text = await settle(mic, micProps, 'mic')
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+if (micButton.props['aria-pressed'] !== true) throw new Error('the recorder was not retried without the refused container')
+micButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 600))
+text = await settle(mic, micProps, 'mic')
+if (insertions.length !== beforeRetry + 1) throw new Error('a retried recorder produced no transcript')
+
+// A clip whose last chunk arrives after stop() is still transcribed (WebKit).
+FakeMediaRecorder.lateChunk = true
+const beforeLate = insertions.length
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+micButton.props.onClick()
+text = await settle(mic, micProps, 'mic')
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+if (micButton.props['aria-pressed'] !== true) throw new Error('the late-chunk recording did not start')
+micButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 900))
+text = await settle(mic, micProps, 'mic')
+if (insertions.length !== beforeLate + 1) throw new Error('a late final chunk was dropped')
+FakeMediaRecorder.lateChunk = false
+
+// A page Safari refuses a microphone to records with the computer microphone.
+sandbox.window.isSecureContext = false
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+const beforeHost = insertions.length
+micButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(mic, micProps, 'mic')
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+if (micButton.props['aria-pressed'] !== true) throw new Error('the computer microphone did not start recording')
+if (!String(micButton.props['aria-label']).includes('micrófono del ordenador')) {
+  throw new Error(`the recording label does not name the computer microphone: ${micButton.props['aria-label']}`)
+}
+micButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(mic, micProps, 'mic')
+if (hostCalls.join(',') !== 'start,stop') throw new Error(`unexpected computer-microphone calls: ${hostCalls.join(',')}`)
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+if (micButton.props['aria-label'] !== 'Dictar con el micrófono del ordenador') {
+  throw new Error(`the idle label does not offer the computer microphone: ${micButton.props['aria-label']}`)
+}
+if (insertions.length !== beforeHost + 1) throw new Error('the computer transcript was not inserted')
+if (insertions[insertions.length - 1].value !== ' Texto del ordenador. ') {
+  throw new Error(`unexpected computer transcript: ${JSON.stringify(insertions[insertions.length - 1].value)}`)
+}
+
+// Refusing the fallback brings back the HTTPS guidance.
+text = await settle(settingsRow, { t: translate }, 'settings')
+const hostCheckbox = collected.find(node => node.type === 'input' && node.props.type === 'checkbox')
+if (hostCheckbox === undefined) throw new Error('the settings row has no computer-microphone checkbox')
+hostCheckbox.props.onChange({ target: { checked: false } })
+dirty = false
+text = await settle(settingsRow, { t: translate }, 'settings')
+const saveHost = collected.find(node => node.type === 'button' && labelOf(node) === 'Guardar')
+saveHost.props.onClick()
+text = await settle(settingsRow, { t: translate }, 'settings')
+if (settings.hostMic !== false) throw new Error('the computer-microphone preference was not saved')
+text = await settle(mic, micProps, 'mic')
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+micButton.props.onClick()
+text = await settle(mic, micProps, 'mic')
+if (!text.includes('necesita HTTPS')) throw new Error(`the HTTPS notice is missing with the fallback off: ${text}`)
+sandbox.window.isSecureContext = true
+
+// The original platform failure stays visible in the console for support.
+if (!warnings.some(args => String(args[1]?.name) === 'NotAllowedError')) throw new Error('the denied-microphone failure was not logged')
+if (!warnings.some(args => String(args[1]?.name) === 'NotReadableError')) throw new Error('the busy-microphone failure was not logged')
 
 for (const id of activeIntervals) clearInterval(id)
 console.log('Render check OK:', registrations.map(entry => entry.options.name).join(', '))

@@ -14,8 +14,9 @@
  * @module @local/groq-dictation
  */
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /** Services this plugin cannot work without. */
@@ -51,6 +52,7 @@ const DEFAULTS = Object.freeze({
   version: 1,
   apiKey: '',
   model: MODELS[0],
+  hostMic: true,
 })
 
 /** Accepted upload media types and the file name each is forwarded with. */
@@ -153,6 +155,7 @@ export function readSettings() {
     version: 1,
     apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
     model: MODELS.includes(parsed.model) ? parsed.model : DEFAULTS.model,
+    hostMic: parsed.hostMic === undefined ? DEFAULTS.hostMic : parsed.hostMic === true,
   }
 }
 
@@ -168,6 +171,7 @@ export function writeSettings(input) {
     version: 1,
     apiKey: input.apiKey === undefined ? previous.apiKey : normalizeApiKey(input.apiKey),
     model: input.model === undefined ? previous.model : normalizeModel(input.model),
+    hostMic: input.hostMic === undefined ? previous.hostMic : input.hostMic === true,
   }
   const directory = storeDirectory()
   mkdirSync(directory, { recursive: true, mode: 0o700 })
@@ -198,6 +202,7 @@ export function publicSettings(settings) {
     model: settings.model,
     models: [...MODELS],
     apiKeyHint: settings.apiKey === '' ? '' : settings.apiKey.slice(-4),
+    hostMic: settings.hostMic !== false,
   }
 }
 
@@ -245,6 +250,29 @@ function audioIdentity(value) {
 }
 
 /**
+ * Read the first bytes of a clip to name its container. Safari reports an empty
+ * MIME type often enough, and a clip labelled `.webm` that is really MP4 is
+ * rejected upstream even though Groq accepts both.
+ * @param {Buffer} audio Raw audio bytes.
+ * @returns {string | null} A supported media type, or null when unrecognized.
+ */
+export function sniffAudio(audio) {
+  if (audio.length < 4) return null
+  if (audio[0] === 0x1a && audio[1] === 0x45 && audio[2] === 0xdf && audio[3] === 0xa3) return 'audio/webm'
+  const magic = audio.subarray(0, 4).toString('latin1')
+  if (magic === 'OggS') return 'audio/ogg'
+  if (magic === 'fLaC') return 'audio/flac'
+  if (magic === 'RIFF' && audio.length >= 12 && audio.subarray(8, 12).toString('latin1') === 'WAVE') return 'audio/wav'
+  if (audio.length >= 12 && audio.subarray(4, 8).toString('latin1') === 'ftyp') {
+    const brand = audio.subarray(8, 12).toString('latin1').trim().toLowerCase()
+    return brand === 'm4a' || brand === 'm4b' || brand === 'm4p' ? 'audio/m4a' : 'audio/mp4'
+  }
+  if (magic.slice(0, 3) === 'ID3') return 'audio/mpeg'
+  if (audio[0] === 0xff && (audio[1] & 0xe0) === 0xe0) return 'audio/mpeg'
+  return null
+}
+
+/**
  * Forward one clip to Groq and return its transcript.
  * @param {Buffer} audio Raw audio bytes.
  * @param {unknown} contentType Raw Content-Type header.
@@ -254,7 +282,9 @@ async function transcribe(audio, contentType) {
   if (audio.length === 0) throw fail('empty-audio')
   const settings = readSettings()
   if (settings.apiKey === '') throw fail('missing-api-key')
-  const identity = audioIdentity(contentType)
+  // The bytes win over the header: some browsers declare a container they did
+  // not produce.
+  const identity = audioIdentity(sniffAudio(audio) ?? contentType)
   if (identity === null) throw fail('unsupported-audio', 415)
 
   const form = new FormData()
@@ -302,6 +332,312 @@ async function transcribe(audio, contentType) {
   return { text, model: settings.model }
 }
 
+/* ---------------------------------------------------------------------- *
+ * Computer microphone fallback
+ *
+ * Safari, and therefore every browser on iOS, exposes the microphone only on
+ * secure origins. A GUI opened over plain HTTP on the LAN cannot record, so
+ * the page can ask this Host to record from the computer's own microphone
+ * instead: same Whisper round trip, no HTTPS and no tunnel. The audio is
+ * captured with ffmpeg, kept in a temporary directory, and deleted as soon as
+ * it has been transcribed or discarded.
+ * ---------------------------------------------------------------------- */
+
+/** Longest clip the computer records; matches the browser cap. */
+const HOST_MIC_MAX_SECONDS = 600
+
+/** How long a probe, a device open, and a graceful stop may take. */
+const PROBE_TIMEOUT_MS = 8_000
+const START_TIMEOUT_MS = 8_000
+const STOP_TIMEOUT_MS = 6_000
+
+/** Candidate ffmpeg binaries, in order. */
+const FFMPEG_CANDIDATES = Object.freeze([
+  process.env.DSH_GROQ_DICTATION_FFMPEG,
+  process.env.FFMPEG_PATH,
+  'ffmpeg',
+  '/opt/homebrew/bin/ffmpeg',
+  '/usr/local/bin/ffmpeg',
+  '/usr/bin/ffmpeg',
+].filter((candidate) => typeof candidate === 'string' && candidate !== ''))
+
+/** One running computer-microphone capture. */
+let hostRecording = null
+
+/** Cached device probe: `undefined` until probed, `null` when unavailable. */
+let hostDevice
+
+/**
+ * Run one short-lived helper and collect its output.
+ * @param {string} command Binary to run.
+ * @param {string[]} args Arguments.
+ * @param {number} timeoutMs Kill deadline.
+ * @returns {Promise<{ code: number, stdout: string, stderr: string }>} Result.
+ */
+function run(command, args, timeoutMs) {
+  return new Promise((resolve) => {
+    let child
+    try {
+      child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    } catch (error) {
+      resolve({ code: -1, stdout: '', stderr: String(error?.message ?? error) })
+      return
+    }
+    let stdout = ''
+    let stderr = ''
+    let settled = false
+    const finish = (code) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve({ code, stdout, stderr })
+    }
+    const timer = setTimeout(() => {
+      try {
+        child.kill('SIGKILL')
+      } catch {
+        // The helper may already have exited.
+      }
+    }, timeoutMs)
+    child.stdout?.on('data', (chunk) => {
+      if (stdout.length < 65536) stdout += chunk
+    })
+    child.stderr?.on('data', (chunk) => {
+      if (stderr.length < 65536) stderr += chunk
+    })
+    child.on('error', (error) => {
+      if (stderr.length < 65536) stderr += String(error?.message ?? error)
+      finish(-1)
+    })
+    child.on('close', (code) => finish(code ?? -1))
+  })
+}
+
+/**
+ * Pick the first ffmpeg binary that answers.
+ * @returns {Promise<string | null>} Binary path or bare name.
+ */
+async function resolveFfmpeg() {
+  for (const candidate of FFMPEG_CANDIDATES) {
+    const result = await run(candidate, ['-hide_banner', '-version'], PROBE_TIMEOUT_MS)
+    if (result.code === 0) return candidate
+  }
+  return null
+}
+
+/**
+ * Read the audio devices listed by one ffmpeg `-list_devices` run.
+ * @param {string} text Captured stderr.
+ * @param {RegExp} marker Line that opens the audio section.
+ * @param {RegExp} entry Pattern whose first group is the device id or name.
+ * @returns {{ id: string, label: string }[]} Devices found.
+ */
+function audioDevices(text, marker, entry) {
+  const devices = []
+  let inSection = false
+  for (const line of String(text).split(/\r?\n/u)) {
+    if (marker.test(line)) {
+      inSection = true
+      continue
+    }
+    if (!inSection) continue
+    if (/\bdevices:/iu.test(line)) {
+      if (devices.length > 0) break
+      continue
+    }
+    const match = entry.exec(line)
+    if (match !== null) devices.push({ id: match[1], label: match[2] ?? match[1] })
+  }
+  return devices
+}
+
+/**
+ * Find an input the local ffmpeg can record from.
+ * @returns {Promise<{ binary: string, label: string, input: string[] } | null>} Device.
+ */
+export async function detectHostMicrophone() {
+  if (hostDevice !== undefined) return hostDevice
+  const binary = await resolveFfmpeg()
+  if (binary === null) {
+    hostDevice = null
+    return null
+  }
+  let device = null
+  if (process.platform === 'darwin') {
+    const probe = await run(binary, ['-hide_banner', '-f', 'avfoundation', '-list_devices', 'true', '-i', ''], PROBE_TIMEOUT_MS)
+    const [first] = audioDevices(probe.stderr, /AVFoundation audio devices:/iu, /^\[.*?\]\s*\[(\d+)\]\s+(.+)$/u)
+    if (first !== undefined) device = { binary, label: first.label, input: ['-f', 'avfoundation', '-i', `:${first.id}`] }
+  } else if (process.platform === 'win32') {
+    const probe = await run(binary, ['-hide_banner', '-f', 'dshow', '-list_devices', 'true', '-i', 'dummy'], PROBE_TIMEOUT_MS)
+    const [first] = audioDevices(probe.stderr, /DirectShow audio devices/iu, /^\[.*?\]\s*"([^"]+)"/u)
+    if (first !== undefined) device = { binary, label: first.label, input: ['-f', 'dshow', '-i', `audio=${first.id}`] }
+  } else {
+    // Linux: use PulseAudio when ffmpeg was built with it, ALSA otherwise.
+    const probe = await run(binary, ['-hide_banner', '-devices'], PROBE_TIMEOUT_MS)
+    const format = /\bpulse\b/iu.test(`${probe.stdout}\n${probe.stderr}`) ? 'pulse' : 'alsa'
+    device = { binary, label: `${format} default`, input: ['-f', format, '-i', 'default'] }
+  }
+  hostDevice = device
+  return device
+}
+
+/**
+ * Forget a cached probe, so the next call re-detects the device.
+ * @returns {void}
+ */
+function forgetHostDevice() {
+  hostDevice = undefined
+}
+
+/**
+ * Start capturing from the computer's microphone.
+ * @returns {Promise<{ started: boolean, device: string, maxSeconds: number }>} Start report.
+ */
+export async function startHostRecording() {
+  if (hostRecording !== null) {
+    if (hostRecording.finished !== true) throw fail('host-mic-busy', 409)
+    discardHostRecording(hostRecording)
+    hostRecording = null
+  }
+  if (readSettings().hostMic !== true) throw fail('host-mic-disabled', 403)
+  const device = await detectHostMicrophone()
+  if (device === null) throw fail('host-mic-unavailable', 501)
+
+  const directory = mkdtempSync(join(tmpdir(), 'dsh-dictation-'))
+  const file = join(directory, 'recording.wav')
+  const args = [
+    '-hide_banner', '-nostats', '-loglevel', 'info',
+    ...device.input,
+    '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le',
+    '-t', String(HOST_MIC_MAX_SECONDS), '-y', file,
+  ]
+  let child
+  try {
+    child = spawn(device.binary, args, { stdio: ['pipe', 'ignore', 'pipe'] })
+  } catch (error) {
+    rmSync(directory, { recursive: true, force: true })
+    forgetHostDevice()
+    throw fail('host-mic-failed', 502, String(error?.message ?? error))
+  }
+  const state = { child, directory, file, startedAt: Date.now(), finished: false, output: '' }
+  hostRecording = state
+
+  const opened = await new Promise((resolve) => {
+    let settled = false
+    const settle = (value) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(value)
+    }
+    const timer = setTimeout(() => settle({ ok: false, reason: 'timeout' }), START_TIMEOUT_MS)
+    child.stderr?.on('data', (chunk) => {
+      state.output = (state.output + String(chunk)).slice(-8192)
+      if (/Press \[q\] to stop/u.test(state.output)) settle({ ok: true })
+    })
+    child.on('error', (error) => settle({ ok: false, reason: String(error?.message ?? error) }))
+    child.on('close', (code) => {
+      state.finished = true
+      // A page that vanished mid-recording must not leave audio behind: the
+      // hard cap ends ffmpeg, and this sweep removes the clip a minute later.
+      const sweep = setTimeout(() => {
+        if (hostRecording !== state) return
+        hostRecording = null
+        discardHostRecording(state)
+      }, 60_000)
+      if (typeof sweep.unref === 'function') sweep.unref()
+      settle({ ok: false, reason: `ffmpeg exited with ${code}` })
+    })
+  })
+
+  if (opened.ok !== true) {
+    hostRecording = null
+    rmSync(directory, { recursive: true, force: true })
+    forgetHostDevice()
+    throw fail('host-mic-failed', 502, `${opened.reason}: ${state.output.slice(-200)}`)
+  }
+  return { started: true, device: device.label, maxSeconds: HOST_MIC_MAX_SECONDS }
+}
+
+/**
+ * Delete one recording's temporary directory.
+ * @param {{ directory: string }} state Recording state.
+ * @returns {void}
+ */
+function discardHostRecording(state) {
+  try {
+    rmSync(state.directory, { recursive: true, force: true })
+  } catch {
+    // The directory may already be gone.
+  }
+}
+
+/**
+ * Stop the capture, transcribe it, and remove the audio.
+ * @param {{ transcribe?: boolean }} [options] Set `transcribe` to false to discard.
+ * @returns {Promise<{ text: string, model: string, seconds: number }>} Transcript.
+ */
+export async function stopHostRecording(options = {}) {
+  const state = hostRecording
+  if (state === null) throw fail('not-recording', 409)
+  hostRecording = null
+  const seconds = Math.max(1, Math.round((Date.now() - state.startedAt) / 1000))
+  if (state.finished !== true) {
+    try {
+      state.child.stdin.write('q\n')
+    } catch {
+      // The helper may already be gone; the kill below still applies.
+    }
+    await new Promise((resolve) => {
+      let done = false
+      const finish = () => {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        resolve()
+      }
+      const timer = setTimeout(() => {
+        try {
+          state.child.kill('SIGKILL')
+        } catch {
+          // Already exited.
+        }
+        finish()
+      }, STOP_TIMEOUT_MS)
+      state.child.once('close', finish)
+      state.child.once('exit', finish)
+    })
+  }
+  let audio = Buffer.alloc(0)
+  try {
+    if (existsSync(state.file)) audio = readFileSync(state.file)
+  } catch {
+    audio = Buffer.alloc(0)
+  }
+  try {
+    if (options.transcribe === false) return { text: '', model: readSettings().model, seconds }
+    // 44 bytes is the WAV header alone: no audio at all.
+    if (audio.length <= 44) throw fail('empty-audio', 422)
+    return { ...(await transcribe(audio, 'audio/wav')), seconds }
+  } finally {
+    discardHostRecording(state)
+  }
+}
+
+/**
+ * Stop and discard a capture, tolerating "nothing was recording".
+ * @returns {Promise<{ cancelled: boolean }>} Report.
+ */
+export async function cancelHostRecording() {
+  if (hostRecording === null) return { cancelled: false }
+  try {
+    await stopHostRecording({ transcribe: false })
+  } catch {
+    // A failed stop leaves nothing worth reporting to a closing page.
+  }
+  return { cancelled: true }
+}
+
 /**
  * Answer one request from the browser half.
  * @param {import('node:http').IncomingMessage} request Incoming request.
@@ -345,6 +681,35 @@ export async function handleRequest(request, response) {
       }
     }
 
+    if (action === 'host-mic' && segments.length === 1 && method === 'GET') {
+      const device = await detectHostMicrophone()
+      reply(200, {
+        ok: true,
+        data: {
+          enabled: readSettings().hostMic,
+          available: device !== null,
+          device: device?.label ?? '',
+          maxSeconds: HOST_MIC_MAX_SECONDS,
+        },
+      })
+      return
+    }
+
+    if (action === 'host-mic' && segments.length === 2 && method === 'POST') {
+      if (segments[1] === 'start') {
+        reply(200, { ok: true, data: await startHostRecording() })
+        return
+      }
+      if (segments[1] === 'stop') {
+        reply(200, { ok: true, data: await stopHostRecording() })
+        return
+      }
+      if (segments[1] === 'cancel') {
+        reply(200, { ok: true, data: await cancelHostRecording() })
+        return
+      }
+    }
+
     if (action === 'transcribe' && segments.length === 1 && method === 'POST') {
       const audio = await readBody(request, MAX_AUDIO_BODY_BYTES)
       reply(200, { ok: true, data: await transcribe(audio, request.headers['content-type']) })
@@ -377,7 +742,10 @@ export function apply(ctx) {
         void handleRequest(request, response)
       },
     })
-    return () => disposeRoute()
+    return () => {
+      disposeRoute()
+      void cancelHostRecording()
+    }
   }, 'groq-dictation route')
 }
 
@@ -389,6 +757,11 @@ export const __test = {
   writeSettings,
   publicSettings,
   transcribe,
+  sniffAudio,
+  detectHostMicrophone,
+  startHostRecording,
+  stopHostRecording,
+  cancelHostRecording,
   storeDirectory,
   storeFile,
   MODELS,
