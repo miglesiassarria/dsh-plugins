@@ -6,23 +6,19 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 (`cordis.patch.yml`); los que tienen interfaz añaden su mitad de host
 (`index.js`) y su mitad de cliente web (`client.js`).
 
-Los cinco complementos de configuración (`dsh-config`, `default-model`,
-`hide-deepseek-defaults`, `hide-updates` y `workspace-context`) siguen en el
-repositorio por separado, pero sus comportamientos están reunidos con
-interruptores en [`local_dsh-total-config`](local_dsh-total-config/), que además
-ofrece desactivarlos desde su propia página.
+Los cinco complementos de configuración que antes se publicaban por separado
+(`dsh-config`, `default-model`, `hide-deepseek-defaults`, `hide-updates` y
+`workspace-context`) ya no viven en este repositorio: sus comportamientos están
+reunidos con interruptores en [`local_dsh-total-config`](local_dsh-total-config/),
+que también permite desactivarlos desde su propia página.
 
 | Plugin | Nombre del paquete | Página | Qué añade |
 |---|---|---|---|
 | [`local_dsh-total-config`](local_dsh-total-config/) | `@local/dsh-total-config` | Ajustes → **DHS Total Config**; Ajustes → **Modelos**; barra lateral de Ajustes; Complementos → Agregar complemento; espacios de trabajo y barra derecha | Reúne en un solo complemento los comportamientos de DSH Config, Modelo predeterminado, Ocultar DeepSeek, Ocultar actualizaciones y Contexto de espacios, cada uno con su interruptor en **Ajustes → DHS Total Config**, y añade la selección múltiple de conversaciones de un espacio para archivarlas de una vez. Incluye una tarjeta para desactivar los cinco bundles anteriores sin desinstalarlos. |
 | [`local_dsh-backups`](local_dsh-backups/) | `@local/dsh-backups` | Ajustes → **Copias de seguridad** | Exporta a un ZIP las sesiones, la configuración del perfil y los plugins locales, y los restaura en otro equipo. |
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
-| [`local_hide-deepseek-defaults`](local_hide-deepseek-defaults/) | `@local/hide-deepseek-defaults` | — | Desactiva los proveedores integrados de DeepSeek (cuenta y clave API) para que no aparezcan ni en el selector de modelos del chat ni en **Ajustes → Modelos**. |
-| [`local_default-model`](local_default-model/) | `@local/default-model` | Ajustes → **Modelos** (arriba del todo) | Elige el modelo con el que empiezan los chats nuevos. Cada sesión puede cambiar de modelo después sin alterar el predeterminado. |
-| [`local_workspace-context`](local_workspace-context/) | `@local/workspace-context` | Clic en el espacio → página de proyecto; menú del espacio → **Configurar espacio**; tarjeta y pestaña **Contexto** de la barra derecha; menú `+` del compositor | Añade descripción, prompt del sistema y archivos o carpetas de contexto a cada espacio de trabajo, y carpetas como contexto de sesión. La página de proyecto muestra esos datos y sus chats. |
 | [`local_retro-ai-os`](local_retro-ai-os/) | `@local/retro-ai-os` | Ajustes → **Retro AI OS** | Tema retro reversible con cinco estilos, barra de estado, mascota pixelada que refleja el estado real de la sesión y **marca propia**: texto, logo subido y tipografía para la barra lateral y la portada. |
 | [`local_groq-dictation`](local_groq-dictation/) | `@local/groq-dictation` | Ajustes → General → **Dictado con Groq**; micrófono del compositor | Dictado por voz con Groq Whisper: graba desde el compositor, transcribe y escribe el texto en el borrador. La clave se guarda en el Host. Si el navegador no puede grabar (Safari en el móvil por HTTP), graba con el micrófono del ordenador mediante `ffmpeg`. |
-| [`local_dsh-config`](local_dsh-config/) | `@local/dsh-config` | Ajustes → **DSH Config**; barra lateral de categorías (arrastrar); Complementos → Agregar complemento; compositor → selector de modelo | Reordena las categorías de Ajustes arrastrándolas (también con `Alt+↑`/`Alt+↓`) y guarda ese orden en el Host. Además, **Agregar complemento** acepta URLs de carpeta de GitHub (`.../tree/rama/carpeta`) y las instala como paquete local, el selector de modelo del compositor oculta el sufijo «Predeterminado», y **Ajustes → DSH Config** permite activar o desactivar cada uno de esos tres comportamientos. |
 | [`local_dsh-sandbox`](local_dsh-sandbox/) | `@local/dsh-sandbox` | Compositor → jaula entre el `+` y el chip de permisos; Ajustes → **DSH Sandbox** | Enjaula **por defecto todas las sesiones**: el agente pasa a herramientas nativas (sin `run_code`), sin CLI ni CUA, y sus herramientas de archivos solo acceden al espacio de trabajo y a las carpetas autorizadas. La jaula se abre explícitamente para desactivarla. |
 | [`local_dsh-mobile`](local_dsh-mobile/) | `@local/dsh-mobile` | Ajustes → **Acceso desde el móvil** | Control remoto por QR: acceso desde la red local o por internet (túnel de Cloudflare), con la misma interfaz del ordenador sincronizada en tiempo real. Traducción al español de DSH Pocket. |
 
@@ -30,18 +26,14 @@ ofrece desactivarlos desde su propia página.
 
 - DeepSeek Harness con la GUI web (los plugins de Ajustes inyectan
   `@deepseek-ai/dsh-client-ui-settings` y `@deepseek-ai/dsh-client-locale`; el
-  de espacios de trabajo inyecta los paquetes de menú contextual, comandos,
-  espacios de trabajo y conversación; el de dictado inyecta conversación,
-  ajustes e idioma y usa una ruta del Host para llamar a Groq; el de DSH Config
-  inyecta el shell de Ajustes y el idioma y usa una ruta del Host para guardar
-  el orden; el de móvil inyecta conexión, slots, layout, idioma y exportación
-  del registro de sesión, y levanta un proxy en el puerto 3081; el de Retro AI OS
-  inyecta la conversación, la barra lateral, las primitivas y el tema, y usa
-  rutas del Host para sus preferencias, sus tipografías y el logo subido; el de
-  DHS Total Config inyecta el shell de Ajustes, el idioma, los menús
-  contextuales, los comandos, la conversación, la barra derecha y los espacios
-  de trabajo, y usa rutas del Host para sus ajustes y su contexto). El de
-  DeepSeek es solo un parche de composición y no necesita cliente.
+  de dictado inyecta conversación, ajustes e idioma y usa una ruta del Host para
+  llamar a Groq; el de móvil inyecta conexión, slots, layout, idioma y
+  exportación del registro de sesión, y levanta un proxy en el puerto 3081; el de
+  Retro AI OS inyecta la conversación, la barra lateral, las primitivas y el
+  tema, y usa rutas del Host para sus preferencias, sus tipografías y el logo
+  subido; el de DHS Total Config inyecta el shell de Ajustes, el idioma, los
+  menús contextuales, los comandos, la conversación, la barra derecha y los
+  espacios de trabajo, y usa rutas del Host para sus ajustes y su contexto).
 - Node.js y pnpm, los mismos que usa tu instalación de Harness.
 
 ## Instalación
@@ -50,7 +42,7 @@ ofrece desactivarlos desde su propia página.
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config local_dsh-sandbox local_dsh-mobile local_dsh-total-config ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_retro-ai-os local_groq-dictation local_dsh-sandbox local_dsh-mobile local_dsh-total-config ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -61,12 +53,8 @@ ofrece desactivarlos desde su propia página.
      "dependencies": {
        "@local/dsh-backups": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-backups",
        "@local/tools-mcp-servers": "link:/Users/tu-usuario/.dsh/local-plugins/local_tools-mcp-servers",
-       "@local/workspace-context": "link:/Users/tu-usuario/.dsh/local-plugins/local_workspace-context",
-       "@local/hide-deepseek-defaults": "link:/Users/tu-usuario/.dsh/local-plugins/local_hide-deepseek-defaults",
        "@local/retro-ai-os": "link:/Users/tu-usuario/.dsh/local-plugins/local_retro-ai-os",
        "@local/groq-dictation": "link:/Users/tu-usuario/.dsh/local-plugins/local_groq-dictation",
-       "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model",
-       "@local/dsh-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-config",
        "@local/dsh-sandbox": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-sandbox",
        "@local/dsh-mobile": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-mobile",
        "@local/dsh-total-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-total-config"
@@ -78,12 +66,8 @@ ofrece desactivarlos desde su propia página.
            "@deepseek-ai/dsh-web-app",
            "@local/tools-mcp-servers",
            "@local/dsh-backups",
-           "@local/workspace-context",
-           "@local/hide-deepseek-defaults",
            "@local/retro-ai-os",
            "@local/groq-dictation",
-           "@local/default-model",
-           "@local/dsh-config",
            "@local/dsh-sandbox",
            "@local/dsh-mobile",
            "@local/dsh-total-config"
@@ -132,20 +116,6 @@ ofrece desactivarlos desde su propia página.
   conéctalo y decide por herramienta si se permite siempre, pide aprobación o
   se deniega. La lista se guarda en `$DSH_HOME/mcp-tools/servers.json`
   (permisos `0600`).
-- **Modelos de DeepSeek**: no hay nada que configurar; al activar el bundle
-  desaparecen «Cuenta DeepSeek» y «DeepSeek» del chat y de Ajustes, y también la
-  página Cuenta, y tus proveedores siguen igual. Recarga la pestaña después de
-  instalarlo.
-- **Contexto de espacios**: pulsa la fila de un espacio (la flecha solo pliega
-  la lista) para abrir su página de proyecto con descripción, prompt del
-  sistema, contexto, caja de chat con selectores de modo, modelo y permisos, y chats
-  navegables. Escribe en la caja y pulsa Enter o **Enviar** para crear una sesión
-  con ese mensaje ya enviado. Clic derecho en el espacio → **Configurar
-  espacio** para editar esos datos.
-  Para una sesión suelta, pulsa `+` → **Carpeta**. La barra lateral derecha
-  muestra una tarjeta **Contexto** en *Empezar* y una pestaña completa con la
-  suma del contexto del espacio y el de la sesión. La configuración se guarda
-  en `$DSH_HOME/workspace-context/context.json` (permisos `0600`).
 - **Retro AI OS**: elige *Menta clásica*, *CRT ámbar*, *Vaporwave*, *Azul
   medianoche* o *Matrix* y activa el interruptor. La barra bajo el compositor
   muestra el estado real de la sesión (trabajando, esperando respuesta o turno
@@ -168,12 +138,6 @@ ofrece desactivarlos desde su propia página.
   segundo Enter envía el mensaje.
   La clave se guarda en `$DSH_HOME/groq-dictation/settings.json` (permisos
   `0600`); el audio solo sale del equipo al detener la grabación.
-- **Modelo predeterminado**: abre **Ajustes → Modelos**. Arriba del todo, junto
-  a *Abrir archivo de configuración*, elige el modelo con el que empiezan los
-  chats nuevos. El control solo aparece en esa página. Cambiar el modelo dentro
-  de una sesión no modifica este valor; las conversaciones ya empezadas
-  conservan el suyo. La elección se guarda en
-  `$DSH_HOME/default-model/settings.json` (permisos `0600`).
 - **Acceso desde el móvil**: en **Ajustes → Acceso desde el móvil** escanea el
   QR de **Red local** con el móvil en la misma Wi-Fi (o activa el **Acceso
   público** para entrar desde cualquier red). La pantalla del móvil es la misma
@@ -181,30 +145,6 @@ ofrece desactivarlos desde su propia página.
   aceptar el aviso de seguridad y usa una contraseña de 8 caracteres que se
   renueva en cada activación (o una personalizada). Los datos se guardan en
   `$DSH_HOME/dsh-mobile/` (permisos `0600`).
-- **DSH Config**: abre **Ajustes** y arrastra cualquier categoría de la barra
-  izquierda hacia arriba o hacia abajo; una línea marca dónde caerá. Al soltar,
-  el orden se aplica al momento y se guarda en
-  `$DSH_HOME/dsh-config/settings.json` (permisos `0600`). También puedes mover
-  la categoría enfocada con `Alt+↑` y `Alt+↓`.
-  En **Complementos → Agregar complemento** puedes pegar una URL de carpeta de
-  GitHub, por ejemplo
-  `https://github.com/miglesiassarria/dsh-plugins/tree/main/local_retro-ai-os`:
-  el Host descarga solo esa carpeta, fijada al commit, en
-  `$DSH_HOME/dsh-config/github`, y el diálogo normal la instala como paquete
-  local. Solo repositorios públicos y sujeto al límite anónimo de la API de
-  GitHub. En el compositor, el selector de modelo ya no muestra el sufijo
-  «Predeterminado» del esfuerzo del proveedor.
-  **Ajustes → DSH Config** tiene un interruptor para cada comportamiento (los
-  tres empiezan activados), de modo que puedes desactivar el reordenado, la
-  instalación desde GitHub o el ocultado del esfuerzo por separado.
-  **Qué modifica:** (1) el orden de las categorías de Ajustes, con arrastre,
-  teclado y persistencia en el Host; (2) el diálogo **Agregar complemento**,
-  para aceptar carpetas de GitHub y resolverlas a un paquete local; (3) el
-  selector de modelo del compositor, para ocultar solo el esfuerzo
-  predeterminado; (4) una categoría propia en Ajustes con esos interruptores.
-  La lista completa, con los recursos y las rutas que toca, está en
-  [su README](local_dsh-config/README.md#qué-modifica).
-  Recarga la pestaña tras instalarlo para que cargue la mitad de cliente.
 
 Cada plugin documenta su comportamiento en su propio `README.md`.
 
@@ -213,31 +153,27 @@ Cada plugin documenta su comportamiento en su propio `README.md`.
 Los plugins traen comprobaciones que se ejecutan sin tocar tu instalación:
 la de `local_dsh-backups` construye un Harness desechable en un directorio
 temporal, la de `local_tools-mcp-servers` monta el árbol de React en una VM, la
-de `local_workspace-context` prueba el store, el filtrado de carpetas, la ruta
-HTTP, la herencia por ruta canónica, la tarjeta y la pestaña **Contexto**, la
-página de proyecto con clic, flecha y caja de chat, y el diálogo del cliente, la
-de `local_hide-deepseek-defaults` valida su parche y sus recursos, la de
+de `local_dsh-sandbox` valida el estado por sesión con permisos `0600`, las
+rutas canónicas de las carpetas autorizadas y la ruta de conmutación, la de
+`local_dsh-total-config` comprueba sus interruptores y la tarjeta que desactiva
+los bundles sustituidos, la de `local_retro-ai-os` prueba la persistencia de
+preferencias, las tipografías servidas y el humo del cliente, y la de
 `local_groq-dictation` prueba el store de la clave, la ruta de transcripción
-con `fetch` simulado, la fila de Ajustes y el micrófono del compositor, y la de
-`local_default-model` prueba el catálogo, la persistencia del pin, la ruta HTTP,
-la preparación de sesiones nuevas y vacías (sin tocar subagentes, forks ni
-conversaciones empezadas) y el selector de la cabecera de Modelos. El de móvil
-no incluye una suite propia: su mitad de host se verificó contra el proxy real
-(login, QR, conmutador de red local y RPC) y su mitad de cliente se sirve como
-bundle `@local/dsh-mobile`.
+con `fetch` simulado, la fila de Ajustes y el micrófono del compositor. El de
+móvil no incluye una suite propia: su mitad de host se verificó contra el proxy
+real (login, QR, conmutador de red local y RPC) y su mitad de cliente se sirve
+como bundle `@local/dsh-mobile`.
 
 ```bash
 node local_dsh-backups/test/host-check.mjs
 node local_dsh-backups/test/render-check.mjs
 node local_tools-mcp-servers/test/render-check.mjs
-node local_workspace-context/test/host-check.mjs
-node local_workspace-context/test/render-check.mjs
-node local_hide-deepseek-defaults/test/check.mjs
+node local_dsh-sandbox/test/host-check.mjs
+node local_dsh-total-config/test/check.mjs
 node local_retro-ai-os/test/host-check.mjs
+node local_retro-ai-os/test/client-smoke.mjs
 node local_groq-dictation/test/host-check.mjs
 node local_groq-dictation/test/render-check.mjs
-node local_default-model/test/host-check.mjs
-node local_default-model/test/render-check.mjs
 ```
 
 ## Estructura
@@ -255,31 +191,30 @@ local_tools-mcp-servers/
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
   test/               comprobación de render y servidores MCP de ejemplo
-local_workspace-context/
-  index.js            mitad de host: store, ruta y contexto de prompt
-  client.js           mitad de cliente: menú, diálogo, comando + y rail
+local_dsh-sandbox/
+  index.js            mitad de host: estado por sesión, executor nativo y grants
+  client.js           jaula del compositor y página de Ajustes
+  install.mjs         instalación del parche en el perfil
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
-  test/               comprobaciones de host y de render
-local_hide-deepseek-defaults/
-  cordis.patch.yml    desactiva llm-deepseek, llm-deepseek-account y ui-settings-account
+  test/               host check y prueba de integración
+local_dsh-total-config/
+  index.js            mitad de host: interruptores, modelo y contexto
+  client.js           páginas de Ajustes, espacios y barra derecha
+  github.js           instalación desde una carpeta de GitHub
+  cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
-  test/check.mjs      validación del parche y de los recursos
+  test/check.mjs      comprobación de los interruptores
 local_retro-ai-os/
-  index.js            mitad de host: preferencias y ruta HTTP
-  client.js           mitad de cliente: estilos, capa de tokens, mascota y estado
+  index.js            mitad de host: preferencias, marca y ruta HTTP
+  client.js           mitad de cliente: estilos, tokens, mascota, estado y marca
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
-  test/host-check.mjs persistencia y validación de la ruta
+  fonts/              once tipografías WOFF2 y sus licencias
+  test/               persistencia, ruta, tipografías y humo del cliente
 local_groq-dictation/
   index.js            mitad de host: clave, ajustes y proxy a Groq
   client.js           mitad de cliente: fila de Ajustes y micrófono del compositor
-  cordis.patch.yml    entrada de bundle
-  locale/{en,es}.json textos
-  test/               comprobaciones de host y de render
-local_default-model/
-  index.js            mitad de host: pin, catálogo, ruta y preparación de sesiones
-  client.js           mitad de cliente: selector en la cabecera de Modelos
   cordis.patch.yml    entrada de bundle
   locale/{en,es}.json textos
   test/               comprobaciones de host y de render
@@ -309,20 +244,19 @@ Lo que sí puede contener secretos son tus **datos**, que nunca entran aquí:
   archivo se incluye a propósito en la copia de seguridad para poder restaurar
   los servidores MCP en otro equipo: trata los ZIP de copia como material
   sensible y no los adjuntes a incidencias, PRs ni conversaciones públicas.
-- **Contexto de espacios** guarda en `$DSH_HOME/workspace-context/context.json`
-  la configuración y los archivos de texto que añadas, con permisos `0600`. Las
-  carpetas se leen en el momento de componer el prompt, omitiendo archivos
-  ocultos y con nombre de credencial, pero un archivo de texto elegido a mano
-  puede contener secretos: revísalo antes de compartir una copia del perfil.
+- **DHS Total Config** guarda en `$DSH_HOME/dsh-total-config/` con permisos
+  `0600` sus interruptores (`settings.json`), el contexto de los espacios
+  (`workspace.json`) y el modelo predeterminado (`default-model.json`), y
+  cachea en `github/` las carpetas descargadas de GitHub. Las carpetas de
+  contexto se leen al componer el prompt, omitiendo archivos ocultos y con
+  nombre de credencial, pero un archivo de texto elegido a mano puede contener
+  secretos: revísalo antes de compartir una copia del perfil.
 - **Dictado con Groq** guarda la clave API en
   `$DSH_HOME/groq-dictation/settings.json` con permisos `0600`. La página solo
   recibe si hay clave y sus últimos cuatro caracteres; el audio se reenvía a
   Groq únicamente al detener la grabación y no se guarda en disco. La copia de
   seguridad del plugin de copias no incluye este archivo; si copias el perfil a
   mano, contiene una credencial: trátalo como material sensible.
-- **Modelo predeterminado** guarda en `$DSH_HOME/default-model/settings.json`
-  solo el proveedor y el identificador del modelo elegidos, con permisos `0600`.
-  No contiene claves ni credenciales.
 - **Acceso desde el móvil** guarda en `$DSH_HOME/dsh-mobile/` las contraseñas de
   acceso (`token`, `token-lan`), los interruptores y el token del túnel de
   Cloudflare si usas dominio fijo, con permisos `0600`. El token del túnel no se

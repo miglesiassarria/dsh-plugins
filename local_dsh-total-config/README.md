@@ -1,13 +1,10 @@
 # DHS Total Config
 
 Complemento único para **DeepSeek Harness** que reúne, en una sola página de
-Ajustes, los comportamientos que antes vivían en cinco bundles distintos:
-
-- [`local_dsh-config`](../local_dsh-config/)
-- [`local_default-model`](../local_default-model/)
-- [`local_hide-deepseek-defaults`](../local_hide-deepseek-defaults/)
-- [`local_hide-updates`](../local_hide-updates/)
-- [`local_workspace-context`](../local_workspace-context/)
+Ajustes, los comportamientos que antes vivían en cinco bundles distintos
+(`dsh-config`, `default-model`, `hide-deepseek-defaults`, `hide-updates` y
+`workspace-context`), hoy retirados del repositorio y sustituidos por los
+interruptores de este paquete.
 
 Cada comportamiento tiene su propio interruptor en **Ajustes → DHS Total
 Config** y se guarda en el Host, así que la elección sobrevive a recargas,
