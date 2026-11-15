@@ -1,9 +1,0 @@
-{
-  "meta": {
-    "title": "DSH Config",
-    "description": "Reordena las categorías de Ajustes, instala complementos desde carpetas de GitHub y oculta la etiqueta de esfuerzo predeterminado, cada uno con un interruptor en Ajustes → DSH Config."
-  },
-  "moved": "Categoría movida a la posición {position} de {total}.",
-  "saveError": "No se pudo guardar el nuevo orden de categorías.",
-  "loadError": "No se pudo cargar el orden de categorías guardado."
-}

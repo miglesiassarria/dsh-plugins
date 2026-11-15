@@ -1,9 +1,0 @@
-{
-  "meta": {
-    "title": "DSH Config",
-    "description": "Reorder the Settings categories, install plugins from GitHub folders and hide the default effort label, each with a switch in Settings → DSH Config."
-  },
-  "moved": "Category moved to position {position} of {total}.",
-  "saveError": "The new category order could not be saved.",
-  "loadError": "The saved category order could not be loaded."
-}
