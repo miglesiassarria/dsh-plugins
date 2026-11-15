@@ -30,6 +30,8 @@ window.__ModuleLoader__.load({
         'cage.onHint': 'This session is caged (red). The agent can only use tools, cannot run the CLI or code, and files are limited to the workspace and granted folders. Click to leave the cage.',
         'cage.offHint': 'Click to cage this session: native tools only, no CLI or code, and files limited to the workspace and granted folders.',
         'cage.error': 'The sandbox switch could not be saved.',
+        'cage.degraded': 'Sandbox degraded:',
+        'page.degraded': 'The cage is running in degraded mode:',
         'cage.loading': 'Sandbox',
       },
       es: {
@@ -53,6 +55,8 @@ window.__ModuleLoader__.load({
         'cage.onHint': 'Esta sesión está enjaulada (roja). El agente solo puede usar herramientas, no puede ejecutar la CLI ni código, y los archivos se limitan al espacio de trabajo y a las carpetas autorizadas. Pulsa para salir de la jaula.',
         'cage.offHint': 'Pulsa para enjaular esta sesión: solo herramientas nativas, sin CLI ni código, y archivos limitados al espacio de trabajo y a las carpetas autorizadas.',
         'cage.error': 'No se pudo guardar el interruptor del sandbox.',
+        'cage.degraded': 'Sandbox degradado:',
+        'page.degraded': 'La jaula está en modo degradado:',
         'cage.loading': 'Sandbox',
       },
     };
@@ -146,6 +150,7 @@ window.__ModuleLoader__.load({
       const [on, setOn] = React.useState(false);
       const [busy, setBusy] = React.useState(false);
       const [failed, setFailed] = React.useState(false);
+      const [warning, setWarning] = React.useState(null);
       const [ready, setReady] = React.useState(false);
 
       React.useEffect(() => {
@@ -159,6 +164,7 @@ window.__ModuleLoader__.load({
           .then((data) => {
             if (!alive || data === null) return;
             setOn(data.enabled === true);
+            setWarning(typeof data.lastError === 'string' ? data.lastError : null);
             setReady(true);
           })
           .catch(() => {
@@ -175,6 +181,7 @@ window.__ModuleLoader__.load({
         try {
           const data = await request('/state', { method: 'POST', body: { sessionId: sessionId, enabled: next } });
           setOn(data && data.enabled === true);
+          setWarning(data && typeof data.lastError === 'string' ? data.lastError : null);
         } catch (error) {
           console.warn('[dsh-sandbox] ' + t('cage.error'), error);
           setFailed(true);
@@ -189,10 +196,10 @@ window.__ModuleLoader__.load({
         h('style', null, CSS),
         h('button', {
           type: 'button',
-          className: 'dsb-cage' + (on ? ' is-on' : '') + (failed ? ' is-failed' : ''),
+          className: 'dsb-cage' + (on ? ' is-on' : '') + (failed || warning !== null ? ' is-failed' : ''),
           'aria-label': label,
           'aria-pressed': on,
-          title: failed ? t('cage.error') : !ready ? t('cage.loading') : on ? t('cage.onHint') : t('cage.offHint'),
+          title: failed ? t('cage.error') : warning !== null ? t('cage.degraded') + ' ' + warning : !ready ? t('cage.loading') : on ? t('cage.onHint') : t('cage.offHint'),
           disabled: busy || sessionId === undefined,
           onClick: toggle,
         }, h(CageIcon, { active: on })));
@@ -205,12 +212,14 @@ window.__ModuleLoader__.load({
       const [path, setPath] = React.useState('');
       const [busy, setBusy] = React.useState(false);
       const [error, setError] = React.useState(null);
+      const [warning, setWarning] = React.useState(null);
       const [status, setStatus] = React.useState(null);
 
       const load = React.useCallback(async () => {
         try {
-          const data = await request('/grants');
+          const [data, state] = await Promise.all([request('/grants'), request('/state')]);
           setGrants(Array.isArray(data?.grants) ? data.grants : []);
+          setWarning(typeof state?.lastError === 'string' ? state.lastError : null);
           setError(null);
         } catch (failure) {
           setError(String(failure?.message || failure));
@@ -250,6 +259,7 @@ window.__ModuleLoader__.load({
         h('h2', null, t('page.title')),
         h('p', { className: 'dsb-intro' }, t('page.intro')),
         h('p', { className: 'dsb-hint' }, t('page.how')),
+        warning !== null ? h('p', { className: 'dsb-error' }, t('page.degraded') + ' ' + warning) : null,
         h('div', { className: 'dsb-card' },
           h('div', { className: 'dsb-card-head' },
             h('h3', { className: 'dsb-card-title' }, t('grants.title')),

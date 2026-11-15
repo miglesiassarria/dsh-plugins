@@ -47,6 +47,11 @@ try {
   assert.equal(post.payload.data.mascot, false)
   assert.equal(readPreferences().style, 'vapor')
 
+  const matrix = response()
+  await handleRequest(request('POST', '/dsh-retro-ai-os/preferences', { enabled: true, style: 'matrix' }), matrix)
+  assert.equal(matrix.status, 200)
+  assert.equal(readPreferences().style, 'matrix')
+
   const bad = response()
   await handleRequest(request('POST', '/dsh-retro-ai-os/preferences', { style: 'unknown' }), bad)
   assert.equal(bad.status, 400)

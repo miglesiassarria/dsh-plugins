@@ -28,7 +28,7 @@ const HEADER = 'x-dsh-retro-ai-os'
 const MAX_BODY_BYTES = 16 * 1024
 
 /** Style ids the Client half can render. */
-const STYLES = new Set(['classic', 'amber', 'vapor', 'cobalt'])
+const STYLES = new Set(['classic', 'amber', 'vapor', 'cobalt', 'matrix'])
 
 /** Persisted defaults. */
 const DEFAULTS = Object.freeze({

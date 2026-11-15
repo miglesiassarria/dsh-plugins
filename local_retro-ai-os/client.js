@@ -69,6 +69,16 @@ window.__ModuleLoader__.load({
         light: ['#e4eef6', '#f2f8fc', '#cfe0ec', '#f7fbff', '#9fb6c6', '#4a6478', '#0b5e8a', '#0e2230', '#3e5a6c', '#a6293a', '#6a8394', '#1f6b4a', '#8a5300', '#d3e2ec'],
         dark: ['#08131c', '#0e1f2c', '#142b3c', '#102432', '#234356', '#3e6780', '#4fc3f7', '#ddf0fa', '#9dbccf', '#ff7d8a', '#6a8fa3', '#5ee0a0', '#ffc15e', '#0a1822'],
       },
+      {
+        id: 'matrix',
+        nameKey: 'style.matrix',
+        descKey: 'style.matrix.desc',
+        artwork: { shell: '#073016', screen: '#b9ffca', bulb: '#50ff82' },
+        swatches: ['#020a05', '#123c20', '#62ef85', '#dcffe4'],
+        // Matrix intentionally stays dark in both host appearance modes.
+        light: ['#030b06', '#08180d', '#102719', '#08180d', '#315d3b', '#538363', '#80ef9b', '#e2ffe9', '#b4d9bc', '#ff9191', '#97bba0', '#8df5aa', '#f2d082', '#06120a'],
+        dark: ['#030b06', '#08180d', '#102719', '#08180d', '#315d3b', '#538363', '#80ef9b', '#e2ffe9', '#b4d9bc', '#ff9191', '#97bba0', '#8df5aa', '#f2d082', '#06120a'],
+      },
     ];
 
     const DICTS = {
@@ -86,13 +96,15 @@ window.__ModuleLoader__.load({
         'style.vapor.desc': 'Violet dusk with magenta and mint signals.',
         'style.cobalt': 'Midnight Cobalt',
         'style.cobalt.desc': 'Blueprint blue with bright cyan accents.',
+        'style.matrix': 'Matrix',
+        'style.matrix.desc': 'Dark terminal, green phosphor and falling code.',
         behaviorCard: '02 / BEHAVIOR',
         'toggle.label': 'Enable Retro AI OS',
         'toggle.desc': 'Applies the selected style to the interface. Switching it off restores the host appearance exactly.',
         'mascot.label': 'Show the companion',
         'mascot.desc': 'A pixel companion under the composer that follows the real session state.',
         'animation.label': 'Discreet animations',
-        'animation.desc': 'Blinking antenna and scanline cues. Your system reduced-motion setting wins.',
+        'animation.desc': 'Companion cues and Matrix digital rain. Your system reduced-motion setting wins.',
         companionCard: '03 / COMPANION & STATUS',
         'companion.title': 'Pixel companion',
         'companion.desc': 'It reports activity, pending questions and the end of a turn. It never answers, approves or changes your session.',
@@ -122,13 +134,15 @@ window.__ModuleLoader__.load({
         'style.vapor.desc': 'Atardecer violeta con señales magenta y menta.',
         'style.cobalt': 'Azul medianoche',
         'style.cobalt.desc': 'Azul de plano con acentos cian.',
+        'style.matrix': 'Matrix',
+        'style.matrix.desc': 'Terminal oscuro, fósforo verde y lluvia de código.',
         behaviorCard: '02 / COMPORTAMIENTO',
         'toggle.label': 'Activar Retro AI OS',
         'toggle.desc': 'Aplica el estilo elegido a la interfaz. Al desactivarlo reaparece exactamente el aspecto original.',
         'mascot.label': 'Mostrar el compañero',
         'mascot.desc': 'Una mascota pixelada bajo el cuadro de mensaje que sigue el estado real de la sesión.',
         'animation.label': 'Animaciones discretas',
-        'animation.desc': 'Antena y línea de barrido. La preferencia de movimiento reducido del sistema tiene prioridad.',
+        'animation.desc': 'Animaciones del compañero y lluvia digital de Matrix. La preferencia de movimiento reducido del sistema tiene prioridad.',
         companionCard: '03 / MASCOTA Y ESTADO',
         'companion.title': 'Compañero pixelado',
         'companion.desc': 'Informa de la actividad, las preguntas pendientes y el final del turno. Nunca responde, aprueba ni modifica tu sesión.',
@@ -158,13 +172,15 @@ window.__ModuleLoader__.load({
         'style.vapor.desc': '紫罗兰暮色与洋红、薄荷信号。',
         'style.cobalt': '午夜钴蓝',
         'style.cobalt.desc': '蓝图蓝与明亮青色点缀。',
+        'style.matrix': 'Matrix',
+        'style.matrix.desc': '深色终端、绿色荧光与数字雨。',
         behaviorCard: '02 / 行为',
         'toggle.label': '启用 Retro AI OS',
         'toggle.desc': '将所选风格应用到界面。关闭后恢复原始外观。',
         'mascot.label': '显示伙伴',
         'mascot.desc': '输入框下方的像素伙伴，跟随真实会话状态。',
         'animation.label': '轻微动画',
-        'animation.desc': '天线闪烁与扫描线；系统“减少动态效果”优先。',
+        'animation.desc': '伙伴动画和 Matrix 数字雨；系统“减少动态效果”优先。',
         companionCard: '03 / 伙伴与状态',
         'companion.title': '像素伙伴',
         'companion.desc': '报告活动、待回答的问题与本轮结束；不会替你回答、批准或修改会话。',
@@ -252,6 +268,13 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
+html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace}
+.retro-matrix-rain{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:.14;mask-image:linear-gradient(90deg,#000 0%,transparent 27%,transparent 73%,#000 100%);-webkit-mask-image:linear-gradient(90deg,#000 0%,transparent 27%,transparent 73%,#000 100%)}
+.retro-matrix-column{position:absolute;top:-70%;color:#60ff89;font:500 15px/1.3 'Courier New',monospace;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:.12em;white-space:nowrap;text-shadow:0 0 8px #00e64c;animation:matrix-fall var(--duration) linear var(--delay) infinite}
+.retro-matrix-column::first-letter{color:#e0ffe8}
+.retro-matrix-rain.retro-static .retro-matrix-column{animation:none;top:0}
+@keyframes matrix-fall{from{transform:translateY(0)}to{transform:translateY(220vh)}}
+@media (prefers-reduced-motion:reduce){.retro-matrix-column{animation:none;top:0}}
 .retro-page{max-width:760px;color:var(--dsw-alias-label-primary)}
 .retro-hero{padding:6px 0 18px;border-bottom:2px dashed var(--dsw-alias-border-l2)}
 .retro-eyebrow{font:700 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--dsw-alias-brand-primary)}
@@ -490,6 +513,24 @@ window.__ModuleLoader__.load({
             }
           };
         }, 'retro-ai-os preferences');
+
+        function MatrixRain() {
+          const prefs = usePrefs(store);
+          if (!prefs.enabled || prefs.style !== 'matrix') return null;
+          const glyphs = ['ｱ7ﾈ0ｶ1ﾐ2ﾛ9', 'ﾊ4ﾑ1ｾ8ﾅ0ｷ3', '9ﾂ3ﾎ0ﾘ7ｴ1ﾌ', 'ﾀ6ﾕ2ｵ8ﾒ4ｻ0', '1ﾝ8ｸ3ﾖ0ﾃ6ﾗ'];
+          return h(React.Fragment, null,
+            h('style', null, CSS),
+            h('div', { className: 'retro-matrix-rain' + (prefs.animation ? '' : ' retro-static'), 'aria-hidden': true },
+              Array.from({ length: 36 }, (_, i) => h('span', {
+                key: i,
+                className: 'retro-matrix-column',
+                style: { left: (i * 2.85) + '%', '--duration': (12 + (i * 7 % 15)) + 's', '--delay': (-((i * 11) % 27)) + 's' },
+              }, glyphs[i % glyphs.length]))));
+        }
+
+        ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+          name: 'shell.overlay', id: 'retro-ai-os-matrix-rain', order: -100,
+        }, MatrixRain));
 
         function Settings() {
           const prefs = usePrefs(store);

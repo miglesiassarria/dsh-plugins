@@ -17,18 +17,83 @@ import {
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 /**
- * Native executor class. The import is dynamic so the plugin still loads (and
- * its settings/route stay usable) on a composition that does not route the
- * installation package; activation then reports the missing class instead of
- * taking the whole plugin down.
+ * Native executor class, loaded lazily so the plugin still loads on a
+ * composition that does not route bare installation packages. The profile
+ * resolver covers the browser/worker path but not always the Host module, so
+ * the fallback imports the copy shipped inside the running application.
  */
 let NativeToolExecutor
-try {
-  ({ NativeToolExecutor } = await import('@deepseek-ai/dsh-tool-executor-native'))
-} catch (error) {
-  NativeToolExecutor = undefined
+let nativeExecutorSource = 'none'
+let nativeExecutorError
+
+/** Candidate absolute paths of the executor inside the packaged application. */
+function applicationExecutorCandidates() {
+  const candidates = []
+  const resources = typeof process.resourcesPath === 'string' ? process.resourcesPath : undefined
+  const relative = ['app.asar', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-tool-executor-native', 'lib', 'index.js']
+  if (resources !== undefined) {
+    candidates.push(join(resources, ...relative))
+    candidates.push(join(resources, 'app.asar.unpacked', ...relative.slice(1)))
+    candidates.push(join(resources, 'app', 'node_modules', '@deepseek-ai', 'dsh-tool-executor-native', 'lib', 'index.js'))
+  }
+  if (typeof process.execPath === 'string' && process.execPath.length > 0) {
+    const contents = dirname(dirname(process.execPath))
+    candidates.push(join(contents, 'Resources', ...relative))
+    candidates.push(join(contents, 'Resources', 'app', 'node_modules', '@deepseek-ai', 'dsh-tool-executor-native', 'lib', 'index.js'))
+  }
+  return [...new Set(candidates)]
+}
+
+/** Load the first available NativeToolExecutor and remember where it came from. */
+async function loadNativeExecutor() {
+  try {
+    const module = await import('@deepseek-ai/dsh-tool-executor-native')
+    if (typeof module.NativeToolExecutor === 'function') {
+      NativeToolExecutor = module.NativeToolExecutor
+      nativeExecutorSource = 'profile'
+      nativeExecutorError = undefined
+      return
+    }
+    nativeExecutorError = 'el paquete no exporta NativeToolExecutor'
+  } catch (error) {
+    nativeExecutorError = error instanceof Error ? error.message : String(error)
+  }
+  for (const candidate of applicationExecutorCandidates()) {
+    try {
+      const module = await import(pathToFileURL(candidate).href)
+      if (typeof module.NativeToolExecutor === 'function') {
+        NativeToolExecutor = module.NativeToolExecutor
+        nativeExecutorSource = 'application'
+        nativeExecutorError = undefined
+        return
+      }
+    } catch (error) {
+      nativeExecutorError = (nativeExecutorError === undefined ? '' : nativeExecutorError + '; ') + (error instanceof Error ? error.message : String(error))
+    }
+  }
+}
+await loadNativeExecutor()
+
+/**
+ * Fail-closed executor: when the native one cannot be loaded the agent gets no
+ * tools at all instead of keeping run_code and its raw process access.
+ */
+class EmptyToolExecutor {
+  describe() {
+    return { schemas: [] }
+  }
+
+  async execute(input) {
+    return {
+      results: (input?.calls ?? []).map((call) => ({
+        id: call.id,
+        result: { isError: true, error: { message: 'DSH Sandbox: el executor nativo no está disponible y la jaula ha bloqueado todas las herramientas.' } },
+      })),
+    }
+  }
 }
 
 /** Services this plugin cannot work without. */
@@ -43,8 +108,32 @@ const HEADER = 'x-dsh-sandbox'
 /** Request body ceiling. */
 const MAX_BODY_BYTES = 32 * 1024
 
-/** Tools that execute commands or drive the desktop; never available in the cage. */
-const CLI_TOOLS = Object.freeze(['bash', 'job_list', 'job_output', 'job_kill', 'cua'])
+/**
+ * Tools that execute commands, drive the desktop, change the workspace root or
+ * delegate to another agent/session. None of them is available in the cage:
+ * any of them would be a way around the file boundary.
+ */
+const BLOCKED_TOOLS = Object.freeze([
+  'bash',
+  'job_list',
+  'job_output',
+  'job_kill',
+  'cua',
+  'subagent',
+  'subagent_fork',
+  'send_message',
+  'schedule_create',
+  'schedule_edit',
+  'working_directory',
+  'office_convert',
+  'office_recalculate',
+  'office_render',
+  'team_task_create',
+  'team_task_update',
+])
+
+/** Blocked tools that are global and therefore accepted by tools.restrict(). */
+const RESTRICT_TOOLS = Object.freeze(BLOCKED_TOOLS.filter((name) => name !== 'cua'))
 
 /** Filesystem tools and the argument that names the path they touch. */
 const FS_PATH_ARGS = Object.freeze({
@@ -58,6 +147,19 @@ const FS_PATH_ARGS = Object.freeze({
 
 /** Denial text the model sees when it reaches outside the cage. */
 const DENIED = 'DSH Sandbox: esta sesión está enjaulada; solo puede usar herramientas y tocar el espacio de trabajo o las carpetas autorizadas.'
+
+/** Active manager for diagnostics and tests. */
+let currentManager
+
+/** @returns {Record<string, unknown> | undefined} Live manager diagnostics. */
+export function sandboxState() {
+  return currentManager?.debug()
+}
+
+/** @returns {{ source: string, error: string | undefined }} Native executor load diagnostics. */
+export function nativeExecutorInfo() {
+  return { source: nativeExecutorSource, error: nativeExecutorError }
+}
 
 /**
  * @returns {string} Absolute plugin data directory.
@@ -207,8 +309,21 @@ class SandboxManager {
     this.records = new Map()
     /** Sessions currently covered, including children that inherit from a caged parent. */
     this.effective = new Set()
+    /** Sessions whose native executor could not be loaded and run with no tools. */
+    this.degraded = new Set()
     /** @type {(() => void) | undefined} */
     this.guardDispose = undefined
+    /** @type {Array<() => void>} */
+    this.listenerDisposers = []
+    /** Agent id -> native executor used by the selection override. */
+    this.nativeByAgent = new Map()
+    /** Agent id -> fail-closed executor used while activation is pending. */
+    this.emptyByAgent = new Map()
+    this.originalSelectExecutor = undefined
+    this.wrappedSelectExecutor = undefined
+    this.selectTarget = undefined
+    this.selectDescriptor = undefined
+    this.selectHadOwn = undefined
     /** @type {(() => void) | undefined} */
     this.originalResolve = undefined
     this.wrappedResolve = undefined
@@ -236,14 +351,100 @@ class SandboxManager {
    * @returns {boolean} Owned by an already caged agent.
    */
   ownedByCaged(agent) {
+    try {
+      const parent = this.ctx.agents.currentInitiator?.()
+      if (parent !== undefined && (this.explicit(String(parent.id)) || this.effective.has(String(parent.id)))) {
+        return true
+      }
+    } catch {
+      // No initiator boundary in this dispatch.
+    }
     for (const parent of this.records.keys()) {
       try {
-        if (this.ctx.agents.isOwnedBy(agent.id, parent)) return true
+        if (typeof this.ctx.agents.isOwnedBy === 'function' && this.ctx.agents.isOwnedBy(agent.id, parent)) return true
       } catch {
         // The child may have been unregistered in the meantime.
       }
     }
     return false
+  }
+
+  /**
+   * @param {any} scope Agent or agent scope.
+   * @returns {string | undefined} Agent/session id.
+   */
+  agentIdOf(scope) {
+    const id = scope?.id ?? scope?.session?.id
+    return typeof id === 'string' ? id : undefined
+  }
+
+  /**
+   * Force the selected executor for caged agents. The PTC agent preset can set
+   * its own scoped executor after agent/created, so listening to the event is
+   * not enough: the selection itself must be overridden on every step.
+   */
+  wrapSelectExecutor() {
+    const service = this.ctx.tools
+    // ctx.tools is a scoped proxy; the service instance behind it owns the real
+    // method. Patch the instance so the system-prompt callback and execute()
+    // both see the override, regardless of which scope proxy they use.
+    const originalSymbol = Object.getOwnPropertySymbols(service).find((symbol) => String(symbol).includes('original'))
+    const target = originalSymbol === undefined ? service : service[originalSymbol]
+    const original = target.selectExecutor
+    if (typeof original !== 'function') {
+      this.lastError = 'no se pudo interceptar selectExecutor'
+      this.ctx.logger?.warn?.('dsh-sandbox: ' + this.lastError)
+      return
+    }
+    const wrapped = function selectExecutor(scope) {
+      const id = thisManager.agentIdOf(scope)
+      if (id !== undefined && thisManager.isCaged(id)) {
+        let native = thisManager.nativeByAgent.get(id)
+        if (native === undefined && NativeToolExecutor !== undefined && scope?.ctx?.tools !== undefined) {
+          try {
+            native = new NativeToolExecutor(scope.ctx)
+            thisManager.nativeByAgent.set(id, native)
+          } catch {
+            native = undefined
+          }
+        }
+        if (native !== undefined) return native
+        let empty = thisManager.emptyByAgent.get(id)
+        if (empty === undefined) {
+          empty = new EmptyToolExecutor()
+          thisManager.emptyByAgent.set(id, empty)
+        }
+        return empty
+      }
+      return original.call(target, scope)
+    }
+    const thisManager = this
+    this.selectTarget = target
+    this.selectHadOwn = Object.prototype.hasOwnProperty.call(target, 'selectExecutor')
+    this.selectDescriptor = this.selectHadOwn ? Object.getOwnPropertyDescriptor(target, 'selectExecutor') : undefined
+    this.originalSelectExecutor = original
+    this.wrappedSelectExecutor = wrapped
+    Object.defineProperty(target, 'selectExecutor', { value: wrapped, configurable: true, writable: true })
+  }
+
+  /** Restore the original executor selection. */
+  unwrapSelectExecutor() {
+    if (this.selectTarget !== undefined && this.wrappedSelectExecutor !== undefined) {
+      if (this.selectHadOwn === true && this.selectDescriptor !== undefined) {
+        Object.defineProperty(this.selectTarget, 'selectExecutor', this.selectDescriptor)
+      } else {
+        try {
+          delete this.selectTarget.selectExecutor
+        } catch {
+          // A non-configurable own property would have prevented the patch.
+        }
+      }
+    }
+    this.selectTarget = undefined
+    this.selectDescriptor = undefined
+    this.selectHadOwn = undefined
+    this.originalSelectExecutor = undefined
+    this.wrappedSelectExecutor = undefined
   }
 
   /** Wrap the sandbox policy so a caged session always resolves to the workspace mode plus grants. */
@@ -270,12 +471,21 @@ class SandboxManager {
   /** Register the monotonic guard and lifecycle listeners, then apply to live agents. */
   start() {
     this.wrapPolicy()
+    this.wrapSelectExecutor()
     this.guardDispose = this.ctx.tools.guard((exec) => this.check(exec))
-    this.ctx.on('agent/created', ({ agent }) => this.syncAgent(agent))
-    this.ctx.on('agent/disposed', ({ agent }) => {
-      this.records.delete(agent)
-      this.effective.delete(String(agent?.id))
-    })
+    // Agent events are emitted on the agents service context with the agent as
+    // the scope carrier; a listener on the profile root does not see them.
+    const emitters = [this.ctx]
+    const serviceCtx = this.ctx.agents?.ctx
+    if (serviceCtx !== undefined && serviceCtx !== this.ctx) emitters.push(serviceCtx)
+    for (const emitter of emitters) {
+      this.listenerDisposers.push(emitter.on('agent/created', ({ agent }) => this.syncAgent(agent)))
+      this.listenerDisposers.push(emitter.on('agent/disposed', ({ agent }) => {
+        this.records.delete(agent)
+        this.effective.delete(String(agent?.id))
+        this.degraded.delete(String(agent?.id))
+      }))
+    }
     this.syncAll()
   }
 
@@ -323,29 +533,48 @@ class SandboxManager {
     // the root one, so remember what the agent used and restore it on exit.
     let previous
     try {
-      previous = agent.ctx.tools.selectExecutor(agent)
+      previous = this.originalSelectExecutor === undefined ? agent.ctx.tools.selectExecutor(agent) : this.originalSelectExecutor.call(this.selectTarget ?? this.ctx.tools, agent)
     } catch {
       previous = undefined
     }
     try {
-      const executor = new NativeToolExecutor(agent.ctx)
+      if (NativeToolExecutor === undefined) {
+        this.degraded.add(id)
+        this.lastError = 'executor nativo no disponible: ' + (nativeExecutorError ?? 'desconocido')
+        this.ctx.logger?.warn?.('dsh-sandbox: ' + this.lastError)
+      }
+      let executor = this.nativeByAgent.get(id)
+      if (executor === undefined) {
+        executor = NativeToolExecutor === undefined ? new EmptyToolExecutor() : new NativeToolExecutor(agent.ctx)
+        if (NativeToolExecutor !== undefined) this.nativeByAgent.set(id, executor)
+      }
       disposeExecutor = agent.ctx.tools.setExecutor(executor)
       executorOk = true
     } catch (error) {
-      this.lastError = 'executor: ' + (error instanceof Error ? error.message : String(error))
-      this.ctx.logger?.warn?.('dsh-sandbox: ' + this.lastError)
+      // A preset can install its own scoped executor before agent/created. The
+      // selection override still returns the native executor, so this conflict
+      // is not a degradation; it only means there is no record to restore.
+      if (this.nativeByAgent.has(id)) {
+        executorOk = true
+        this.ctx.logger?.debug?.('dsh-sandbox: executor del preset conservado para ' + id + ': ' + (error instanceof Error ? error.message : String(error)))
+      } else {
+        this.lastError = 'executor: ' + (error instanceof Error ? error.message : String(error))
+        this.ctx.logger?.warn?.('dsh-sandbox: ' + this.lastError)
+      }
     }
     // Hide the CLI/desktop tools from this agent as well as denying them at the
     // guard. Names are read from the agent's own view and denied one by one.
     const disposers = []
     try {
       const known = new Set(agent.ctx.tools.definitions(agent).map((definition) => definition.name))
-      for (const name of CLI_TOOLS) {
+      for (const name of RESTRICT_TOOLS) {
         if (!known.has(name)) continue
         try {
           disposers.push(agent.ctx.tools.restrict({ deny: [name] }))
         } catch (error) {
-          this.lastError = 'restrict ' + name + ': ' + (error instanceof Error ? error.message : String(error))
+          // A scoped-only tool can be rejected by the global restrict API; the
+          // monotonic guard still denies it by name.
+          this.ctx.logger?.debug?.('dsh-sandbox: no se pudo ocultar ' + name + ': ' + (error instanceof Error ? error.message : String(error)))
         }
       }
     } catch (error) {
@@ -362,10 +591,8 @@ class SandboxManager {
     }
     this.records.set(agent, { disposeExecutor, disposeRestrictions, previous })
     this.effective.add(id)
-    if (!executorOk) {
-      // Without the native executor the agent would keep run_code; the guard
-      // still denies CLI and filesystem tools, but the cage is degraded.
-      this.lastError = 'native executor unavailable for ' + id
+    if (!executorOk && this.lastError === undefined) {
+      this.lastError = 'executor no disponible para ' + id
       this.ctx.logger?.warn?.('dsh-sandbox: ' + this.lastError)
     }
   }
@@ -380,12 +607,14 @@ class SandboxManager {
     this.disposeRecord(record)
     this.records.delete(agent)
     this.effective.delete(String(agent?.id))
+    this.degraded.delete(String(agent?.id))
+    this.nativeByAgent.delete(String(agent?.id))
+    this.emptyByAgent.delete(String(agent?.id))
     if (record.previous !== undefined) {
       try {
         agent.ctx.tools.setExecutor(record.previous)
       } catch (error) {
-        this.lastError = 'restore: ' + (error instanceof Error ? error.message : String(error))
-        this.ctx.logger?.warn?.('dsh-sandbox: ' + this.lastError)
+        this.ctx.logger?.debug?.('dsh-sandbox: no se pudo restaurar el executor de ' + String(agent?.id) + ': ' + (error instanceof Error ? error.message : String(error)))
       }
     }
   }
@@ -414,7 +643,7 @@ class SandboxManager {
     if (id === undefined || !this.isCaged(String(id))) return undefined
     const name = exec?.name
     if (typeof name !== 'string') return undefined
-    if (CLI_TOOLS.includes(name)) return DENIED
+    if (BLOCKED_TOOLS.includes(name)) return DENIED
     const key = FS_PATH_ARGS[name]
     if (key !== undefined) return this.checkPath(exec, name, key)
     if (name === 'present' && Array.isArray(exec?.arguments?.files)) {
@@ -516,6 +745,17 @@ class SandboxManager {
    * @param {string | undefined} sessionId Session id.
    * @returns {Record<string, unknown>} Wire view.
    */
+  /** @returns {Record<string, unknown>} Diagnostics for tests and bug reports. */
+  debug() {
+    return {
+      enabled: [...this.enabled.keys()],
+      effective: [...this.effective],
+      native: [...this.nativeByAgent.keys()],
+      wrapped: this.selectTarget !== undefined,
+      lastError: this.lastError,
+    }
+  }
+
   view(sessionId) {
     return {
       enabled: sessionId === undefined ? false : this.explicit(sessionId),
@@ -523,6 +763,8 @@ class SandboxManager {
       sessions: Object.keys(Object.fromEntries(this.enabled)),
       grants: [...this.grants],
       cached: [...this.effective],
+      degraded: [...this.degraded],
+      executor: { source: nativeExecutorSource, error: nativeExecutorError },
       lastError: this.lastError,
     }
   }
@@ -537,6 +779,16 @@ class SandboxManager {
       // Already disposed.
     }
     this.guardDispose = undefined
+    this.unwrapSelectExecutor()
+    this.nativeByAgent.clear()
+    this.emptyByAgent.clear()
+    for (const dispose of this.listenerDisposers.splice(0)) {
+      try {
+        dispose()
+      } catch {
+        // Already disposed.
+      }
+    }
     const service = this.ctx.sandboxPolicy
     if (service.resolve === this.wrappedResolve && this.originalResolve !== undefined) {
       service.resolve = this.originalResolve
@@ -620,6 +872,7 @@ async function handleRequest(manager, request, response) {
  */
 export function apply(ctx) {
   const manager = new SandboxManager(ctx)
+  currentManager = manager
   ctx.effect(() => {
     const disposeRoute = ctx.webServer.register({
       kind: 'prefix',

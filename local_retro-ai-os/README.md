@@ -1,10 +1,10 @@
 # Retro AI OS
 
-Un tema visual reversible para DeepSeek Harness inspirado en los escritorios pixelados de los años 90. Añade una sección propia en **Ajustes → Retro AI OS**, cuatro estilos seleccionables, un compañero pixelado que refleja el estado real de la sesión y preferencias que sobreviven a los reinicios.
+Un tema visual reversible para DeepSeek Harness inspirado en los escritorios pixelados de los años 90. Añade una sección propia en **Ajustes → Retro AI OS**, cinco estilos seleccionables, un compañero pixelado que refleja el estado real de la sesión y preferencias que sobreviven a los reinicios.
 
 ## Qué añade
 
-- **Cuatro estilos**: Menta clásica, CRT ámbar, Vaporwave y Azul medianoche. Cada uno incluye una paleta coherente para los esquemas claro y oscuro, de modo que el control de apariencia de Harness sigue funcionando.
+- **Cinco estilos**: Menta clásica, CRT ámbar, Vaporwave, Azul medianoche y Matrix. Matrix conserva su estética oscura en ambos modos de apariencia y añade lluvia digital tenue en los laterales y tipografía monoespaciada. Los demás estilos ofrecen paletas claras y oscuras.
 - **Interruptor de activación** con `role="switch"` y estado `aria-checked`.
 - **Compañero pixelado** en la zona inferior del compositor. Refleja cuatro estados reales:
   - trabajando (sesión en ejecución),
@@ -31,8 +31,8 @@ y lo sirve en la ruta de mismo origen `GET/POST /dsh-retro-ai-os/preferences`, p
 ## Accesibilidad
 
 - Etiquetas explícitas y navegación por teclado en el selector de estilos (radios nativos).
-- Anillo de foco visible, contraste alto en las cuatro paletas.
-- Animaciones desactivables y respeto a `prefers-reduced-motion`.
+- Anillo de foco visible y paletas de alto contraste.
+- Animaciones desactivables y respeto a `prefers-reduced-motion`; la lluvia Matrix queda inmóvil en ambos casos y no intercepta clics.
 - El compañero usa `role="status"` y `aria-live="polite"`; el arte es decorativo (`aria-hidden`).
 
 ## Verificación

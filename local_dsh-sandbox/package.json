@@ -5,7 +5,8 @@
   "description": "Per-session sandbox cage: native tools only, no CLI, and file access limited to the workspace and granted folders.",
   "type": "module",
   "scripts": {
-    "test": "node test/host-check.mjs"
+    "test": "node test/host-check.mjs",
+    "test:live": "ELECTRON_RUN_AS_NODE=1 '/Applications/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness' test/live-integration.mjs"
   },
   "exports": {
     ".": "./index.js",

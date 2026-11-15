@@ -15,7 +15,9 @@ espacio de trabajo.
 
 - **Solo herramientas**: el agente no puede escribir ni ejecutar código
   arbitrario. No hay `run_code`, no hay terminal y no hay control del
-  escritorio.
+  escritorio. La selección del executor se sustituye en el propio servicio de
+  herramientas, así que el preset `ptc` de la sesión no puede volver a colar
+  `run_code`.
 - **Archivos confinados**: `read`, `read_image`, `write`, `edit`, `glob`,
   `grep` y `present` pasan por un guard monotónico que resuelve la ruta real
   (incluidos symlinks) y la compara con el espacio de trabajo de la sesión y las
@@ -25,6 +27,10 @@ espacio de trabajo.
   autorizadas a las raíces de escritura, de modo que el sandbox de archivos del
   Harness respalda el guard.
 - **Herencia**: un subagente creado por un agente enjaulado hereda la jaula.
+- **Sin puertas laterales**: la jaula también oculta y deniega `subagent`,
+  `subagent_fork`, `send_message`, `schedule_create`, `schedule_edit`,
+  `working_directory` y las herramientas `office_*`; cambiar el directorio de
+  trabajo o delegar en otra sesión ampliaría el perímetro.
 - **Persistencia**: el estado por sesión y las carpetas autorizadas viven en
   `$DSH_HOME/dsh-sandbox/state.json` (0600).
 
@@ -90,12 +96,29 @@ Después reinicia DeepSeek Harness.
 
 ```bash
 npm test        # host-check: estado, rutas, symlinks y rutas HTTP
+npm run test:live  # composición real: executor del app.asar + preset PTC falso
 ```
 
 La prueba de integración contra el registro real de `@deepseek-ai/dsh-tools`
 comprueba el cambio a executor nativo, la ocultación de CLI/CUA, la denegación
 de `bash`, la lectura/escritura confinada, la política y la herencia de
 subagentes.
+
+## Diagnóstico
+
+`GET /dsh-sandbox/state` (con la cabecera `x-dsh-sandbox: 1`) devuelve
+`executor.source`:
+
+- `application`: el executor nativo se cargó desde el `app.asar` de la
+  aplicación; es el caso normal en la app empaquetada.
+- `profile`: se resolvió como paquete del perfil.
+- `none`: no se pudo cargar. La jaula entra en **modo cerrado**: usa un
+  executor vacío, no expone ninguna herramienta y `lastError` explica el
+  fallo. Es preferible a dejar `run_code` vivo.
+
+El cambio de executor se aplica al **siguiente paso** del agente. Si enciendes
+la jaula mientras un turno está ejecutándose, ese turno termina con el executor
+anterior; espera a que acabe antes de probar.
 
 ## Límites
 
