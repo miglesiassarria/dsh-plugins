@@ -81,6 +81,87 @@ window.__ModuleLoader__.load({
       },
     ];
 
+    /**
+     * Bundled brand typefaces. Each stack starts with the @font-face family
+     * served from /dsh-retro-ai-os/fonts/ (see BRAND_CSS); `scale` keeps a wide
+     * display face from overflowing the sidebar row and the hero headline.
+     */
+    const BRAND_FONTS = [
+      { id: 'system', labelKey: 'brand.font.system', stack: 'inherit', scale: 1 },
+      { id: 'arcade', labelKey: 'brand.font.arcade', stack: "'Retro Brand Arcade', 'Press Start 2P', ui-monospace, monospace", scale: 0.6 },
+      { id: 'terminal', labelKey: 'brand.font.terminal', stack: "'Retro Brand Terminal', 'VT323', ui-monospace, monospace", scale: 1.1 },
+      { id: 'orbitron', labelKey: 'brand.font.orbitron', stack: "'Retro Brand Orbitron', 'Orbitron', ui-monospace, monospace", scale: 0.94 },
+      { id: 'neon', labelKey: 'brand.font.neon', stack: "'Retro Brand Neon', 'Monoton', ui-monospace, monospace", scale: 0.96 },
+      { id: 'roman', labelKey: 'brand.font.roman', stack: "'Retro Brand Roman', 'Cinzel', Georgia, serif", scale: 0.92 },
+      { id: 'editorial', labelKey: 'brand.font.editorial', stack: "'Retro Brand Editorial', 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif", scale: 0.95 },
+      { id: 'syne', labelKey: 'brand.font.syne', stack: "'Retro Brand Syne', 'Syne', ui-sans-serif, system-ui, sans-serif", scale: 0.88 },
+      { id: 'bebas', labelKey: 'brand.font.bebas', stack: "'Retro Brand Bebas', 'Bebas Neue', 'Arial Narrow', ui-sans-serif, sans-serif", scale: 1.12 },
+      { id: 'bungee', labelKey: 'brand.font.bungee', stack: "'Retro Brand Bungee', 'Bungee', ui-sans-serif, system-ui, sans-serif", scale: 0.82 },
+      { id: 'mono', labelKey: 'brand.font.mono', stack: "'Retro Brand Mono', 'IBM Plex Mono', ui-monospace, monospace", scale: 0.86 },
+    ];
+
+    /** Where a brand mark comes from. */
+    const BRAND_MARKS = ['default', 'custom', 'none'];
+
+    /** Sidebar brand row geometry owned by ui-sidebar. */
+    const SIDEBAR_BRAND_SIZE = 18;
+
+    /** Hero headline geometry owned by ui-conversation. */
+    const HERO_BRAND_SIZE = 26;
+
+    /**
+     * @param {string} id Typeface id.
+     * @returns {typeof BRAND_FONTS[number]} The typeface entry.
+     */
+    function fontOf(id) {
+      return BRAND_FONTS.find((font) => font.id === id) || BRAND_FONTS[0];
+    }
+
+    /** Smallest and largest logo scale the slider offers. */
+    const MARK_SCALE_MIN = 0.5;
+    const MARK_SCALE_MAX = 1.5;
+
+    /**
+     * @param {unknown} input Untrusted scale.
+     * @returns {number} A scale between 0.5 and 1.5.
+     */
+    function scaleOf(input) {
+      const value = typeof input === 'number' && Number.isFinite(input) ? input : 1;
+      return Math.min(MARK_SCALE_MAX, Math.max(MARK_SCALE_MIN, value));
+    }
+
+    /** @returns {object} A fresh default brand block. */
+    function defaultBrand() {
+      return {
+        on: false, seeded: false, sidebarText: '', heroText: '',
+        sidebarMark: 'default', heroMark: 'default', markScale: 1, font: 'system', badge: true, asset: null,
+      };
+    }
+
+    /**
+     * Normalize the brand block received from the Host.
+     * @param {unknown} input Untrusted share.
+     * @returns {ReturnType<typeof defaultBrand>} A complete brand block.
+     */
+    function normalizeBrand(input) {
+      const source = input && typeof input === 'object' ? input : {};
+      const asset = source.asset && typeof source.asset === 'object' && typeof source.asset.url === 'string'
+        ? { url: source.asset.url, label: typeof source.asset.label === 'string' ? source.asset.label : '' }
+        : null;
+      return {
+        on: source.on === true,
+        seeded: source.seeded === true,
+        sidebarText: typeof source.sidebarText === 'string' ? source.sidebarText.slice(0, 48) : '',
+        heroText: typeof source.heroText === 'string' ? source.heroText.slice(0, 48) : '',
+        sidebarMark: BRAND_MARKS.includes(source.sidebarMark) ? source.sidebarMark : 'default',
+        heroMark: BRAND_MARKS.includes(source.heroMark) ? source.heroMark : 'default',
+        markScale: scaleOf(source.markScale),
+        font: BRAND_FONTS.some((font) => font.id === source.font) ? source.font : 'system',
+        badge: source.badge !== false,
+        asset,
+      };
+    }
+
     const DICTS = {
       en: {
         eyebrow: 'CUSTOMIZATION / PLUGIN',
@@ -118,6 +199,47 @@ window.__ModuleLoader__.load({
         saved: 'Preferences saved in Harness',
         saveError: 'Could not save preferences; this session keeps them only until reload.',
         loading: 'Loading preferences…',
+        brandCard: '04 / CUSTOM BRAND',
+        'brand.on.label': 'Custom brand',
+        'brand.on.desc': 'Replaces the sidebar brand and the home headline with your own name, logo and typeface. Turn it off to get the DeepSeek marks back.',
+        'brand.sidebar.title': 'Sidebar',
+        'brand.hero.title': 'Home headline',
+        'brand.text.label': 'Text',
+        'brand.text.hint': 'Empty hides the text. Keep it short: 48 characters at most.',
+        'brand.mark.label': 'Logo',
+        'brand.mark.default': 'Original',
+        'brand.mark.custom': 'Custom',
+        'brand.mark.none': 'None',
+        'brand.badge.label': 'Show the “Preview” badge',
+        'brand.asset.title': 'Logo image',
+        'brand.asset.hint': 'PNG, JPG, WebP, GIF or SVG · up to 400 KB · a transparent background works best.',
+        'brand.asset.upload': 'Upload image',
+        'brand.asset.replace': 'Replace image',
+        'brand.asset.remove': 'Remove',
+        'brand.asset.empty': 'No custom image yet',
+        'brand.asset.error': 'That image could not be uploaded.',
+        'brand.previewBadge': 'Preview',
+        'brand.requiresTheme': 'The brand applies while Retro AI OS is enabled.',
+        'brand.asset.uploading': 'Uploading image…',
+        'brand.size.label': 'Logo size',
+        'brand.size.hint': 'Scales your own image; the original whale keeps its size.',
+        'brand.font.title': 'Typeface',
+        'brand.font.system': 'Host default',
+        'brand.font.arcade': 'Arcade',
+        'brand.font.terminal': 'Terminal',
+        'brand.font.orbitron': 'Orbitron',
+        'brand.font.neon': 'Neon',
+        'brand.font.roman': 'Roman',
+        'brand.font.editorial': 'Editorial',
+        'brand.font.syne': 'Syne',
+        'brand.font.bebas': 'Bebas',
+        'brand.font.bungee': 'Bungee',
+        'brand.font.mono': 'Mono',
+        'brand.preview': 'Brand preview',
+        'brand.preview.sidebar': 'Sidebar',
+        'brand.preview.hero': 'Home',
+        'brand.heroDefault': 'Into the Unknown',
+        'brand.reset': 'Reset brand',
         footer: 'The style is a reversible token layer: disable it and every original color returns. Preferences persist across restarts.',
       },
       es: {
@@ -156,6 +278,47 @@ window.__ModuleLoader__.load({
         saved: 'Preferencias guardadas en Harness',
         saveError: 'No se pudieron guardar las preferencias; esta sesión las conserva solo hasta recargar.',
         loading: 'Cargando preferencias…',
+        brandCard: '04 / MARCA PROPIA',
+        'brand.on.label': 'Marca propia',
+        'brand.on.desc': 'Sustituye la marca de la barra lateral y el título de la portada por tu nombre, tu logo y tu tipografía. Al desactivarlo vuelven las marcas de DeepSeek.',
+        'brand.sidebar.title': 'Barra lateral',
+        'brand.hero.title': 'Portada',
+        'brand.text.label': 'Texto',
+        'brand.text.hint': 'Vacío oculta el texto. Mejor corto: 48 caracteres como máximo.',
+        'brand.mark.label': 'Logo',
+        'brand.mark.default': 'Original',
+        'brand.mark.custom': 'Propio',
+        'brand.mark.none': 'Ninguno',
+        'brand.badge.label': 'Mostrar la etiqueta «Vista previa»',
+        'brand.asset.title': 'Imagen del logo',
+        'brand.asset.hint': 'PNG, JPG, WebP, GIF o SVG · hasta 400 KB · mejor con fondo transparente.',
+        'brand.asset.upload': 'Subir imagen',
+        'brand.asset.replace': 'Cambiar imagen',
+        'brand.asset.remove': 'Quitar',
+        'brand.asset.empty': 'Todavía no hay imagen propia',
+        'brand.asset.error': 'No se pudo subir esa imagen.',
+        'brand.previewBadge': 'Vista previa',
+        'brand.requiresTheme': 'La marca se aplica mientras Retro AI OS está activado.',
+        'brand.asset.uploading': 'Subiendo imagen…',
+        'brand.size.label': 'Tamaño del logo',
+        'brand.size.hint': 'Escala tu propia imagen; la ballena original conserva su tamaño.',
+        'brand.font.title': 'Tipografía',
+        'brand.font.system': 'La del sistema',
+        'brand.font.arcade': 'Arcade',
+        'brand.font.terminal': 'Terminal',
+        'brand.font.orbitron': 'Orbitron',
+        'brand.font.neon': 'Neón',
+        'brand.font.roman': 'Romana',
+        'brand.font.editorial': 'Editorial',
+        'brand.font.syne': 'Syne',
+        'brand.font.bebas': 'Bebas',
+        'brand.font.bungee': 'Bungee',
+        'brand.font.mono': 'Mono',
+        'brand.preview': 'Vista previa de la marca',
+        'brand.preview.sidebar': 'Barra lateral',
+        'brand.preview.hero': 'Portada',
+        'brand.heroDefault': 'Hacia lo desconocido',
+        'brand.reset': 'Restaurar marca',
         footer: 'El estilo es una capa de tokens reversible: al desactivarlo vuelven todos los colores originales. Las preferencias se conservan entre reinicios.',
       },
       zh: {
@@ -194,6 +357,47 @@ window.__ModuleLoader__.load({
         saved: '偏好已保存到 Harness',
         saveError: '无法保存偏好；本次会话只在刷新前保留。',
         loading: '正在加载偏好…',
+        brandCard: '04 / 自定义品牌',
+        'brand.on.label': '自定义品牌',
+        'brand.on.desc': '用你自己的名称、标志和字体替换侧边栏品牌与首页标题。关闭后恢复 DeepSeek 品牌。',
+        'brand.sidebar.title': '侧边栏',
+        'brand.hero.title': '首页标题',
+        'brand.text.label': '文字',
+        'brand.text.hint': '留空即不显示文字，最多 48 个字符。',
+        'brand.mark.label': '标志',
+        'brand.mark.default': '原始',
+        'brand.mark.custom': '自定义',
+        'brand.mark.none': '无',
+        'brand.badge.label': '显示“预览版”标签',
+        'brand.asset.title': '标志图片',
+        'brand.asset.hint': 'PNG、JPG、WebP、GIF 或 SVG · 不超过 400 KB · 建议使用透明背景。',
+        'brand.asset.upload': '上传图片',
+        'brand.asset.replace': '更换图片',
+        'brand.asset.remove': '移除',
+        'brand.asset.empty': '尚未上传图片',
+        'brand.asset.error': '无法上传该图片。',
+        'brand.previewBadge': '预览版',
+        'brand.requiresTheme': '只有在启用 Retro AI OS 时品牌才会应用。',
+        'brand.asset.uploading': '正在上传…',
+        'brand.size.label': '标志大小',
+        'brand.size.hint': '只缩放你上传的图片，原始标志保持原尺寸。',
+        'brand.font.title': '字体',
+        'brand.font.system': '系统默认',
+        'brand.font.arcade': '街机',
+        'brand.font.terminal': '终端',
+        'brand.font.orbitron': 'Orbitron',
+        'brand.font.neon': '霓虹',
+        'brand.font.roman': '罗马',
+        'brand.font.editorial': '编辑体',
+        'brand.font.syne': 'Syne',
+        'brand.font.bebas': 'Bebas',
+        'brand.font.bungee': 'Bungee',
+        'brand.font.mono': '等宽',
+        'brand.preview': '品牌预览',
+        'brand.preview.sidebar': '侧边栏',
+        'brand.preview.hero': '首页',
+        'brand.heroDefault': '探索未至之境',
+        'brand.reset': '恢复品牌',
         footer: '风格是可逆的令牌层：关闭后恢复所有原始颜色，偏好可在重启后保留。',
       },
     };
@@ -238,7 +442,13 @@ window.__ModuleLoader__.load({
     }
 
     function pickPublic(prefs) {
-      return { enabled: prefs.enabled, style: prefs.style, mascot: prefs.mascot, animation: prefs.animation };
+      return {
+        enabled: prefs.enabled,
+        style: prefs.style,
+        mascot: prefs.mascot,
+        animation: prefs.animation,
+        brand: normalizeBrand(prefs.brand),
+      };
     }
 
     function normalizePreferences(input) {
@@ -247,6 +457,7 @@ window.__ModuleLoader__.load({
         style: STYLES.some((style) => style.id === input?.style) ? input.style : 'classic',
         mascot: input?.mascot !== false,
         animation: input?.animation !== false,
+        brand: normalizeBrand(input?.brand),
       };
     }
 
@@ -269,6 +480,12 @@ window.__ModuleLoader__.load({
 
     const CSS = `
 html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace}
+/* Matrix: a finished turn marks the session row with a 6px success-green
+ * dot that vanishes into the green rain. Keep the host's green but thicken the
+ * core and add a dark rim plus a glow in the same colour, so the completed
+ * session stays visible at a glance. Scoped to the session rows
+ * (data-row-key="session:<id>") and to the Matrix theme. */
+html:has(.retro-matrix-rain) [data-row-key^="session:"] [data-state="done"]::after{inset:8%;box-shadow:0 0 0 1px rgba(3,11,6,.85),0 0 7px currentColor}
 .retro-matrix-rain{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:.52;mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 35%,transparent 65%,#000 88%,#000 100%);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 35%,transparent 65%,#000 88%,#000 100%)}
 .retro-matrix-column{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;font:500 15px/1.12 'Courier New',monospace;white-space:nowrap;animation:matrix-fall var(--duration) linear var(--delay) infinite}
 .retro-matrix-tail{writing-mode:vertical-rl;text-orientation:upright;letter-spacing:.08em;color:#19eb54;background:linear-gradient(to bottom,transparent,#087e30 25%,#19ed58 85%,#a0ffb3);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 7px rgba(0,255,72,.3)}
@@ -341,6 +558,76 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
 @keyframes retro-pop{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
 @media (max-width:520px){.retro-status-style{display:none}.retro-row{flex-direction:column;gap:8px}.retro-switch{align-self:flex-end}}
 @media (prefers-reduced-motion:reduce){.retro-page *,.retro-dock *,.retro-status *{animation:none!important;transition:none!important}}
+@font-face{font-family:'Retro Brand Arcade';src:url('/dsh-retro-ai-os/fonts/press-start-2p.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Terminal';src:url('/dsh-retro-ai-os/fonts/vt323.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Orbitron';src:url('/dsh-retro-ai-os/fonts/orbitron.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Neon';src:url('/dsh-retro-ai-os/fonts/monoton.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Roman';src:url('/dsh-retro-ai-os/fonts/cinzel.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Editorial';src:url('/dsh-retro-ai-os/fonts/bricolage-grotesque.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Syne';src:url('/dsh-retro-ai-os/fonts/syne.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Bebas';src:url('/dsh-retro-ai-os/fonts/bebas-neue.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Bungee';src:url('/dsh-retro-ai-os/fonts/bungee.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Retro Brand Mono';src:url('/dsh-retro-ai-os/fonts/ibm-plex-mono.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+[class*="_titleGroup"][data-retro-hide-text]>span:first-child{display:none}
+[class*="_titleGroup"][data-retro-hide-badge]>span[class*="_previewBadge"]{display:none}
+[data-retro-brand-text]{font-family:var(--retro-brand-font,inherit);font-size:calc(1em * var(--retro-brand-scale,1));line-height:1.16;letter-spacing:.01em}
+.retro-brand-logo{display:block;object-fit:contain;image-rendering:pixelated}
+.retro-brand-name{display:inline-flex;align-items:center;height:24px;color:var(--dsw-alias-label-primary);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.retro-brand-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:12px 0 2px}
+.retro-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.retro-field-label{font:700 10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:var(--dsw-alias-label-secondary);text-transform:uppercase}
+.retro-input{box-sizing:border-box;width:100%;padding:8px 10px;border:2px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:500 13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.retro-input::placeholder{color:var(--dsw-alias-label-tertiary)}
+.retro-input:focus-visible{outline:3px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.retro-field-hint{margin:0;font-size:11px;line-height:1.45;color:var(--dsw-alias-label-secondary)}
+.retro-segmented{display:inline-flex;align-self:flex-start;border:2px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1)}
+.retro-segment{appearance:none;border:0;border-right:2px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-secondary);font:600 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;padding:7px 10px;cursor:pointer}
+.retro-segment:last-child{border-right:0}
+.retro-segment:hover{color:var(--dsw-alias-label-primary)}
+.retro-segment[aria-checked="true"]{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-layer-1)}
+.retro-segment:focus-visible{outline:3px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.retro-inline-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:2px}
+.retro-inline-switch span{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary)}
+.retro-asset-row{display:flex;align-items:center;gap:12px;padding:14px 0 12px;border-bottom:1px dashed var(--dsw-alias-border-l1)}
+.retro-asset-thumb{display:flex;flex:none;align-items:center;justify-content:center;width:46px;height:46px;border:2px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);box-shadow:inset 2px 2px 0 rgba(255,255,255,.3),inset -2px -2px 0 rgba(0,0,0,.14)}
+.retro-asset-thumb img{max-width:36px;max-height:36px;object-fit:contain;image-rendering:pixelated}
+.retro-asset-thumb span{padding:2px;font:700 9px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dsw-alias-label-secondary);text-align:center}
+.retro-asset-copy{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.retro-asset-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary)}
+.retro-asset-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.retro-asset-actions{display:flex;flex:none;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.retro-button{appearance:none;cursor:pointer;padding:7px 10px;border:2px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:600 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;box-shadow:2px 2px 0 var(--dsw-alias-border-l1)}
+.retro-button:hover{background:var(--dsw-alias-bg-layer-1)}
+.retro-button:disabled{opacity:.55;cursor:default}
+.retro-button:focus-visible{outline:3px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.retro-button.danger{color:var(--dsw-alias-state-error-primary)}
+.retro-file{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+.retro-fonts{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;padding:10px 0 2px}
+.retro-font{position:relative;display:block;cursor:pointer;padding:9px 10px 7px;border:2px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
+.retro-font:hover{border-color:var(--dsw-alias-border-l2)}
+.retro-font.selected{border-color:var(--dsw-alias-brand-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-brand-primary)}
+.retro-font:has(input:focus-visible){outline:3px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.retro-font input{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+.retro-font-sample{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:24px;line-height:1.15;color:var(--dsw-alias-label-primary)}
+.retro-font-name{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dsw-alias-label-secondary)}
+.retro-brand-preview{display:flex;flex-direction:column;gap:10px;margin-top:14px;padding:12px;border:2px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
+.retro-brand-preview-row{display:flex;align-items:center;gap:9px;min-height:28px;min-width:0}
+.retro-brand-preview-tag{flex:none;width:86px;white-space:nowrap;font:700 9px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--dsw-alias-label-secondary)}
+.retro-brand-preview-name{font-size:18px;font-weight:600;letter-spacing:.04em;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.retro-brand-preview-hero{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:26px;font-weight:500;color:var(--dsw-alias-label-primary)}
+.retro-brand-preview-badge{margin-left:8px;padding:1px 5px;border-radius:3px;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-layer-1);font:600 10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;vertical-align:middle}
+.retro-scale{display:flex;flex-direction:column;gap:4px;padding-top:14px}
+.retro-scale-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.retro-scale-value{font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;color:var(--dsw-alias-brand-primary)}
+.retro-range{-webkit-appearance:none;appearance:none;width:100%;height:22px;margin:0;background:transparent;cursor:pointer}
+.retro-range::-webkit-slider-runnable-track{box-sizing:border-box;height:8px;background:var(--dsw-alias-bg-layer-1);border:2px solid var(--dsw-alias-border-l2);box-shadow:inset 2px 2px 0 rgba(0,0,0,.14)}
+.retro-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;box-sizing:border-box;width:16px;height:20px;margin-top:-6px;background:var(--dsw-alias-brand-primary);border:2px solid var(--dsw-alias-bg-layer-1);box-shadow:2px 2px 0 var(--dsw-alias-border-l1)}
+.retro-range:focus-visible{outline:3px solid var(--dsw-alias-brand-primary);outline-offset:4px}
+.retro-range:disabled{opacity:.45;cursor:default}
+.retro-range::-moz-range-track{height:8px;background:var(--dsw-alias-bg-layer-1);border:2px solid var(--dsw-alias-border-l2)}
+.retro-range::-moz-range-thumb{width:16px;height:20px;border-radius:0;background:var(--dsw-alias-brand-primary);border:2px solid var(--dsw-alias-bg-layer-1)}
+[class*="_brand"]:has(.retro-brand-logo){overflow:visible}
+@media (max-width:640px){.retro-brand-grid{grid-template-columns:1fr}.retro-asset-row{flex-wrap:wrap}.retro-asset-actions{width:100%;justify-content:flex-start}}
 `;
 
     function Mascot({ state = 'idle', size = 40, style, animate = true }) {
@@ -462,7 +749,7 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
         }, 'retro-ai-os locale');
 
         const t = ctx.locale.bind(NS);
-        const store = createStore({ enabled: false, style: 'classic', mascot: true, animation: true, ready: false, error: false });
+        const store = createStore({ enabled: false, style: 'classic', mascot: true, animation: true, brand: defaultBrand(), ready: false, error: false });
         let layer = null;
         let writeSequence = 0;
         let userChanged = false;
@@ -478,22 +765,229 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
           layer = ctx.theme.overrideTokens(SOURCE, tokensOf(style));
         };
 
+        /* ---------------------------------------------------------------- *
+         * Custom brand: sidebar slots, home headline patch and typefaces.
+         * Every registration is conditional, so a disabled or untouched brand
+         * leaves the stock DeepSeek marks and the host headline in place.
+         * ---------------------------------------------------------------- */
+
+        /** Live brand slot disposers. */
+        let brandSlots = [];
+        /** Signature of the registrations currently installed. */
+        let brandSignature = '';
+        /** Pending debounced publication of text edits. */
+        let commitTimer = 0;
+        /** Pending animation frame for the headline patch. */
+        let heroFrame = 0;
+        /** Text this plugin last wrote into the headline (null: untouched). */
+        let lastHeroText = null;
+
+        /** @returns {object} The stored brand block. */
+        const currentBrand = () => store.get().brand || defaultBrand();
+
+        /** @returns {boolean} Whether the custom brand should be visible. */
+        const brandActive = () => store.get().enabled === true && currentBrand().on === true;
+
+        /** Remove every brand slot registration. */
+        const clearBrandSlots = () => {
+          for (const dispose of brandSlots) dispose();
+          brandSlots = [];
+        };
+
+        /** @returns {boolean} Whether a custom logo image is stored. */
+        const hasBrandAsset = () => {
+          const asset = currentBrand().asset;
+          return asset !== null && typeof asset === 'object' && typeof asset.url === 'string';
+        };
+
+        /** Register exactly the slots the current brand needs. */
+        const syncBrandSlots = () => {
+          const prefs = store.get();
+          const brand = currentBrand();
+          const custom = hasBrandAsset();
+          const wantsSidebarMark = brand.sidebarMark === 'none' || (brand.sidebarMark === 'custom' && custom);
+          const wantsHeroMark = brand.heroMark === 'none' || (brand.heroMark === 'custom' && custom);
+          // The name occupant stays registered while the brand is on: an empty
+          // text must hide the stock wordmark, not bring it back.
+          const signature = prefs.enabled === true && brand.on === true
+            ? (wantsSidebarMark ? 'mark' : '-') + '|name|' + (wantsHeroMark ? 'hero' : '-')
+            : 'off';
+          if (signature === brandSignature) return;
+          brandSignature = signature;
+          clearBrandSlots();
+          if (signature === 'off') return;
+          if (wantsSidebarMark) {
+            brandSlots.push(ctx.slots.inject('sidebar.brand.mark', () => ctx.slots.register({
+              name: 'sidebar.brand.mark',
+              priority: -100,
+            }, SidebarBrandMark)));
+          }
+          brandSlots.push(ctx.slots.inject('sidebar.brand.name', () => ctx.slots.register({
+            name: 'sidebar.brand.name',
+            priority: -100,
+          }, SidebarBrandName)));
+          if (wantsHeroMark) {
+            brandSlots.push(ctx.slots.inject('conversation.hero.brand.mark', () => ctx.slots.register({
+              name: 'conversation.hero.brand.mark',
+              priority: -100,
+            }, HeroBrandMark)));
+          }
+        };
+
+        /** Selector of the home headline group owned by ui-conversation. */
+        const HERO_GROUP = '[class*="_titleGroup"]';
+
+        /** Attribute holding the headline text the host rendered. */
+        const ORIGINAL_TEXT = 'data-retro-original-text';
+
+        /** Root custom properties the brand CSS reads. */
+        const applyBrandFont = (active, brand) => {
+          const root = document.documentElement;
+          if (!active) {
+            root.style.removeProperty('--retro-brand-font');
+            root.style.removeProperty('--retro-brand-scale');
+            return;
+          }
+          const font = fontOf(brand.font);
+          root.style.setProperty('--retro-brand-font', font.stack);
+          root.style.setProperty('--retro-brand-scale', String(font.scale));
+        };
+
+        /** Patch (or restore) the home headline in place. */
+        const applyHeroBrand = () => {
+          heroFrame = 0;
+          const brand = currentBrand();
+          const active = brandActive();
+          applyBrandFont(active, brand);
+          const group = document.querySelector(HERO_GROUP);
+          const title = group === null ? null : group.querySelector(':scope > span:first-child');
+          if (group === null || title === null) return;
+          if (!active) {
+            group.removeAttribute('data-retro-hide-text');
+            group.removeAttribute('data-retro-hide-badge');
+            title.removeAttribute('data-retro-brand-text');
+            const stored = title.getAttribute(ORIGINAL_TEXT);
+            if (stored !== null) {
+              if ((title.textContent || '') !== stored) title.textContent = stored;
+              title.removeAttribute(ORIGINAL_TEXT);
+            }
+            lastHeroText = null;
+            return;
+          }
+          group.toggleAttribute('data-retro-hide-text', brand.heroText === '');
+          group.toggleAttribute('data-retro-hide-badge', brand.badge !== true);
+          title.setAttribute('data-retro-brand-text', '');
+          const current = title.textContent || '';
+          const stored = title.getAttribute(ORIGINAL_TEXT);
+          if (stored === null) {
+            title.setAttribute(ORIGINAL_TEXT, current);
+          } else if (current !== stored && current !== lastHeroText) {
+            // React re-rendered fresh copy (a locale switch or a remount):
+            // adopt it as the original before writing the custom text.
+            title.setAttribute(ORIGINAL_TEXT, current);
+          }
+          // An empty custom text hides the headline through CSS while the DOM
+          // keeps the host copy, so switching the brand off restores it.
+          const target = brand.heroText === '' ? (title.getAttribute(ORIGINAL_TEXT) || '') : brand.heroText;
+          if ((title.textContent || '') !== target) title.textContent = target;
+          lastHeroText = target;
+        };
+
+        /** Coalesce headline patches into one animation frame. */
+        const scheduleHeroBrand = () => {
+          if (heroFrame !== 0) return;
+          heroFrame = requestAnimationFrame(applyHeroBrand);
+        };
+
+        /** Reconcile slots and the headline after any preference change. */
+        const refreshBrand = () => {
+          syncBrandSlots();
+          scheduleHeroBrand();
+        };
+
+        /**
+         * Store a text/brand edit locally, then publish it (debounced for typing).
+         * @param {object} patch Brand fields to change.
+         * @param {boolean} [immediate] Publish without waiting for the debounce.
+         * @returns {void}
+         */
+        const updateBrand = (patch, immediate) => {
+          userChanged = true;
+          const prefs = store.get();
+          store.set({ ...prefs, brand: { ...currentBrand(), ...patch }, error: false });
+          applyLayer();
+          refreshBrand();
+          if (commitTimer !== 0) clearTimeout(commitTimer);
+          if (immediate) {
+            commitTimer = 0;
+            commit({});
+            return;
+          }
+          commitTimer = setTimeout(() => {
+            commitTimer = 0;
+            commit({});
+          }, 450);
+        };
+
         const commit = (patch) => {
           userChanged = true;
           const next = { ...store.get(), ...patch, error: false };
           store.set(next);
           applyLayer();
+          refreshBrand();
           const sequence = ++writeSequence;
           void requestPreferences('POST', pickPublic(next)).then((saved) => {
             if (sequence !== writeSequence) return;
             store.set({ ...normalizePreferences(saved), ready: true, error: false });
             applyLayer();
+            refreshBrand();
           }).catch((error) => {
             if (sequence !== writeSequence) return;
-            ctx.logger?.warn?.(`retro-ai-os: cannot persist preferences: ${error instanceof Error ? error.message : String(error)}`);
+            const message = error instanceof Error ? error.message : String(error);
+            ctx.logger?.warn?.('retro-ai-os: cannot persist preferences: ' + message);
             store.set({ ...store.get(), error: true });
           });
         };
+
+        /**
+         * Install the plugin stylesheet once, and watch the home headline so a
+         * late mount or a locale switch is patched again.
+         */
+        ctx.effect(() => {
+          const style = document.createElement('style');
+          style.dataset.retroAiOs = ID;
+          style.textContent = CSS;
+          document.head.appendChild(style);
+          const observer = new MutationObserver(scheduleHeroBrand);
+          observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+          refreshBrand();
+          return () => {
+            observer.disconnect();
+            if (heroFrame !== 0) cancelAnimationFrame(heroFrame);
+            heroFrame = 0;
+            if (commitTimer !== 0) clearTimeout(commitTimer);
+            commitTimer = 0;
+            clearBrandSlots();
+            brandSignature = '';
+            lastHeroText = null;
+            const group = document.querySelector(HERO_GROUP);
+            const title = group === null ? null : group.querySelector(':scope > span:first-child');
+            if (group !== null) {
+              group.removeAttribute('data-retro-hide-text');
+              group.removeAttribute('data-retro-hide-badge');
+            }
+            if (title !== null) {
+              title.removeAttribute('data-retro-brand-text');
+              const stored = title.getAttribute(ORIGINAL_TEXT);
+              if (stored !== null) {
+                title.textContent = stored;
+                title.removeAttribute(ORIGINAL_TEXT);
+              }
+            }
+            applyBrandFont(false, currentBrand());
+            style.remove();
+          };
+        }, 'retro-ai-os brand style');
 
         ctx.effect(() => {
           let active = true;
@@ -501,9 +995,11 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
             if (!active || userChanged) return;
             store.set({ ...normalizePreferences(saved), ready: true, error: false });
             applyLayer();
+            refreshBrand();
           }).catch((error) => {
             if (!active || userChanged) return;
-            ctx.logger?.warn?.(`retro-ai-os: cannot load preferences: ${error instanceof Error ? error.message : String(error)}`);
+            const message = error instanceof Error ? error.message : String(error);
+            ctx.logger?.warn?.('retro-ai-os: cannot load preferences: ' + message);
             store.set({ ...store.get(), ready: false, error: true });
           });
           return () => {
@@ -514,6 +1010,382 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
             }
           };
         }, 'retro-ai-os preferences');
+
+        /** Primitives module (whale mark). Optional: the plugin still works without it. */
+        let brandPrimitives = null;
+        try {
+          brandPrimitives = require('@deepseek-ai/dsh-client-ui-primitives');
+        } catch {
+          brandPrimitives = null;
+        }
+
+        /** The stock DeepSeek whale, or a small stand-in when primitives are absent. */
+        function BrandGlyph({ size }) {
+          if (brandPrimitives && typeof brandPrimitives.FishLogo === 'function') {
+            return h(brandPrimitives.FishLogo, { size });
+          }
+          return h('svg', {
+            width: size, height: size, viewBox: '0 0 24 24', fill: 'currentColor', 'aria-hidden': true,
+          }, h('path', { d: 'M2 12c3.4-4.4 7.6-6.2 11.6-5.2l4-2.8 1.9 4.2-1.9 3 1.9 3-1.9 4.2-4-2.8C9.6 18.2 5.4 16.4 2 12Z' }));
+        }
+
+        /** Sidebar mark occupant: a custom logo, or nothing when the user chose so. */
+        function SidebarBrandMark({ size }) {
+          const prefs = usePrefs(store);
+          const brand = prefs.brand || defaultBrand();
+          if (!prefs.enabled || !brand.on) return null;
+          if (brand.sidebarMark !== 'custom' || !brand.asset) return null;
+          const edge = Math.round(size * scaleOf(brand.markScale));
+          return h('img', {
+            className: 'retro-brand-logo',
+            src: brand.asset.url,
+            width: edge,
+            height: edge,
+            style: { width: edge + 'px', height: edge + 'px', maxWidth: 'none' },
+            alt: '',
+            'aria-hidden': true,
+            draggable: false,
+          });
+        }
+
+        /** Sidebar name occupant: the custom text in the chosen typeface. */
+        function SidebarBrandName() {
+          const prefs = usePrefs(store);
+          const brand = prefs.brand || defaultBrand();
+          if (!prefs.enabled || !brand.on || brand.sidebarText === '') return null;
+          const font = fontOf(brand.font);
+          return h('span', {
+            className: 'retro-brand-name',
+            style: { fontFamily: font.stack, fontSize: (SIDEBAR_BRAND_SIZE * font.scale).toFixed(1) + 'px' },
+          }, brand.sidebarText);
+        }
+
+        /** Home mark occupant: a custom logo, or nothing when the user chose so. */
+        function HeroBrandMark(props) {
+          const prefs = usePrefs(store);
+          const brand = prefs.brand || defaultBrand();
+          if (!prefs.enabled || !brand.on) return null;
+          if (brand.heroMark !== 'custom' || !brand.asset) return null;
+          const edge = Math.round(props.size * scaleOf(brand.markScale));
+          return h('img', {
+            className: 'retro-brand-logo' + (props.className ? ' ' + props.className : ''),
+            src: brand.asset.url,
+            width: edge,
+            height: edge,
+            style: { width: edge + 'px', height: edge + 'px', maxWidth: 'none' },
+            alt: '',
+            'aria-hidden': true,
+            draggable: false,
+          });
+        }
+
+        /**
+         * Read one file as a data URL.
+         * @param {File} file Browser file handle.
+         * @returns {Promise<string>} The data URL.
+         */
+        function readDataUrl(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+            reader.onerror = () => reject(reader.error || new Error('read-failed'));
+            reader.readAsDataURL(file);
+          });
+        }
+
+        /**
+         * Upload one logo to the Host.
+         * @param {File} file Browser file handle.
+         * @returns {Promise<{ url: string, label: string }>} The stored reference.
+         */
+        async function uploadBrandAsset(file) {
+          if (!file || typeof file.type !== 'string' || file.type.slice(0, 6) !== 'image/') throw new Error('invalid-asset');
+          if (typeof file.size === 'number' && file.size > 400 * 1024) throw new Error('asset-too-large');
+          const dataUrl = await readDataUrl(file);
+          const response = await fetch(ENDPOINT + '/brand-asset', {
+            method: 'POST',
+            cache: 'no-store',
+            headers: { [HEADER]: '1', 'content-type': 'application/json' },
+            body: JSON.stringify({ dataUrl, name: file.name }),
+          });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || payload?.ok !== true) {
+            throw new Error(typeof payload?.error === 'string' ? payload.error : 'asset-upload-failed');
+          }
+          return payload.data;
+        }
+
+        /** Delete the uploaded logo from the Host. */
+        async function removeBrandAsset() {
+          try {
+            await fetch(ENDPOINT + '/brand-asset', {
+              method: 'DELETE',
+              cache: 'no-store',
+              headers: { [HEADER]: '1' },
+            });
+          } catch {
+            // The local reference is dropped anyway; a stale file is harmless.
+          }
+          const brand = currentBrand();
+          updateBrand({
+            asset: null,
+            sidebarMark: brand.sidebarMark === 'custom' ? 'default' : brand.sidebarMark,
+            heroMark: brand.heroMark === 'custom' ? 'default' : brand.heroMark,
+          }, true);
+        }
+
+        /** Three-way logo selector shared by both surfaces. */
+        function BrandSegmented({ label, value, onChange }) {
+          return h('div', { className: 'retro-segmented', role: 'radiogroup', 'aria-label': label },
+            BRAND_MARKS.map((mark) => h('button', {
+              key: mark,
+              type: 'button',
+              role: 'radio',
+              'aria-checked': value === mark,
+              className: 'retro-segment',
+              onClick: () => onChange(mark),
+            }, t('brand.mark.' + mark))));
+        }
+
+        /** Upload / replace / remove the shared logo image. */
+        function BrandAssetRow({ brand }) {
+          const [busy, setBusy] = React.useState(false);
+          const [failed, setFailed] = React.useState(false);
+          const input = React.useRef(null);
+          const asset = brand.asset;
+          const choose = () => {
+            if (input.current) input.current.click();
+          };
+          const accept = (file) => {
+            if (!file || busy) return;
+            setBusy(true);
+            setFailed(false);
+            void uploadBrandAsset(file).then((stored) => {
+              const current = currentBrand();
+              updateBrand({
+                asset: stored,
+                sidebarMark: current.sidebarMark === 'default' ? 'custom' : current.sidebarMark,
+                heroMark: current.heroMark === 'default' ? 'custom' : current.heroMark,
+              }, true);
+            }).catch((error) => {
+              ctx.logger?.warn?.('retro-ai-os: cannot upload the brand logo: ' + (error instanceof Error ? error.message : String(error)));
+              setFailed(true);
+            }).finally(() => {
+              setBusy(false);
+              if (input.current) input.current.value = '';
+            });
+          };
+          return h('div', { className: 'retro-asset-row' },
+            h('div', { className: 'retro-asset-thumb' },
+              asset
+                ? h('img', { src: asset.url, alt: '', 'aria-hidden': true, draggable: false })
+                : h('span', null, 'LOGO')),
+            h('div', { className: 'retro-asset-copy' },
+              h('span', { className: 'retro-asset-title' }, t('brand.asset.title')),
+              h('span', { className: 'retro-asset-label' }, failed
+                ? t('brand.asset.error')
+                : busy
+                  ? t('brand.asset.uploading')
+                  : asset && asset.label
+                    ? asset.label
+                    : t('brand.asset.empty')),
+              h('span', { className: 'retro-field-hint' }, t('brand.asset.hint'))),
+            h('div', { className: 'retro-asset-actions' },
+              h('input', {
+                ref: input,
+                type: 'file',
+                className: 'retro-file',
+                accept: 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml',
+                'aria-label': t('brand.asset.upload'),
+                onChange: (event) => accept(event.target.files && event.target.files[0]),
+              }),
+              h('button', { type: 'button', className: 'retro-button', onClick: choose, disabled: busy },
+                asset ? t('brand.asset.replace') : t('brand.asset.upload')),
+              asset
+                ? h('button', { type: 'button', className: 'retro-button danger', onClick: () => { void removeBrandAsset(); }, disabled: busy },
+                  t('brand.asset.remove'))
+                : null));
+        }
+
+        /** Live preview of both brand surfaces. */
+        function BrandPreview({ brand }) {
+          const font = fontOf(brand.font);
+          const custom = brand.asset !== null && typeof brand.asset === 'object';
+          const scale = scaleOf(brand.markScale);
+          const sidebarEdge = Math.round(24 * scale);
+          const heroEdge = Math.round(26 * scale);
+          return h('div', { className: 'retro-brand-preview', 'aria-label': t('brand.preview') },
+            h('div', { className: 'retro-brand-preview-row' },
+              h('span', { className: 'retro-brand-preview-tag' }, t('brand.preview.sidebar')),
+              brand.sidebarMark === 'none'
+                ? null
+                : brand.sidebarMark === 'custom' && custom
+                  ? h('img', { className: 'retro-brand-logo', src: brand.asset.url, width: sidebarEdge, height: sidebarEdge, alt: '' })
+                  : h(BrandGlyph, { size: 24 }),
+              brand.sidebarText === ''
+                ? null
+                : h('span', {
+                  className: 'retro-brand-preview-name',
+                  style: { fontFamily: font.stack, fontSize: (SIDEBAR_BRAND_SIZE * font.scale).toFixed(1) + 'px' },
+                }, brand.sidebarText)),
+            h('div', { className: 'retro-brand-preview-row' },
+              h('span', { className: 'retro-brand-preview-tag' }, t('brand.preview.hero')),
+              brand.heroMark === 'none'
+                ? null
+                : brand.heroMark === 'custom' && custom
+                  ? h('img', { className: 'retro-brand-logo', src: brand.asset.url, width: heroEdge, height: heroEdge, alt: '' })
+                  : h(BrandGlyph, { size: 26 }),
+              brand.heroText === ''
+                ? null
+                : h('span', {
+                  className: 'retro-brand-preview-hero',
+                  style: { fontFamily: font.stack, fontSize: (HERO_BRAND_SIZE * font.scale).toFixed(1) + 'px' },
+                }, brand.heroText,
+                brand.badge ? h('span', { className: 'retro-brand-preview-badge' }, t('brand.previewBadge')) : null)));
+        }
+
+        /** One labelled brand text input. */
+        function BrandTextField({ label, value, placeholder, onText }) {
+          return h('div', { className: 'retro-field' },
+            h('input', {
+              type: 'text',
+              className: 'retro-input',
+              value,
+              maxLength: 48,
+              placeholder,
+              'aria-label': label,
+              onChange: (event) => onText(event.target.value),
+            }));
+        }
+
+        /** One brand surface: its text field, its logo selector and an extra row. */
+        function BrandSurfaceField({ title, value, placeholder, mark, onText, onMark, extra }) {
+          return h('div', { className: 'retro-field' },
+            h('span', { className: 'retro-field-label' }, title),
+            h(BrandTextField, { label: title + ' · ' + t('brand.text.label'), value, placeholder, onText }),
+            h(BrandSegmented, { label: title + ' · ' + t('brand.mark.label'), value: mark, onChange: onMark }),
+            extra || null);
+        }
+
+        /** Shared logo size slider (only the custom image is affected). */
+        function BrandScale({ brand }) {
+          const percent = Math.round(scaleOf(brand.markScale) * 100);
+          return h('div', { className: 'retro-scale' },
+            h('div', { className: 'retro-scale-head' },
+              h('span', { className: 'retro-field-label' }, t('brand.size.label')),
+              h('span', { className: 'retro-scale-value' }, percent + ' %')),
+            h('input', {
+              type: 'range',
+              className: 'retro-range',
+              min: Math.round(MARK_SCALE_MIN * 100),
+              max: Math.round(MARK_SCALE_MAX * 100),
+              step: 5,
+              value: percent,
+              disabled: !(brand.asset !== null && typeof brand.asset === 'object'),
+              'aria-label': t('brand.size.label'),
+              'aria-valuetext': percent + ' %',
+              onChange: (event) => updateBrand({ markScale: Number(event.target.value) / 100 }),
+            }),
+            h('p', { className: 'retro-field-hint' }, t('brand.size.hint')));
+        }
+
+        /** Settings card: enable the custom brand and edit every surface. */
+        function BrandCard({ prefs }) {
+          const brand = prefs.brand || defaultBrand();
+          const toggle = () => {
+            const current = currentBrand();
+            const next = !current.on;
+            updateBrand({
+              on: next,
+              seeded: true,
+              sidebarText: next && current.seeded !== true ? 'deepseek' : current.sidebarText,
+              heroText: next && current.seeded !== true ? t('brand.heroDefault') : current.heroText,
+            }, true);
+          };
+          const reset = () => {
+            updateBrand({
+              on: true,
+              seeded: true,
+              sidebarText: 'deepseek',
+              heroText: t('brand.heroDefault'),
+              sidebarMark: 'default',
+              heroMark: 'default',
+              font: 'system',
+              badge: true,
+            }, true);
+          };
+          const sidebarField = h(BrandSurfaceField, {
+            title: t('brand.sidebar.title'),
+            value: brand.sidebarText,
+            placeholder: 'deepseek',
+            mark: brand.sidebarMark,
+            onText: (text) => updateBrand({ sidebarText: text }),
+            onMark: (mark) => updateBrand({ sidebarMark: mark }, true),
+            extra: h('p', { className: 'retro-field-hint' }, t('brand.text.hint')),
+          });
+          const badgeSwitch = h('div', { className: 'retro-inline-switch' },
+            h('span', null, t('brand.badge.label')),
+            h('button', {
+              type: 'button',
+              role: 'switch',
+              'aria-checked': brand.badge,
+              'aria-label': t('brand.badge.label'),
+              className: 'retro-switch',
+              onClick: () => updateBrand({ badge: !brand.badge }, true),
+            }));
+          const heroField = h(BrandSurfaceField, {
+            title: t('brand.hero.title'),
+            value: brand.heroText,
+            placeholder: t('brand.heroDefault'),
+            mark: brand.heroMark,
+            onText: (text) => updateBrand({ heroText: text }),
+            onMark: (mark) => updateBrand({ heroMark: mark }, true),
+            extra: badgeSwitch,
+          });
+          const fonts = h('div', { className: 'retro-fonts', role: 'radiogroup', 'aria-label': t('brand.font.title') },
+            BRAND_FONTS.map((option) => h('label', {
+              key: option.id,
+              className: 'retro-font' + (option.id === brand.font ? ' selected' : ''),
+            },
+              h('input', {
+                type: 'radio',
+                name: 'retro-ai-os-brand-font',
+                value: option.id,
+                checked: option.id === brand.font,
+                onChange: () => updateBrand({ font: option.id }, true),
+              }),
+              h('span', { className: 'retro-font-sample', style: { fontFamily: option.stack } }, 'Aa'),
+              h('span', { className: 'retro-font-name', style: { fontFamily: option.stack } }, t(option.labelKey)))));
+          const editor = h(React.Fragment, null,
+            prefs.enabled ? null : h('p', { className: 'retro-field-hint', style: { paddingTop: '10px' } }, t('brand.requiresTheme')),
+            h('div', { className: 'retro-brand-grid' }, sidebarField, heroField),
+            h(BrandAssetRow, { brand }),
+            h(BrandScale, { brand }),
+            h('div', { className: 'retro-preview-label' }, t('brand.font.title')),
+            fonts,
+            h('div', { className: 'retro-preview-label' }, t('brand.preview')),
+            h(BrandPreview, { brand }),
+            h('div', { className: 'retro-brand-preview-row', style: { marginTop: '12px', justifyContent: 'flex-end' } },
+              h('button', { type: 'button', className: 'retro-button', onClick: reset }, t('brand.reset'))));
+          return h('div', { className: 'retro-card' },
+            h('div', { className: 'retro-card-head' }, h('span', null, t('brandCard'))),
+            h('div', { className: 'retro-card-body' },
+              h('div', { className: 'retro-row' },
+                h('div', null,
+                  h('div', { className: 'retro-row-title' }, t('brand.on.label')),
+                  h('p', { className: 'retro-row-desc' }, t('brand.on.desc'))),
+                h('button', {
+                  type: 'button',
+                  role: 'switch',
+                  'aria-checked': brand.on,
+                  'aria-label': t('brand.on.label'),
+                  className: 'retro-switch',
+                  onClick: toggle,
+                })),
+              brand.on ? editor : null));
+        }
+
+
 
         function MatrixRain() {
           const prefs = usePrefs(store);
@@ -529,7 +1401,6 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
             }, h('span', { className: 'retro-matrix-tail' }, sequence.slice(0, -1).join('')), h('span', { className: 'retro-matrix-head' }, sequence[length - 1]));
           });
           return h(React.Fragment, null,
-            h('style', null, CSS),
             h('div', { className: 'retro-matrix-rain' + (prefs.animation ? '' : ' retro-static'), 'aria-hidden': true }, columns));
         }
 
@@ -541,7 +1412,6 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
           const prefs = usePrefs(store);
           const selected = STYLES.find((style) => style.id === prefs.style) || STYLES[0];
           return h('section', { className: 'retro-page', 'aria-labelledby': 'retro-heading' },
-            h('style', null, CSS),
             h('header', { className: 'retro-hero' },
               h('span', { className: 'retro-eyebrow' }, t('eyebrow')),
               h('h2', { className: 'retro-title', id: 'retro-heading' }, t('title')),
@@ -613,6 +1483,8 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
                   h('div', { className: 'retro-legend-item' }, h(Mascot, { state: 'waiting', size: 32, style: selected, animate: prefs.animation }), h('strong', null, t('state.waiting'))),
                   h('div', { className: 'retro-legend-item' }, h(Mascot, { state: 'done', size: 32, style: selected, animate: prefs.animation }), h('strong', null, t('state.done')))))),
 
+            h(BrandCard, { prefs }),
+
             h('p', { className: 'retro-status-line' + (prefs.error ? ' error' : '') },
               h('span', null, prefs.error ? t('saveError') : prefs.ready ? t('saved') : t('loading'))),
             h('p', { className: 'retro-intro', style: { marginTop: '10px', fontSize: '11px' } }, t('footer')));
@@ -624,7 +1496,6 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
           if (!prefs.enabled || !prefs.mascot) return null;
           const style = STYLES.find((candidate) => candidate.id === prefs.style) || STYLES[0];
           return h('div', { className: 'retro-dock' },
-            h('style', null, CSS),
             h(StatusBar, { state, style, animate: prefs.animation, t }));
         }
 
