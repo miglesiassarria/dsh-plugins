@@ -269,12 +269,13 @@ window.__ModuleLoader__.load({
 
     const CSS = `
 html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace}
-.retro-matrix-rain{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:.14;mask-image:linear-gradient(90deg,#000 0%,transparent 27%,transparent 73%,#000 100%);-webkit-mask-image:linear-gradient(90deg,#000 0%,transparent 27%,transparent 73%,#000 100%)}
-.retro-matrix-column{position:absolute;top:-70%;color:#60ff89;font:500 15px/1.3 'Courier New',monospace;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:.12em;white-space:nowrap;text-shadow:0 0 8px #00e64c;animation:matrix-fall var(--duration) linear var(--delay) infinite}
-.retro-matrix-column::first-letter{color:#e0ffe8}
-.retro-matrix-rain.retro-static .retro-matrix-column{animation:none;top:0}
-@keyframes matrix-fall{from{transform:translateY(0)}to{transform:translateY(220vh)}}
-@media (prefers-reduced-motion:reduce){.retro-matrix-column{animation:none;top:0}}
+.retro-matrix-rain{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:.52;mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 35%,transparent 65%,#000 88%,#000 100%);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 35%,transparent 65%,#000 88%,#000 100%)}
+.retro-matrix-column{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;font:500 15px/1.12 'Courier New',monospace;white-space:nowrap;animation:matrix-fall var(--duration) linear var(--delay) infinite}
+.retro-matrix-tail{writing-mode:vertical-rl;text-orientation:upright;letter-spacing:.08em;color:#19eb54;background:linear-gradient(to bottom,transparent,#087e30 25%,#19ed58 85%,#a0ffb3);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 7px rgba(0,255,72,.3)}
+.retro-matrix-head{color:#e2ffe9;text-shadow:0 0 4px #baffcc,0 0 12px #29ff67}
+.retro-matrix-rain.retro-static .retro-matrix-column{animation:none;top:var(--static-top)}
+@keyframes matrix-fall{from{transform:translateY(-100%)}to{transform:translateY(100vh)}}
+@media (prefers-reduced-motion:reduce){.retro-matrix-column{animation:none;top:var(--static-top)}}
 .retro-page{max-width:760px;color:var(--dsw-alias-label-primary)}
 .retro-hero{padding:6px 0 18px;border-bottom:2px dashed var(--dsw-alias-border-l2)}
 .retro-eyebrow{font:700 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--dsw-alias-brand-primary)}
@@ -517,15 +518,19 @@ html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',C
         function MatrixRain() {
           const prefs = usePrefs(store);
           if (!prefs.enabled || prefs.style !== 'matrix') return null;
-          const glyphs = ['ｱ7ﾈ0ｶ1ﾐ2ﾛ9', 'ﾊ4ﾑ1ｾ8ﾅ0ｷ3', '9ﾂ3ﾎ0ﾘ7ｴ1ﾌ', 'ﾀ6ﾕ2ｵ8ﾒ4ｻ0', '1ﾝ8ｸ3ﾖ0ﾃ6ﾗ'];
+          const glyphs = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ012345789';
+          const columns = Array.from({ length: 112 }, (_, i) => {
+            const length = 12 + (i * 7 % 17);
+            const sequence = Array.from({ length }, (_, j) => glyphs[(i * 31 + j * 17 + j * j * 3) % glyphs.length]);
+            return h('span', {
+              key: i,
+              className: 'retro-matrix-column',
+              style: { left: ((i % 56) * 100 / 56) + '%', '--duration': (8 + (i * 7 % 13)) + 's', '--delay': (-((i * 11) % 23)) + 's', '--static-top': ((i * 37 % 125) - 25) + '%' },
+            }, h('span', { className: 'retro-matrix-tail' }, sequence.slice(0, -1).join('')), h('span', { className: 'retro-matrix-head' }, sequence[length - 1]));
+          });
           return h(React.Fragment, null,
             h('style', null, CSS),
-            h('div', { className: 'retro-matrix-rain' + (prefs.animation ? '' : ' retro-static'), 'aria-hidden': true },
-              Array.from({ length: 36 }, (_, i) => h('span', {
-                key: i,
-                className: 'retro-matrix-column',
-                style: { left: (i * 2.85) + '%', '--duration': (12 + (i * 7 % 15)) + 's', '--delay': (-((i * 11) % 27)) + 's' },
-              }, glyphs[i % glyphs.length]))));
+            h('div', { className: 'retro-matrix-rain' + (prefs.animation ? '' : ' retro-static'), 'aria-hidden': true }, columns));
         }
 
         ctx.slots.inject('shell.overlay', () => ctx.slots.register({
