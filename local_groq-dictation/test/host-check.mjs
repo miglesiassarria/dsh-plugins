@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -27,8 +27,9 @@ let done = false
 const finish = () => {
   if (done) return
   done = true
-  const samples = 3200
+  const samples = 16000
   const rate = 16000
+  const silent = process.env.GROQ_DICTATION_STUB_SILENT === '1'
   const header = Buffer.alloc(44)
   header.write('RIFF', 0)
   header.writeUInt32LE(36 + samples, 4)
@@ -43,7 +44,14 @@ const finish = () => {
   header.writeUInt16LE(16, 34)
   header.write('data', 36)
   header.writeUInt32LE(samples, 40)
-  writeFileSync(file, Buffer.concat([header, Buffer.alloc(samples)]))
+  const data = Buffer.alloc(samples * 2)
+  if (!silent) {
+    for (let index = 0; index < samples; index += 1) {
+      const sample = Math.round(8000 * Math.sin((2 * Math.PI * 440 * index) / rate))
+      data.writeInt16LE(sample, index * 2)
+    }
+  }
+  writeFileSync(file, Buffer.concat([header, data]))
   process.exit(0)
 }
 process.stdin.on('data', chunk => { if (String(chunk).includes('q')) finish() })
@@ -161,7 +169,7 @@ try {
   assert.equal(noKey.status, 400)
   assert.equal(noKey.payload.code, 'missing-api-key')
 
-  writeSettings({ apiKey: KEY, model: 'whisper-large-v3-turbo' })
+  writeSettings({ apiKey: KEY, model: 'whisper-large-v3-turbo', hostMic: true })
   const audio = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x01, 0x02, 0x03])
   globalThis.fetch = async (url, init) => {
     fetchCalls += 1
@@ -263,6 +271,8 @@ try {
   assert.equal(probe.payload.data.available, true)
   assert.equal(probe.payload.data.device, 'Stub Microphone')
   assert.equal(probe.payload.data.enabled, true)
+  assert.deepEqual(probe.payload.data.devices, [{ id: '0', label: 'Stub Microphone' }])
+  assert.equal(probe.payload.data.saved, false)
 
   let hostAudioSeen = null
   globalThis.fetch = async (_url, init) => {
@@ -308,6 +318,46 @@ try {
   await handleRequest(request('POST', '/dsh-groq-dictation/host-mic/cancel'), cancelled)
   assert.equal(cancelled.status, 200)
   assert.equal(cancelled.payload.data.cancelled, true)
+
+  // A silent device is reported instead of sending silence to Whisper, which
+  // would answer with a hallucinated word.
+  process.env.GROQ_DICTATION_STUB_SILENT = '1'
+  const silentStart = response()
+  await handleRequest(request('POST', '/dsh-groq-dictation/host-mic/start'), silentStart)
+  assert.equal(silentStart.status, 200)
+  const silentStop = response()
+  await handleRequest(request('POST', '/dsh-groq-dictation/host-mic/stop'), silentStop)
+  assert.equal(silentStop.status, 422)
+  assert.equal(silentStop.payload.code, 'host-mic-silent')
+  const diagnostic = JSON.parse(readFileSync(join(host.storeDirectory(), 'last-recording.json'), 'utf8'))
+  assert.equal(diagnostic.outcome, 'silent')
+  assert.equal(diagnostic.median, 0)
+  delete process.env.GROQ_DICTATION_STUB_SILENT
+
+  // The settings test route measures the microphone without calling Groq.
+  globalThis.fetch = async () => {
+    throw new Error('Groq must not be called by the microphone test')
+  }
+  const tested = response()
+  await handleRequest(request('POST', '/dsh-groq-dictation/host-mic/test', { device: 'Stub Microphone' }), tested)
+  assert.equal(tested.status, 200)
+  assert.equal(tested.payload.data.audible, true)
+  assert.equal(tested.payload.data.device, 'Stub Microphone')
+  assert.ok(tested.payload.data.level.median > 100)
+
+  // A device saved in the settings wins; an unknown one falls back to the default.
+  writeSettings({ hostMicDevice: 'Stub Microphone' })
+  const pinned = response()
+  await handleRequest(request('GET', '/dsh-groq-dictation/host-mic'), pinned)
+  assert.equal(pinned.payload.data.device, 'Stub Microphone')
+  assert.equal(pinned.payload.data.saved, true)
+
+  writeSettings({ hostMicDevice: 'Micrófono fantasma' })
+  const missingDevice = response()
+  await handleRequest(request('GET', '/dsh-groq-dictation/host-mic'), missingDevice)
+  assert.equal(missingDevice.payload.data.device, 'Stub Microphone')
+  assert.equal(missingDevice.payload.data.saved, false)
+  writeSettings({ hostMicDevice: '' })
 
   // Turning the fallback off refuses to record.
   writeSettings({ hostMic: false })

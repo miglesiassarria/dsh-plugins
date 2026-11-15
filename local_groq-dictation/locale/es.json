@@ -20,13 +20,20 @@
     "clearDone": "Clave borrada.",
     "needKey": "Introduce una clave para activar el dictado.",
     "privacy": "El audio solo se envía a Groq cuando detienes la grabación.",
-    "secureContextHint": "En el móvil, abre la GUI por HTTPS (el enlace del túnel): Safari y Chrome bloquean el micrófono en HTTP.",
+    "secureContextHint": "Para dictar desde el móvil, abre la GUI con el enlace público del túnel (Ajustes → Acceso desde el móvil → Acceso público): Safari y Chrome solo dan micrófono a páginas HTTPS.",
     "hostMicLabel": "Micrófono del ordenador",
-    "hostMicDesc": "Cuando el navegador no puede grabar (Safari en el móvil por HTTP), el dictado graba con el micrófono de este ordenador. Útil si estás cerca de él.",
+    "hostMicDesc": "Alternativa solo para cuando estés delante del ordenador: si el navegador no puede grabar, el dictado usa el micrófono de este equipo. Desde el móvil, en cambio, hace falta HTTPS.",
     "hostMicOn": "Permitido como alternativa",
     "hostMicOff": "No usarlo nunca",
     "hostMicAvailable": "Disponible: {device}",
-    "hostMicUnavailable": "Este ordenador no tiene un micrófono que el dictado pueda usar."
+    "hostMicUnavailable": "Este ordenador no tiene un micrófono que el dictado pueda usar.",
+    "micTest": "Probar micrófono",
+    "micTestRunning": "Grabando 2 s…",
+    "micTestOk": "Se ha captado audio de {device}.",
+    "micTestSilent": "Silencio: revisa la entrada por defecto y el permiso de micrófono de la app en Ajustes del Sistema.",
+    "hostMicDeviceLabel": "Dispositivo",
+    "hostMicDeviceDefault": "Predeterminado del sistema",
+    "hostMicFallback": "El dispositivo guardado ya no está; se usará «{device}»."
   },
   "model": {
     "whisper-large-v3-turbo": "Whisper Large v3 Turbo · el más rápido",
@@ -66,7 +73,7 @@
     "too-large": "La petición era demasiado grande.",
     "microphone-denied": "Se ha denegado el acceso al micrófono. Permítelo en el navegador y vuelve a intentarlo.",
     "microphone-missing": "No se ha encontrado ningún micrófono.",
-    "microphone-insecure": "El micrófono necesita HTTPS. Abre la app con el enlace del túnel, no con la dirección de la red local.",
+    "microphone-insecure": "El micrófono del teléfono necesita HTTPS. Abre la app con el enlace público del túnel y vuelve a intentarlo.",
     "microphone-unsupported": "Este navegador no expone ningún micrófono a la página.",
     "microphone-busy": "El micrófono está ocupado por otra app o llamada. Ciérrala y vuelve a intentarlo.",
     "microphone-failed": "No se pudo abrir el micrófono.",
@@ -77,6 +84,7 @@
     "host-mic-disabled": "El micrófono del ordenador está desactivado en Ajustes → General.",
     "host-mic-busy": "Ya hay una grabación en marcha.",
     "host-mic-failed": "No se pudo abrir el micrófono del ordenador.",
-    "not-recording": "No había ninguna grabación que detener."
+    "not-recording": "No había ninguna grabación que detener.",
+    "host-mic-silent": "No ha llegado voz al ordenador. Acércate a su micrófono o revisa la entrada por defecto del sistema."
   }
 }

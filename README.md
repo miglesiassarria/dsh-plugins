@@ -6,8 +6,15 @@ autocontenido con sus textos (`locale/`) y su parche de composición
 (`cordis.patch.yml`); los que tienen interfaz añaden su mitad de host
 (`index.js`) y su mitad de cliente web (`client.js`).
 
+Los cinco complementos de configuración (`dsh-config`, `default-model`,
+`hide-deepseek-defaults`, `hide-updates` y `workspace-context`) siguen en el
+repositorio por separado, pero sus comportamientos están reunidos con
+interruptores en [`local_dsh-total-config`](local_dsh-total-config/), que además
+ofrece desactivarlos desde su propia página.
+
 | Plugin | Nombre del paquete | Página | Qué añade |
 |---|---|---|---|
+| [`local_dsh-total-config`](local_dsh-total-config/) | `@local/dsh-total-config` | Ajustes → **DHS Total Config**; Ajustes → **Modelos**; barra lateral de Ajustes; Complementos → Agregar complemento; espacios de trabajo y barra derecha | Reúne en un solo complemento los comportamientos de DSH Config, Modelo predeterminado, Ocultar DeepSeek, Ocultar actualizaciones y Contexto de espacios, cada uno con su interruptor en **Ajustes → DHS Total Config**. Incluye una tarjeta para desactivar los cinco bundles anteriores sin desinstalarlos. |
 | [`local_dsh-backups`](local_dsh-backups/) | `@local/dsh-backups` | Ajustes → **Copias de seguridad** | Exporta a un ZIP las sesiones, la configuración del perfil y los plugins locales, y los restaura en otro equipo. |
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
 | [`local_hide-deepseek-defaults`](local_hide-deepseek-defaults/) | `@local/hide-deepseek-defaults` | — | Desactiva los proveedores integrados de DeepSeek (cuenta y clave API) para que no aparezcan ni en el selector de modelos del chat ni en **Ajustes → Modelos**. |
@@ -28,8 +35,11 @@ autocontenido con sus textos (`locale/`) y su parche de composición
   ajustes e idioma y usa una ruta del Host para llamar a Groq; el de DSH Config
   inyecta el shell de Ajustes y el idioma y usa una ruta del Host para guardar
   el orden; el de móvil inyecta conexión, slots, layout, idioma y exportación
-  del registro de sesión, y levanta un proxy en el puerto 3081). El de
-  DeepSeek es solo un parche de composición y no necesita cliente.
+  del registro de sesión, y levanta un proxy en el puerto 3081; el de DHS Total
+  Config inyecta el shell de Ajustes, el idioma, los menús contextuales, los
+  comandos, la conversación, la barra derecha y los espacios de trabajo, y usa
+  rutas del Host para sus ajustes y su contexto). El de DeepSeek es solo un
+  parche de composición y no necesita cliente.
 - Node.js y pnpm, los mismos que usa tu instalación de Harness.
 
 ## Instalación
@@ -38,7 +48,7 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    (`$DSH_HOME/local-plugins`, por defecto `~/.dsh/local-plugins`):
 
    ```bash
-   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config local_dsh-sandbox local_dsh-mobile ~/.dsh/local-plugins/
+   cp -R local_dsh-backups local_tools-mcp-servers local_workspace-context local_hide-deepseek-defaults local_retro-ai-os local_groq-dictation local_default-model local_dsh-config local_dsh-sandbox local_dsh-mobile local_dsh-total-config ~/.dsh/local-plugins/
    ```
 
 2. Declara los paquetes como enlaces en el `package.json` de tu perfil
@@ -56,7 +66,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
        "@local/default-model": "link:/Users/tu-usuario/.dsh/local-plugins/local_default-model",
        "@local/dsh-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-config",
        "@local/dsh-sandbox": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-sandbox",
-       "@local/dsh-mobile": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-mobile"
+       "@local/dsh-mobile": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-mobile",
+       "@local/dsh-total-config": "link:/Users/tu-usuario/.dsh/local-plugins/local_dsh-total-config"
      },
      "dsh": {
        "profile": {
@@ -72,7 +83,8 @@ autocontenido con sus textos (`locale/`) y su parche de composición
            "@local/default-model",
            "@local/dsh-config",
            "@local/dsh-sandbox",
-           "@local/dsh-mobile"
+           "@local/dsh-mobile",
+           "@local/dsh-total-config"
          ]
        }
      }
@@ -96,6 +108,16 @@ autocontenido con sus textos (`locale/`) y su parche de composición
    ```
 
 ## Uso rápido
+
+- **DHS Total Config**: abre **Ajustes → DHS Total Config** y activa o desactiva
+  cada comportamiento (reordenar Ajustes, instalar desde GitHub, etiqueta de
+  esfuerzo, modelo predeterminado, avisos de actualización, modelos de DeepSeek,
+  contexto de espacios, página de proyecto e icono/color). Los cambios se
+  guardan en `$DSH_HOME/dsh-total-config/settings.json`. La misma página detecta
+  los cinco bundles anteriores y permite desactivarlos para que nada aparezca dos
+  veces; si los desactivas, recarga la pestaña. Al cambiar **Ocultar los modelos
+  por defecto de DeepSeek** la página pide una recarga, porque las filas de
+  proveedores viven en la composición del perfil.
 
 - **Copias de seguridad**: elige qué incluir (chats y sesiones, configuración y
   plugins), crea el ZIP en `~/Documents/DeepSeek Harness/Backups` y, en el otro

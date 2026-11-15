@@ -101,6 +101,7 @@ function renderNode(node, path, output) {
 const settings = {
   configured: false,
   hostMic: true,
+  hostMicDevice: '',
   model: 'whisper-large-v3-turbo',
   models: ['whisper-large-v3-turbo', 'whisper-large-v3', 'distil-whisper-large-v3-en'],
   apiKeyHint: '',
@@ -114,6 +115,8 @@ let transcribeBody = { text: '  Hola mundo.  ' }
 let microphoneError = null
 let hostMicProbe = { available: true, device: 'Micrófono del test' }
 let hostTranscript = '  Texto del ordenador.  '
+let hostTestAudible = true
+let hostStopFailure = null
 const hostCalls = []
 
 function response(data, ok = true, status = 200) {
@@ -142,11 +145,19 @@ function translate(key, params) {
     'settings.clearDone': 'Clave borrada.',
     'settings.needKey': 'Introduce una clave para activar el dictado.',
     'settings.hostMicLabel': 'Micrófono del ordenador',
-    'settings.hostMicDesc': 'Cuando el navegador no puede grabar, el dictado graba con el micrófono de este ordenador.',
+    'settings.hostMicDesc': 'Alternativa solo para cuando estés delante del ordenador: si el navegador no puede grabar, el dictado usa el micrófono de este equipo. Desde el móvil, en cambio, hace falta HTTPS.',
+    'settings.secureContextHint': 'Para dictar desde el móvil, abre la GUI con el enlace público del túnel (Ajustes → Acceso desde el móvil → Acceso público): Safari y Chrome solo dan micrófono a páginas HTTPS.',
     'settings.hostMicOn': 'Permitido como alternativa',
     'settings.hostMicOff': 'No usarlo nunca',
     'settings.hostMicAvailable': 'Disponible: {device}',
     'settings.hostMicUnavailable': 'Este ordenador no tiene un micrófono que el dictado pueda usar.',
+    'settings.hostMicDeviceLabel': 'Dispositivo',
+    'settings.hostMicDeviceDefault': 'Predeterminado del sistema',
+    'settings.hostMicFallback': 'El dispositivo guardado ya no está; se usará «{device}».',
+    'settings.micTest': 'Probar micrófono',
+    'settings.micTestRunning': 'Grabando 2 s…',
+    'settings.micTestOk': 'Se ha captado audio de {device}.',
+    'settings.micTestSilent': 'Silencio: revisa la entrada por defecto y el permiso de micrófono de la app en Ajustes del Sistema.',
     'settings.privacy': 'El audio solo se envía a Groq cuando detienes la grabación.',
     'model.whisper-large-v3-turbo': 'Whisper Large v3 Turbo · el más rápido',
     'model.whisper-large-v3': 'Whisper Large v3 · el más preciso',
@@ -167,10 +178,11 @@ function translate(key, params) {
     'error.not-configured': 'Añade tu clave API de Groq en Ajustes → General para usar el dictado.',
     'error.microphone-denied': 'Se ha denegado el acceso al micrófono. Permítelo en el navegador y vuelve a intentarlo.',
     'error.microphone-missing': 'No se ha encontrado ningún micrófono.',
-    'error.microphone-insecure': 'El micrófono necesita HTTPS. Abre la app con el enlace del túnel, no con la dirección de la red local.',
+    'error.microphone-insecure': 'El micrófono del teléfono necesita HTTPS. Abre la app con el enlace público del túnel y vuelve a intentarlo.',
     'error.microphone-unsupported': 'Este navegador no expone ningún micrófono a la página.',
     'error.microphone-busy': 'El micrófono está ocupado por otra app o llamada. Ciérrala y vuelve a intentarlo.',
     'error.microphone-failed': 'No se pudo abrir el micrófono.',
+    'error.host-mic-silent': 'No ha llegado voz al ordenador. Acércate a su micrófono o revisa la entrada por defecto del sistema.',
     'error.recorder-unavailable': 'Este navegador no puede grabar audio.',
     'error.recording-failed': 'La grabación falló. Inténtalo de nuevo.',
     'error.empty-audio': 'La grabación está vacía.',
@@ -273,10 +285,18 @@ const sandbox = {
       }
       if (body.model !== undefined) settings.model = body.model
       if (body.hostMic !== undefined) settings.hostMic = body.hostMic
+      if (body.hostMicDevice !== undefined) settings.hostMicDevice = body.hostMicDevice
       return response({ ...settings })
     }
     if (target === '/dsh-groq-dictation/host-mic' && options.method === 'GET') {
-      return response({ enabled: settings.hostMic !== false, available: hostMicProbe.available, device: hostMicProbe.device, maxSeconds: 600 })
+      return response({
+        enabled: settings.hostMic !== false,
+        available: hostMicProbe.available,
+        device: settings.hostMicDevice === '' ? hostMicProbe.device : settings.hostMicDevice,
+        saved: settings.hostMicDevice === '' || settings.hostMicDevice === hostMicProbe.device,
+        devices: [{ id: '0', label: 'Micrófono del test' }, { id: '1', label: 'Otro micro' }],
+        maxSeconds: 600,
+      })
     }
     if (target === '/dsh-groq-dictation/host-mic/start' && options.method === 'POST') {
       hostCalls.push('start')
@@ -284,7 +304,13 @@ const sandbox = {
     }
     if (target === '/dsh-groq-dictation/host-mic/stop' && options.method === 'POST') {
       hostCalls.push('stop')
-      return response({ text: hostTranscript, model: settings.model, seconds: 2 })
+      if (hostStopFailure !== null) return response(hostStopFailure, false, 422)
+      return response({ text: hostTranscript, model: settings.model, seconds: 2, level: { median: 900 } })
+    }
+    if (target === '/dsh-groq-dictation/host-mic/test' && options.method === 'POST') {
+      hostCalls.push('test')
+      hostCalls.push('device:' + JSON.parse(options.body ?? '{}').device)
+      return response({ device: hostMicProbe.device, seconds: 2, audible: hostTestAudible, level: { median: hostTestAudible ? 900 : 3 } })
     }
     if (target === '/dsh-groq-dictation/host-mic/cancel' && options.method === 'POST') {
       hostCalls.push('cancel')
@@ -622,6 +648,34 @@ if (insertions[insertions.length - 1].value !== ' Texto del ordenador. ') {
   throw new Error(`unexpected computer transcript: ${JSON.stringify(insertions[insertions.length - 1].value)}`)
 }
 
+// A silent computer microphone is reported instead of inserting a hallucination.
+hostStopFailure = { code: 'host-mic-silent', error: 'silent' }
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+micButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(mic, micProps, 'mic')
+micButton = collected.find(node => node.type === 'button' && String(node.props.className).includes('grd-mic'))
+micButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(mic, micProps, 'mic')
+if (!text.includes('No ha llegado voz al ordenador')) throw new Error(`the silence notice is missing: ${text}`)
+hostStopFailure = null
+
+// The settings row can test the computer microphone.
+text = await settle(settingsRow, { t: translate }, 'settings')
+const testButton = collected.find(node => node.type === 'button' && labelOf(node) === 'Probar micrófono')
+if (testButton === undefined) throw new Error('the settings row has no microphone test button')
+testButton.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(settingsRow, { t: translate }, 'settings')
+if (!text.includes('Se ha captado audio de Micrófono del test')) throw new Error(`the microphone test result is missing: ${text}`)
+hostTestAudible = false
+const testAgain = collected.find(node => node.type === 'button' && labelOf(node) === 'Probar micrófono')
+testAgain.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(settingsRow, { t: translate }, 'settings')
+if (!text.includes('Silencio: revisa la entrada')) throw new Error(`the silent test result is missing: ${text}`)
+
 // Refusing the fallback brings back the HTTPS guidance.
 text = await settle(settingsRow, { t: translate }, 'settings')
 const hostCheckbox = collected.find(node => node.type === 'input' && node.props.type === 'checkbox')
@@ -639,6 +693,28 @@ micButton.props.onClick()
 text = await settle(mic, micProps, 'mic')
 if (!text.includes('necesita HTTPS')) throw new Error(`the HTTPS notice is missing with the fallback off: ${text}`)
 sandbox.window.isSecureContext = true
+
+// The device selector lists what the Host reports and saves the choice.
+text = await settle(settingsRow, { t: translate }, 'settings')
+const selects = collected.filter(node => node.type === 'select')
+if (selects.length !== 2) throw new Error(`expected a model and a device selector, got ${selects.length}`)
+const deviceSelect = selects[1]
+if (deviceSelect.props.children.length !== 3) throw new Error('the device selector does not list the default plus two devices')
+deviceSelect.props.onChange({ target: { value: 'Otro micro' } })
+dirty = false
+text = await settle(settingsRow, { t: translate }, 'settings')
+const saveDevice = collected.find(node => node.type === 'button' && labelOf(node) === 'Guardar')
+saveDevice.props.onClick()
+text = await settle(settingsRow, { t: translate }, 'settings')
+if (settings.hostMicDevice !== 'Otro micro') throw new Error('the chosen device was not saved')
+
+// The microphone test uses the selected device, not the saved one.
+hostTestAudible = true
+const testSelected = collected.find(node => node.type === 'button' && labelOf(node) === 'Probar micrófono')
+testSelected.props.onClick()
+await new Promise(resolve => setTimeout(resolve, 50))
+text = await settle(settingsRow, { t: translate }, 'settings')
+if (!hostCalls.includes('device:Otro micro')) throw new Error(`the test ignored the selected device: ${hostCalls.join(',')}`)
 
 // The original platform failure stays visible in the console for support.
 if (!warnings.some(args => String(args[1]?.name) === 'NotAllowedError')) throw new Error('the denied-microphone failure was not logged')

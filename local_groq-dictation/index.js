@@ -52,7 +52,8 @@ const DEFAULTS = Object.freeze({
   version: 1,
   apiKey: '',
   model: MODELS[0],
-  hostMic: true,
+  hostMic: false,
+  hostMicDevice: '',
 })
 
 /** Accepted upload media types and the file name each is forwarded with. */
@@ -155,7 +156,8 @@ export function readSettings() {
     version: 1,
     apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '',
     model: MODELS.includes(parsed.model) ? parsed.model : DEFAULTS.model,
-    hostMic: parsed.hostMic === undefined ? DEFAULTS.hostMic : parsed.hostMic === true,
+    hostMic: parsed.hostMic === true,
+    hostMicDevice: typeof parsed.hostMicDevice === 'string' ? parsed.hostMicDevice.trim().slice(0, 200) : '',
   }
 }
 
@@ -172,6 +174,7 @@ export function writeSettings(input) {
     apiKey: input.apiKey === undefined ? previous.apiKey : normalizeApiKey(input.apiKey),
     model: input.model === undefined ? previous.model : normalizeModel(input.model),
     hostMic: input.hostMic === undefined ? previous.hostMic : input.hostMic === true,
+    hostMicDevice: input.hostMicDevice === undefined ? previous.hostMicDevice : normalizeHostMicDevice(input.hostMicDevice),
   }
   const directory = storeDirectory()
   mkdirSync(directory, { recursive: true, mode: 0o700 })
@@ -202,8 +205,21 @@ export function publicSettings(settings) {
     model: settings.model,
     models: [...MODELS],
     apiKeyHint: settings.apiKey === '' ? '' : settings.apiKey.slice(-4),
-    hostMic: settings.hostMic !== false,
+    hostMic: settings.hostMic === true,
+    hostMicDevice: settings.hostMicDevice ?? '',
   }
+}
+
+/**
+ * Narrow one chosen input device. An empty string means "system default".
+ * @param {unknown} value Candidate device label.
+ * @returns {string} Trimmed label.
+ */
+function normalizeHostMicDevice(value) {
+  if (typeof value !== 'string') throw fail('invalid-device')
+  const device = value.trim()
+  if (device.length > 200) throw fail('invalid-device')
+  return device
 }
 
 /**
@@ -346,6 +362,12 @@ async function transcribe(audio, contentType) {
 /** Longest clip the computer records; matches the browser cap. */
 const HOST_MIC_MAX_SECONDS = 600
 
+/** Median level below which a clip is treated as silence (16-bit samples). */
+const HOST_MIC_SILENCE_RMS = 100
+
+/** Shortest clip worth sending to Whisper. */
+const HOST_MIC_MIN_SECONDS = 0.35
+
 /** How long a probe, a device open, and a graceful stop may take. */
 const PROBE_TIMEOUT_MS = 8_000
 const START_TIMEOUT_MS = 8_000
@@ -364,8 +386,8 @@ const FFMPEG_CANDIDATES = Object.freeze([
 /** One running computer-microphone capture. */
 let hostRecording = null
 
-/** Cached device probe: `undefined` until probed, `null` when unavailable. */
-let hostDevice
+/** Cached device listing: `undefined` until probed, `null` when ffmpeg is missing. */
+let hostListing
 
 /**
  * Run one short-lived helper and collect its output.
@@ -426,6 +448,42 @@ async function resolveFfmpeg() {
 }
 
 /**
+ * Compare device names that differ only in quoting or spacing.
+ * @param {unknown} value Raw name.
+ * @returns {string} Comparable name.
+ */
+function normalizeDeviceName(value) {
+  return String(value ?? '')
+    .replace(/[\u201c\u201d\u00ab\u00bb"']/gu, '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+/**
+ * Ask macOS which input device the system uses. ffmpeg only lists devices, so
+ * the first entry is not necessarily the one the user hears through.
+ * @returns {Promise<string | null>} Default input name, when it can be read.
+ */
+async function systemDefaultInputName() {
+  if (process.platform !== 'darwin') return null
+  // Absolute path: GUI apps do not always inherit /usr/sbin in PATH.
+  const result = await run('/usr/sbin/system_profiler', ['SPAudioDataType'], 10_000)
+  if (result.code !== 0) return null
+  let current = null
+  for (const raw of result.stdout.split(/\r?\n/u)) {
+    const line = raw.trimEnd()
+    const heading = /^ {8}(\S.*):$/u.exec(line)
+    if (heading !== null) {
+      current = heading[1]
+      continue
+    }
+    if (current !== null && /Default Input Device:\s*Yes/u.test(line)) return current
+  }
+  return null
+}
+
+/**
  * Read the audio devices listed by one ffmpeg `-list_devices` run.
  * @param {string} text Captured stderr.
  * @param {RegExp} marker Line that opens the audio section.
@@ -452,33 +510,128 @@ function audioDevices(text, marker, entry) {
 }
 
 /**
- * Find an input the local ffmpeg can record from.
- * @returns {Promise<{ binary: string, label: string, input: string[] } | null>} Device.
+ * Measure a PCM WAV clip: peak, median 100 ms level, and duration. The median
+ * ignores the start-up click Safari and avfoundation can leave behind, which
+ * matters when deciding whether the microphone actually heard anything.
+ * @param {Buffer} audio Raw WAV bytes.
+ * @returns {{ peak: number, median: number, seconds: number }} Level report.
  */
-export async function detectHostMicrophone() {
-  if (hostDevice !== undefined) return hostDevice
+export function wavLevel(audio) {
+  const empty = { peak: 0, median: 0, seconds: 0 }
+  if (audio.length < 44) return empty
+  let offset = 12
+  let channels = 1
+  let rate = 16_000
+  let bits = 16
+  let data
+  while (offset + 8 <= audio.length) {
+    const id = audio.subarray(offset, offset + 4).toString('latin1')
+    const size = audio.readUInt32LE(offset + 4)
+    const start = offset + 8
+    if (id === 'fmt ' && size >= 16 && start + 16 <= audio.length) {
+      channels = Math.max(1, audio.readUInt16LE(start + 2))
+      rate = Math.max(1, audio.readUInt32LE(start + 4))
+      bits = audio.readUInt16LE(start + 14) || 16
+    }
+    if (id === 'data') {
+      data = { start, end: Math.min(audio.length, start + size) }
+      break
+    }
+    offset = start + size + (size % 2)
+  }
+  if (data === undefined || bits !== 16) return empty
+  const frameBytes = 2 * channels
+  const frames = Math.floor((data.end - data.start) / frameBytes)
+  if (frames === 0) return empty
+  const perBlock = Math.max(1, Math.round(rate / 10))
+  const blocks = []
+  let peak = 0
+  let index = 0
+  while (index < frames) {
+    const stop = Math.min(frames, index + perBlock)
+    let sum = 0
+    let count = 0
+    for (; index < stop; index += 1) {
+      const sample = audio.readInt16LE(data.start + index * frameBytes)
+      const magnitude = sample < 0 ? -sample : sample
+      if (magnitude > peak) peak = magnitude
+      sum += magnitude * magnitude
+      count += 1
+    }
+    blocks.push(Math.sqrt(sum / Math.max(1, count)))
+  }
+  blocks.sort((left, right) => left - right)
+  const median = blocks[Math.floor(blocks.length / 2)] ?? 0
+  return { peak, median: Math.round(median), seconds: frames / rate }
+}
+
+/**
+ * Keep the last capture's measurements on disk so a silent microphone can be
+ * diagnosed without asking the user to read console output.
+ * @param {Record<string, unknown>} entry Measurements.
+ * @returns {void}
+ */
+function writeRecordingDiagnostic(entry) {
+  try {
+    const directory = storeDirectory()
+    mkdirSync(directory, { recursive: true, mode: 0o700 })
+    writeFileSync(join(directory, 'last-recording.json'), `${JSON.stringify({ at: new Date().toISOString(), ...entry }, null, 2)}\n`, { mode: 0o600 })
+  } catch {
+    // Diagnostics are best effort; a failure must not break dictation.
+  }
+}
+
+/**
+ * List the inputs the local ffmpeg can record from, once per process.
+ * @returns {Promise<{ binary: string, devices: { id: string, label: string, input: string[] }[], defaultId: string } | null>} Listing.
+ */
+async function listHostMicrophones() {
+  if (hostListing !== undefined) return hostListing
   const binary = await resolveFfmpeg()
   if (binary === null) {
-    hostDevice = null
+    hostListing = null
     return null
   }
-  let device = null
+  let devices = []
+  let defaultId = ''
   if (process.platform === 'darwin') {
-    const probe = await run(binary, ['-hide_banner', '-f', 'avfoundation', '-list_devices', 'true', '-i', ''], PROBE_TIMEOUT_MS)
-    const [first] = audioDevices(probe.stderr, /AVFoundation audio devices:/iu, /^\[.*?\]\s*\[(\d+)\]\s+(.+)$/u)
-    if (first !== undefined) device = { binary, label: first.label, input: ['-f', 'avfoundation', '-i', `:${first.id}`] }
+    const [probe, preferred] = await Promise.all([
+      run(binary, ['-hide_banner', '-f', 'avfoundation', '-list_devices', 'true', '-i', ''], PROBE_TIMEOUT_MS),
+      systemDefaultInputName(),
+    ])
+    devices = audioDevices(probe.stderr, /AVFoundation audio devices:/iu, /^\[.*?\]\s*\[(\d+)\]\s+(.+)$/u)
+      .map((entry) => ({ id: entry.id, label: entry.label, input: ['-f', 'avfoundation', '-i', `:${entry.id}`] }))
+    const wanted = normalizeDeviceName(preferred)
+    defaultId = devices.find((entry) => wanted !== '' && normalizeDeviceName(entry.label) === wanted)?.id ?? devices[0]?.id ?? ''
   } else if (process.platform === 'win32') {
     const probe = await run(binary, ['-hide_banner', '-f', 'dshow', '-list_devices', 'true', '-i', 'dummy'], PROBE_TIMEOUT_MS)
-    const [first] = audioDevices(probe.stderr, /DirectShow audio devices/iu, /^\[.*?\]\s*"([^"]+)"/u)
-    if (first !== undefined) device = { binary, label: first.label, input: ['-f', 'dshow', '-i', `audio=${first.id}`] }
+    devices = audioDevices(probe.stderr, /DirectShow audio devices/iu, /^\[.*?\]\s*"([^"]+)"/u)
+      .map((entry) => ({ id: entry.id, label: entry.label, input: ['-f', 'dshow', '-i', `audio=${entry.id}`] }))
+    defaultId = devices[0]?.id ?? ''
   } else {
     // Linux: use PulseAudio when ffmpeg was built with it, ALSA otherwise.
     const probe = await run(binary, ['-hide_banner', '-devices'], PROBE_TIMEOUT_MS)
     const format = /\bpulse\b/iu.test(`${probe.stdout}\n${probe.stderr}`) ? 'pulse' : 'alsa'
-    device = { binary, label: `${format} default`, input: ['-f', format, '-i', 'default'] }
+    devices = [{ id: 'default', label: `${format} default`, input: ['-f', format, '-i', 'default'] }]
+    defaultId = 'default'
   }
-  hostDevice = device
-  return device
+  hostListing = { binary, devices, defaultId }
+  return hostListing
+}
+
+/**
+ * Resolve the device to record from. A saved label wins while it is still
+ * present; otherwise the system default is used.
+ * @param {string} [preferred] Label saved in the settings.
+ * @returns {Promise<{ binary: string, label: string, input: string[], saved: boolean } | null>} Device.
+ */
+export async function detectHostMicrophone(preferred = '') {
+  const listing = await listHostMicrophones()
+  if (listing === null || listing.devices.length === 0) return null
+  const wanted = normalizeDeviceName(preferred)
+  const saved = wanted === '' ? undefined : listing.devices.find((entry) => normalizeDeviceName(entry.label) === wanted)
+  const chosen = saved ?? listing.devices.find((entry) => entry.id === listing.defaultId) ?? listing.devices[0]
+  return { binary: listing.binary, label: chosen.label, input: chosen.input, saved: saved !== undefined }
 }
 
 /**
@@ -486,21 +639,23 @@ export async function detectHostMicrophone() {
  * @returns {void}
  */
 function forgetHostDevice() {
-  hostDevice = undefined
+  hostListing = undefined
 }
 
 /**
  * Start capturing from the computer's microphone.
+ * @param {string} [preferred] Device label to use instead of the saved one.
  * @returns {Promise<{ started: boolean, device: string, maxSeconds: number }>} Start report.
  */
-export async function startHostRecording() {
+export async function startHostRecording(preferred) {
   if (hostRecording !== null) {
     if (hostRecording.finished !== true) throw fail('host-mic-busy', 409)
     discardHostRecording(hostRecording)
     hostRecording = null
   }
-  if (readSettings().hostMic !== true) throw fail('host-mic-disabled', 403)
-  const device = await detectHostMicrophone()
+  const settings = readSettings()
+  if (settings.hostMic !== true) throw fail('host-mic-disabled', 403)
+  const device = await detectHostMicrophone(typeof preferred === 'string' ? preferred : settings.hostMicDevice)
   if (device === null) throw fail('host-mic-unavailable', 501)
 
   const directory = mkdtempSync(join(tmpdir(), 'dsh-dictation-'))
@@ -519,7 +674,7 @@ export async function startHostRecording() {
     forgetHostDevice()
     throw fail('host-mic-failed', 502, String(error?.message ?? error))
   }
-  const state = { child, directory, file, startedAt: Date.now(), finished: false, output: '' }
+  const state = { child, directory, file, device: device.label, startedAt: Date.now(), finished: false, output: '' }
   hostRecording = state
 
   const opened = await new Promise((resolve) => {
@@ -556,7 +711,7 @@ export async function startHostRecording() {
     forgetHostDevice()
     throw fail('host-mic-failed', 502, `${opened.reason}: ${state.output.slice(-200)}`)
   }
-  return { started: true, device: device.label, maxSeconds: HOST_MIC_MAX_SECONDS }
+  return { started: true, device: device.label, saved: device.saved, maxSeconds: HOST_MIC_MAX_SECONDS }
 }
 
 /**
@@ -614,11 +769,24 @@ export async function stopHostRecording(options = {}) {
   } catch {
     audio = Buffer.alloc(0)
   }
+  const level = wavLevel(audio)
   try {
-    if (options.transcribe === false) return { text: '', model: readSettings().model, seconds }
+    if (options.transcribe === false) {
+      writeRecordingDiagnostic({ device: state.device, seconds, ...level, outcome: 'discarded' })
+      return { text: '', model: readSettings().model, seconds, level }
+    }
     // 44 bytes is the WAV header alone: no audio at all.
-    if (audio.length <= 44) throw fail('empty-audio', 422)
-    return { ...(await transcribe(audio, 'audio/wav')), seconds }
+    if (audio.length <= 44 || level.seconds < HOST_MIC_MIN_SECONDS) {
+      writeRecordingDiagnostic({ device: state.device, seconds, ...level, outcome: 'empty' })
+      throw fail('empty-audio', 422)
+    }
+    if (level.median < HOST_MIC_SILENCE_RMS) {
+      writeRecordingDiagnostic({ device: state.device, seconds, ...level, outcome: 'silent' })
+      throw fail('host-mic-silent', 422, `median ${level.median}`)
+    }
+    const result = await transcribe(audio, 'audio/wav')
+    writeRecordingDiagnostic({ device: state.device, seconds, ...level, outcome: 'transcribed' })
+    return { ...result, seconds, level }
   } finally {
     discardHostRecording(state)
   }
@@ -682,13 +850,16 @@ export async function handleRequest(request, response) {
     }
 
     if (action === 'host-mic' && segments.length === 1 && method === 'GET') {
-      const device = await detectHostMicrophone()
+      const settings = readSettings()
+      const [listing, device] = await Promise.all([listHostMicrophones(), detectHostMicrophone(settings.hostMicDevice)])
       reply(200, {
         ok: true,
         data: {
-          enabled: readSettings().hostMic,
+          enabled: settings.hostMic,
           available: device !== null,
           device: device?.label ?? '',
+          saved: device?.saved === true,
+          devices: listing?.devices.map((entry) => ({ id: entry.id, label: entry.label })) ?? [],
           maxSeconds: HOST_MIC_MAX_SECONDS,
         },
       })
@@ -706,6 +877,24 @@ export async function handleRequest(request, response) {
       }
       if (segments[1] === 'cancel') {
         reply(200, { ok: true, data: await cancelHostRecording() })
+        return
+      }
+      if (segments[1] === 'test') {
+        // Record two seconds and report the level, without spending a Groq call.
+        const body = await readJsonBody(request)
+        const started = await startHostRecording(typeof body?.device === 'string' ? body.device : undefined)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        const captured = await stopHostRecording({ transcribe: false })
+        reply(200, {
+          ok: true,
+          data: {
+            device: started.device,
+            saved: started.saved,
+            seconds: captured.seconds,
+            level: captured.level,
+            audible: captured.level.median >= HOST_MIC_SILENCE_RMS,
+          },
+        })
         return
       }
     }
@@ -759,6 +948,7 @@ export const __test = {
   transcribe,
   sniffAudio,
   detectHostMicrophone,
+  wavLevel,
   startHostRecording,
   stopHostRecording,
   cancelHostRecording,

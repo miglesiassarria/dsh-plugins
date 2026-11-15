@@ -57,30 +57,49 @@ El dictado se puede usar en cualquier sesión. Si cierras Ajustes, la clave
 sigue guardada y el micrófono funciona sin recargar la página. Para desactivar
 el dictado, borra la clave desde la misma fila.
 
-### Desde el móvil (iPhone, Safari) sin HTTPS
+### Dictar desde el móvil (iPhone, Safari)
 
-Los navegadores solo entregan el micrófono del dispositivo a páginas **HTTPS**:
-en `http://<IP-de-tu-equipo>:3081` Safari esconde `navigator.mediaDevices` y no
-hay forma de grabarlo desde la página. Ningún ajuste, permiso ni API lo evita;
-es una regla del navegador.
+El micrófono del teléfono **solo existe para la página si esta es HTTPS**. En
+`http://` (red local, VPN sin TLS, proxy sin certificado) Safari esconde
+`navigator.mediaDevices` y ninguna API, permiso ni ajuste lo evita: es una
+regla del navegador, no del complemento.
 
-Por eso el complemento añade una vía que **no necesita HTTPS ni túnel**: si el
-navegador no puede grabar y **estás cerca del ordenador**, el micrófono que se
-usa es el del propio ordenador. Tú pulsas el micrófono en el móvil, el Host
-graba con `ffmpeg` en ese equipo, lo transcribe con Groq y el texto aparece en
-el borrador del móvil. El botón se anuncia como «Dictar con el micrófono del
-ordenador» y durante la grabación muestra el tiempo igual que siempre.
+Por eso, para dictar desde el móvil cuando **no** estás delante del ordenador:
 
-- Requiere `ffmpeg` en el ordenador (macOS: `brew install ffmpeg`; en Linux,
-  el del sistema) y dar permiso de micrófono a la app una vez. La fila de
-  Ajustes muestra el dispositivo que se usará o por qué no hay ninguno.
-- Se puede desactivar en **Ajustes → General → Dictado con Groq → Micrófono
-  del ordenador**. Si está desactivado, la página insegura vuelve a explicar
-  que hace falta HTTPS.
-- Si prefieres usar el micrófono del propio iPhone, abre la GUI con el
-  **enlace público del túnel** (**Ajustes → Acceso desde el móvil → 🌐 Acceso
-  público**): es HTTPS y el dictado graba desde el móvil como en el
-  escritorio.
+1. Instala y activa [dsh-mobile](../local_dsh-mobile/) (**Ajustes → Acceso
+   desde el móvil**).
+2. Pulsa **Activar acceso público**. Obtienes una dirección `https://…` con
+   contraseña. Para que no cambie entre reinicios, usa el modo de **dominio
+   fijo** con un túnel con nombre de Cloudflare.
+3. Abre esa dirección en el iPhone y dicta: el audio sale del teléfono, el Host
+   lo reenvía a Groq y el texto aparece en el borrador, igual que en el
+   escritorio.
+
+Si prefieres no exponer nada a internet, cualquier HTTPS privado sirve:
+`tailscale serve` (certificado válido dentro de tu tailnet), un proxy con
+certificado o un `ngrok http 3081`. Lo único que cambia es la dirección.
+
+### Alternativa con el micrófono del ordenador (opcional)
+
+Si estás **delante del ordenador** y el navegador no puede grabar, el dictado
+puede grabar con el micrófono de ese equipo mediante `ffmpeg`. Es una opción
+que hay que activar a mano (**Ajustes → General → Dictado con Groq → Micrófono
+del ordenador**, desactivada por defecto) precisamente porque no sirve cuando
+estás lejos.
+
+- Requiere `ffmpeg` (macOS: `brew install ffmpeg`; en Linux, el del sistema) y
+  permiso de micrófono para la app.
+- El **selector de dispositivo** elige qué entrada usar; por defecto, la
+  entrada por defecto del sistema. Si el dispositivo guardado desaparece,
+  vuelve al predeterminado y lo avisa.
+- **Probar micrófono** graba dos segundos con el dispositivo elegido y dice si
+  llega audio. Si responde «Silencio», revisa la entrada por defecto y
+  **Ajustes del Sistema → Privacidad y seguridad → Micrófono**.
+- El último intento queda medido en
+  `$DSH_HOME/groq-dictation/last-recording.json`.
+- Los clips sin voz se descartan: Whisper convierte el silencio en palabras
+  inventadas («you», «Thank you.»), así que el complemento mide el nivel y
+  avisa en vez de insertarlas.
 
 ## Límites
 

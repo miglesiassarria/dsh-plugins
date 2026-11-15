@@ -1,6 +1,6 @@
 {
   "name": "@local/groq-dictation",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Dictation in the composer with Groq Whisper: record from a microphone button, transcribe, and insert the text.",
   "type": "module",

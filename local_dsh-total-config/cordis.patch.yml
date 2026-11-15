@@ -1,0 +1,28 @@
+# DSH Total Config — one bundle for the behaviors that used to live in five.
+#
+# The three provider rows below are the "Hide DeepSeek defaults" switch. They
+# ship disabled here, so the switch starts on and the capability disappears
+# with this bundle: turning the switch off writes an explicit override in the
+# profile patch through the Plugin Manager, and turning it on again removes
+# that override because this layer already implies the disabled state.
+#
+# `llm-deepseek` is the official API-key route, `llm-deepseek-account` the
+# signed-in account route, and `ui-settings-account` the Account settings page
+# (plus its sidebar launcher). Your own providers (Nexo, opencode-go, …) are
+# untouched.
+#
+# The other switches are runtime preferences stored by the plugin itself in
+# `$DSH_HOME/dsh-total-config/settings.json`; they need no rows here.
+
+- id: llm-deepseek
+  disabled: true
+
+- id: llm-deepseek-account
+  disabled: true
+
+- id: ui-settings-account
+  disabled: true
+
+- insert:
+    - id: dsh-total-config
+      name: '@local/dsh-total-config'

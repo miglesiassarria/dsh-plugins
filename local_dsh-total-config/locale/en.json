@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DHS Total Config",
+    "description": "One settings page for the behaviors of DSH Config, Default Model, Hide DeepSeek Defaults, Hide Updates, and Workspace Context, each with its own switch."
+  }
+}

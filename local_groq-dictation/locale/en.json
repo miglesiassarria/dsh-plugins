@@ -20,13 +20,20 @@
     "clearDone": "Key deleted.",
     "needKey": "Enter a key to turn dictation on.",
     "privacy": "Audio is sent to Groq only when you stop recording.",
-    "secureContextHint": "On a phone, open the GUI over HTTPS (the tunnel link): Safari and Chrome block the microphone on plain HTTP.",
+    "secureContextHint": "To dictate from a phone, open the GUI with the public tunnel link (Settings → Access from phone → Public access): Safari and Chrome only give the microphone to HTTPS pages.",
     "hostMicLabel": "Computer microphone",
-    "hostMicDesc": "When the browser cannot record (Safari on a phone over HTTP), dictation records with this computer's microphone. Useful when you are near it.",
+    "hostMicDesc": "A fallback only for when you are in front of the computer: if the browser cannot record, dictation uses this machine's microphone. From the phone you need HTTPS instead.",
     "hostMicOn": "Allowed as a fallback",
     "hostMicOff": "Never use it",
     "hostMicAvailable": "Available: {device}",
-    "hostMicUnavailable": "No microphone this computer can record from."
+    "hostMicUnavailable": "No microphone this computer can record from.",
+    "micTest": "Test microphone",
+    "micTestRunning": "Recording 2 s…",
+    "micTestOk": "Audio captured from {device}.",
+    "micTestSilent": "Silence: check the system input device and the app microphone permission.",
+    "hostMicDeviceLabel": "Device",
+    "hostMicDeviceDefault": "System default",
+    "hostMicFallback": "The saved device is gone; using “{device}”."
   },
   "model": {
     "whisper-large-v3-turbo": "Whisper Large v3 Turbo · fastest",
@@ -66,7 +73,7 @@
     "too-large": "The request was too large.",
     "microphone-denied": "Microphone access was denied. Allow it in the browser and try again.",
     "microphone-missing": "No microphone was found.",
-    "microphone-insecure": "The microphone needs HTTPS. Open the app with the tunnel link, not the LAN address.",
+    "microphone-insecure": "The phone microphone needs HTTPS. Open the app with the public tunnel link and try again.",
     "microphone-unsupported": "This browser does not expose a microphone to the page.",
     "microphone-busy": "The microphone is in use by another app or call. Close it and try again.",
     "microphone-failed": "The microphone could not be opened.",
@@ -77,6 +84,7 @@
     "host-mic-disabled": "The computer microphone is turned off in Settings → General.",
     "host-mic-busy": "A recording is already running.",
     "host-mic-failed": "The computer microphone could not be opened.",
-    "not-recording": "There was no recording to stop."
+    "not-recording": "There was no recording to stop.",
+    "host-mic-silent": "No voice reached the computer. Move closer to its microphone or check the system input device."
   }
 }
