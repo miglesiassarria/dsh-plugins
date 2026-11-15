@@ -72,6 +72,7 @@ export const FEATURES = Object.freeze({
   workspaceContext: true,
   workspaceAppearance: true,
   workspaceProjectPage: true,
+  sessionMultiSelect: true,
 })
 
 /** The provider rows the "Hide DeepSeek defaults" switch owns, by module name. */

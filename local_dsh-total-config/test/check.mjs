@@ -80,6 +80,7 @@ check('client registers the bundled module id', clientSource.includes("id: '@loc
 check('client registers the DHS Total Config page', clientSource.includes("id: 'dsh-total-config'"))
 check('client has no leftover workspace-context module id', !clientSource.includes("'@local/workspace-context'"))
 check('client has no leftover dsh-config module id', !clientSource.includes("'@local/dsh-config'"))
+check('client declares the session selection feature', clientSource.includes('sessionMultiSelect: true'))
 
 // ---------------------------------------------------------------------------
 // Host behavior in an isolated DSH_HOME
@@ -93,7 +94,7 @@ try {
   const host = await import('../index.js')
   check('exports the expected services', Array.isArray(host.inject) && host.inject.includes('webServer'))
   check('features start enabled', Object.values(host.FEATURES).every((value) => value === true))
-  check('nine switches are declared', Object.keys(host.FEATURES).length === 9)
+  check('ten switches are declared', Object.keys(host.FEATURES).length === 10)
 
   const fresh = host.readSettings()
   check('a missing document reads as defaults', fresh.settingsOrder.length === 0 && fresh.features.workspaceContext === true)
@@ -109,7 +110,7 @@ try {
   const migrated = host.readSettings()
   check('the previous order is migrated', migrated.settingsOrder.join(',') === 'models,general')
   check('the previous shared switches are migrated', migrated.features.reorderSections === false && migrated.features.hideDefaultEffort === false)
-  check('the new switches keep their defaults', migrated.features.workspaceContext === true && migrated.features.defaultModel === true)
+  check('the new switches keep their defaults', migrated.features.workspaceContext === true && migrated.features.defaultModel === true && migrated.features.sessionMultiSelect === true)
 
   const stored = host.writeSettings({ features: { ...migrated.features, hideUpdates: false } })
   check('writeSettings persists the switch', stored.features.hideUpdates === false)

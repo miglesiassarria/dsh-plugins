@@ -14,7 +14,7 @@ ofrece desactivarlos desde su propia página.
 
 | Plugin | Nombre del paquete | Página | Qué añade |
 |---|---|---|---|
-| [`local_dsh-total-config`](local_dsh-total-config/) | `@local/dsh-total-config` | Ajustes → **DHS Total Config**; Ajustes → **Modelos**; barra lateral de Ajustes; Complementos → Agregar complemento; espacios de trabajo y barra derecha | Reúne en un solo complemento los comportamientos de DSH Config, Modelo predeterminado, Ocultar DeepSeek, Ocultar actualizaciones y Contexto de espacios, cada uno con su interruptor en **Ajustes → DHS Total Config**. Incluye una tarjeta para desactivar los cinco bundles anteriores sin desinstalarlos. |
+| [`local_dsh-total-config`](local_dsh-total-config/) | `@local/dsh-total-config` | Ajustes → **DHS Total Config**; Ajustes → **Modelos**; barra lateral de Ajustes; Complementos → Agregar complemento; espacios de trabajo y barra derecha | Reúne en un solo complemento los comportamientos de DSH Config, Modelo predeterminado, Ocultar DeepSeek, Ocultar actualizaciones y Contexto de espacios, cada uno con su interruptor en **Ajustes → DHS Total Config**, y añade la selección múltiple de conversaciones de un espacio para archivarlas de una vez. Incluye una tarjeta para desactivar los cinco bundles anteriores sin desinstalarlos. |
 | [`local_dsh-backups`](local_dsh-backups/) | `@local/dsh-backups` | Ajustes → **Copias de seguridad** | Exporta a un ZIP las sesiones, la configuración del perfil y los plugins locales, y los restaura en otro equipo. |
 | [`local_tools-mcp-servers`](local_tools-mcp-servers/) | `@local/tools-mcp-servers` | Ajustes → **Herramientas** | Gestiona servidores MCP (stdio local o Streamable HTTP remoto) y registra sus herramientas en `ctx.tools` como `mcp__<servidor>__<herramienta>`. |
 | [`local_hide-deepseek-defaults`](local_hide-deepseek-defaults/) | `@local/hide-deepseek-defaults` | — | Desactiva los proveedores integrados de DeepSeek (cuenta y clave API) para que no aparezcan ni en el selector de modelos del chat ni en **Ajustes → Modelos**. |
@@ -112,8 +112,11 @@ ofrece desactivarlos desde su propia página.
 - **DHS Total Config**: abre **Ajustes → DHS Total Config** y activa o desactiva
   cada comportamiento (reordenar Ajustes, instalar desde GitHub, etiqueta de
   esfuerzo, modelo predeterminado, avisos de actualización, modelos de DeepSeek,
-  contexto de espacios, página de proyecto e icono/color). Los cambios se
-  guardan en `$DSH_HOME/dsh-total-config/settings.json`. La misma página detecta
+  contexto de espacios, página de proyecto, icono/color y selección múltiple de
+  conversaciones). Para seleccionar conversaciones de un espacio usa `⌘`/`Ctrl`+
+  clic o `Mayús`/`Alt`+clic para un intervalo, y archívalas todas con la barra
+  que aparece sobre el pie de la barra lateral.
+  Los cambios se guardan en `$DSH_HOME/dsh-total-config/settings.json`. La misma página detecta
   los cinco bundles anteriores y permite desactivarlos para que nada aparezca dos
   veces; si los desactivas, recarga la pestaña. Al cambiar **Ocultar los modelos
   por defecto de DeepSeek** la página pide una recarga, porque las filas de

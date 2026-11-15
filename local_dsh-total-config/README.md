@@ -17,7 +17,7 @@ ediciones del perfil y reinicios.
 |---|---|
 | Paquete | `@local/dsh-total-config` |
 | Página de Ajustes | **DHS Total Config** |
-| Interruptores | 9, agrupados en tres bloques |
+| Interruptores | 10, agrupados en tres bloques |
 | Datos | `$DSH_HOME/dsh-total-config/` |
 | Interfaz | Sí: página de Ajustes, control de modelo, página de proyecto, pestaña Contexto, menús |
 
@@ -51,9 +51,39 @@ pide **recargar** para refrescar la lista de proveedores y la página Cuenta.
 | **Contexto de espacios** | Da a cada espacio una descripción, un prompt del sistema y archivos o carpetas de contexto que acompañan a todas sus sesiones. Añade además carpetas como contexto de sesión desde el menú `+` del compositor y una pestaña **Contexto** en la barra derecha. |
 | **Página de proyecto del espacio** | Al hacer clic en un espacio se abre su página de proyecto con su contexto, instrucciones, chats y un compositor. |
 | **Icono y color del espacio** | Muestra un icono o un color propio para cada espacio en la barra lateral y en su página. |
+| **Seleccionar varias conversaciones** | Selecciona conversaciones de un espacio y archívalas todas de una vez. Selección con `⌘`/`Ctrl`+clic, rangos con `Mayús` o `Alt`+clic (o dos clics en los extremos) y menú contextual. |
 
 La página de proyecto y el icono/color **dependen de Contexto de espacios**: si
 ese interruptor está apagado, los otros dos se muestran desactivados.
+
+### Selección múltiple de conversaciones
+
+Con el interruptor activo, la lista de conversaciones de cada espacio de la
+barra lateral admite selección múltiple con el ratón:
+
+- `⌘` en macOS o `Ctrl` en Windows/Linux + clic: añade o quita una conversación,
+  aunque no sea contigua a las demás.
+- `Mayús` + clic: selecciona el intervalo entre la última conversación marcada y
+  la que pulsas. `Alt` + clic hace lo mismo, para los dos clics en los extremos.
+- `⌘A`/`Ctrl+A` con una selección activa marca todas las conversaciones visibles
+  del mismo espacio; `Escape` la quita.
+- Clic derecho sobre una conversación seleccionada ofrece **Archivar N
+  conversaciones seleccionadas**; sobre una no seleccionada, **Seleccionar
+  conversaciones** y **Seleccionar todas las de este espacio**.
+
+Al marcar filas aparece una barra encima del pie de la barra lateral con el
+recuento, **Archivar** y **Cancelar**. En DSH la acción que retira una
+conversación de la lista es **archivarla**; este complemento aplica esa misma
+operación en lote, así que la conversación sale de la lista y puede restaurarse
+desde el filtro de archivadas o con **Deshacer** en la propia barra (12
+segundos). Si
+alguna conversación está trabajando, la barra avisa y ofrece **Detener y
+archivar** u **Omitir activas**; archivar el resto no se deshace del progreso
+hasta que confirmes.
+
+Las conversaciones archivadas y la sesión nueva en blanco no se seleccionan. La
+selección está acotada al espacio de trabajo: al marcar una conversación de otro
+espacio, la selección empieza de nuevo.
 
 ## Complementos anteriores
 
@@ -69,7 +99,7 @@ Ajustes, dos contextos inyectados en el modelo, dos pestañas de Contexto, etc.
 
 | Archivo | Contenido |
 |---|---|
-| `$DSH_HOME/dsh-total-config/settings.json` | Orden de categorías de Ajustes y los nueve interruptores. |
+| `$DSH_HOME/dsh-total-config/settings.json` | Orden de categorías de Ajustes y los diez interruptores. |
 | `$DSH_HOME/dsh-total-config/workspace.json` | Descripciones, prompts, entradas y aspecto de cada espacio, y carpetas de contexto por sesión. |
 | `$DSH_HOME/dsh-total-config/default-model.json` | Modelo fijado para chats nuevos. |
 | `$DSH_HOME/dsh-total-config/github/` | Caché inmutable de las carpetas de GitHub instaladas. |
@@ -148,8 +178,8 @@ desde DSH Config, el almacén de contextos, las restricciones por interruptor en
 las rutas y el puente con el gestor de complementos (con un gestor simulado).
 
 La comprobación visual (página de Ajustes, control de modelo, página de
-proyecto, pestaña Contexto y avisos) requiere abrir la interfaz y revisar cada
-interruptor; el test no la sustituye.
+proyecto, pestaña Contexto, selección de conversaciones y avisos) requiere abrir
+la interfaz y revisar cada interruptor; el test no la sustituye.
 
 ## Límites conocidos
 

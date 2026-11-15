@@ -26,12 +26,13 @@ window.__ModuleLoader__.load({
       workspaceContext: true,
       workspaceAppearance: true,
       workspaceProjectPage: true,
+      sessionMultiSelect: true,
     };
 
     const FEATURE_GROUPS = [
       { id: 'config', title: 'page.group.config', rows: ['reorderSections', 'githubFolders', 'hideDefaultEffort'] },
       { id: 'interface', title: 'page.group.interface', rows: ['defaultModel', 'hideUpdates', 'hideDeepseekDefaults'] },
-      { id: 'workspace', title: 'page.group.workspace', rows: ['workspaceContext', 'workspaceProjectPage', 'workspaceAppearance'] },
+      { id: 'workspace', title: 'page.group.workspace', rows: ['workspaceContext', 'workspaceProjectPage', 'workspaceAppearance', 'sessionMultiSelect'] },
     ];
 
     const FEATURE_META = {
@@ -44,6 +45,7 @@ window.__ModuleLoader__.load({
       workspaceContext: { id: 'workspace' },
       workspaceProjectPage: { id: 'project', dependency: 'workspaceContext' },
       workspaceAppearance: { id: 'appearance', dependency: 'workspaceContext' },
+      sessionMultiSelect: { id: 'selection' },
     };
 
     /** Shipped workspace icon set. Paths use a 24×24 stroke grid. */
@@ -103,6 +105,29 @@ window.__ModuleLoader__.load({
         'feature.appearance.desc': 'Show a custom icon or color for each workspace in the sidebar.',
         'feature.project.title': 'Workspace project page',
         'feature.project.desc': 'Clicking a workspace opens its project page with its context, instructions, chats, and a composer.',
+        'feature.selection.title': 'Select several conversations',
+        'feature.selection.desc': 'Select conversations in the sidebar with ⌘/Ctrl+click, with Shift or Alt+click for a range, and archive them all at once.',
+        'select.ariaBar': 'Conversation selection',
+        'select.count': '{count} conversations selected',
+        'select.countOne': '1 conversation selected',
+        'select.archive': 'Archive',
+        'select.cancel': 'Cancel',
+        'select.working': 'Archiving {done} of {total}…',
+        'select.undoing': 'Restoring {done} of {total}…',
+        'select.done': '{count} conversations archived',
+        'select.doneOne': '1 conversation archived',
+        'select.failed': '{count} could not be archived',
+        'select.undo': 'Undo',
+        'select.close': 'Close',
+        'select.blocked': '{count} conversations are active. Archiving them stops their running work.',
+        'select.blockedOne': '1 conversation is active. Archiving it stops its running work.',
+        'select.stopAndArchive': 'Stop and archive',
+        'select.skip': 'Skip active',
+        'select.restored': 'Conversations restored',
+        'select.menuStart': 'Select conversations',
+        'select.menuAll': 'Select all in this workspace',
+        'select.menuArchive': 'Archive {count} selected conversations',
+        'select.hint': '⌘/Ctrl+click to select, Shift or Alt+click for a range',
         'deepseek.title': 'DeepSeek providers',
         'deepseek.hidden': 'The built-in DeepSeek providers are hidden.',
         'deepseek.visible': 'The built-in DeepSeek providers are visible.',
@@ -155,6 +180,29 @@ window.__ModuleLoader__.load({
         'feature.appearance.desc': 'Muestra un icono o un color propio para cada espacio en la barra lateral.',
         'feature.project.title': 'Página de proyecto del espacio',
         'feature.project.desc': 'Al hacer clic en un espacio se abre su página de proyecto con su contexto, instrucciones, chats y un compositor.',
+        'feature.selection.title': 'Seleccionar varias conversaciones',
+        'feature.selection.desc': 'Selecciona conversaciones en la barra lateral con ⌘/Ctrl+clic o con Mayús/Alt+clic para un intervalo, y archívalas todas de una vez.',
+        'select.ariaBar': 'Selección de conversaciones',
+        'select.count': '{count} conversaciones seleccionadas',
+        'select.countOne': '1 conversación seleccionada',
+        'select.archive': 'Archivar',
+        'select.cancel': 'Cancelar',
+        'select.working': 'Archivando {done} de {total}…',
+        'select.undoing': 'Restaurando {done} de {total}…',
+        'select.done': '{count} conversaciones archivadas',
+        'select.doneOne': '1 conversación archivada',
+        'select.failed': '{count} no se pudieron archivar',
+        'select.undo': 'Deshacer',
+        'select.close': 'Cerrar',
+        'select.blocked': '{count} conversaciones están activas. Archivarlas detiene su trabajo en curso.',
+        'select.blockedOne': '1 conversación está activa. Archivarla detiene su trabajo en curso.',
+        'select.stopAndArchive': 'Detener y archivar',
+        'select.skip': 'Omitir activas',
+        'select.restored': 'Conversaciones restauradas',
+        'select.menuStart': 'Seleccionar conversaciones',
+        'select.menuAll': 'Seleccionar todas las de este espacio',
+        'select.menuArchive': 'Archivar {count} conversaciones seleccionadas',
+        'select.hint': '⌘/Ctrl+clic para seleccionar, Mayús o Alt+clic para un intervalo',
         'deepseek.title': 'Proveedores de DeepSeek',
         'deepseek.hidden': 'Los proveedores integrados de DeepSeek están ocultos.',
         'deepseek.visible': 'Los proveedores integrados de DeepSeek están visibles.',
@@ -664,6 +712,63 @@ window.__ModuleLoader__.load({
         display: none !important;
       }
     `;
+
+    // Session multi-select: a tinted row, a checkbox in the row's hover
+    // actions, and a compact bar above the sidebar foot.
+    const SELECTION_CSS = `
+      [data-row-key^="session:"][data-dstc-selected="true"] {
+        background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent) !important;
+        box-shadow: inset 2px 0 0 var(--dsw-alias-brand-primary);
+      }
+      [data-row-key^="session:"][data-dstc-selected="true"]:hover {
+        background: color-mix(in srgb, var(--dsw-alias-brand-primary) 18%, transparent) !important;
+      }
+      .dstc-selection-bar {
+        position: fixed;
+        z-index: 30;
+        pointer-events: auto;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 12px;
+        border: 1px solid var(--dsw-alias-border-l1);
+        border-radius: 12px;
+        background: var(--dsw-alias-bg-overlay);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+        color: var(--dsw-alias-label-primary);
+        font: inherit;
+      }
+      .dstc-selection-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+      .dstc-selection-count { min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 18px; }
+      .dstc-selection-text { margin: 0; font-size: 11.5px; line-height: 17px; color: var(--dsw-alias-label-secondary); }
+      .dstc-selection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+      .dstc-selection-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-height: 26px;
+        padding: 0 10px;
+        border: 1px solid var(--dsw-alias-border-l2);
+        border-radius: 7px;
+        background: transparent;
+        color: var(--dsw-alias-label-primary);
+        font: inherit;
+        font-size: 11.5px;
+        cursor: pointer;
+      }
+      .dstc-selection-btn:hover { background: var(--dsw-alias-interactive-bg-hover); }
+      .dstc-selection-btn:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
+      .dstc-selection-btn:disabled { opacity: .5; cursor: default; }
+      .dstc-selection-btn-primary { border-color: transparent; background: var(--dsw-alias-brand-primary); color: #fff; }
+      .dstc-selection-btn-primary:hover { background: var(--dsw-alias-brand-primary); filter: brightness(1.06); }
+      .dstc-selection-btn-danger { border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, var(--dsw-alias-border-l2)); color: var(--dsw-alias-state-error-primary); }
+      .dstc-selection-btn-ghost { border-color: transparent; color: var(--dsw-alias-label-secondary); }
+      .dstc-selection-busy { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--dsw-alias-label-secondary); }
+      .dstc-selection-spin { display: block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: dstc-selection-spin .8s linear infinite; }
+      @keyframes dstc-selection-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .dstc-selection-spin { animation: none; } }
+    `;
     const WS_CSS = `
 .wsc-overlay{position:fixed;inset:0;z-index:1000;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(8,10,14,.52);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
 .wsc-dialog{width:min(680px,100%);max-height:calc(100vh - 48px);overflow:auto;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l1);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.38);font:inherit;}
@@ -927,6 +1032,7 @@ window.__ModuleLoader__.load({
 
     const EMPTY_MODEL_SNAPSHOT = { current: null, routable: null, groups: [], failures: [], status: 'idle', pending: null, error: null };
     const EMPTY_MODEL_STORE = { getSnapshot: () => EMPTY_MODEL_SNAPSHOT, subscribe: () => () => {} };
+    const EMPTY_SNAPSHOT_STORE = { getSnapshot: () => undefined, subscribe: () => () => {} };
 
     /** Read a permission preset label, falling back to the host name. */
     function permissionLabel(value, name, t) {
@@ -1162,6 +1268,18 @@ window.__ModuleLoader__.load({
       h('circle', { cx: 8, cy: 8, r: 6.2, stroke: 'currentColor', strokeWidth: 1.4 }),
       h('path', { d: 'M8 4.8v3.7', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
       h('circle', { cx: 8, cy: 11.1, r: 0.9, fill: 'currentColor' }));
+    }
+
+    /** Archive box glyph for the session-selection menu action. */
+    function SelectionGlyph(props) {
+      const size = props && props.size ? props.size : 15;
+      return h('svg', {
+        width: size, height: size, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': 'true',
+      },
+      h('path', {
+        d: 'M2.5 4.25h11v2.25h-11zM3.75 6.5v7.25h8.5V6.5M6.25 9.25h3.5',
+        stroke: 'currentColor', strokeWidth: 1.35, strokeLinejoin: 'round', strokeLinecap: 'round',
+      }));
     }
 
     /** Sliders glyph for the Settings rail. */
@@ -3760,12 +3878,569 @@ window.__ModuleLoader__.load({
           return combineDisposers(disposers);
         }
 
+        // ------------------------------------------------------------------
+        // Session multi-select: ⌘/Ctrl+click toggles one conversation,
+        // Shift or Alt+click takes a range, each row carries a checkbox, and
+        // the selection archives in one action with an undo in the bar.
+        // ------------------------------------------------------------------
+        const SESSION_ROW = '[data-row-key^="session:"]';
+        const WORKSPACE_ROW = '[data-row-key^="workspace:"]';
+        const SELECTION_SAFE = '[data-context-menu], [role="menu"], [role="dialog"], [data-shortcut-modal], .dstc-selection-bar';
+        const EMPTY_SELECTION = () => ({ ids: new Set(), anchor: null, scope: null });
+        const IDLE_SELECTION_ACTION = () => ({ phase: 'idle', archived: [], blocked: [], failed: [], done: 0, total: 0, at: 0 });
+
+        const selectionStore = createStore(EMPTY_SELECTION());
+        const selectionAction = createStore(IDLE_SELECTION_ACTION());
+        const workspacesListStore = ctx.get('workspaces')?.list ?? EMPTY_SNAPSHOT_STORE;
+        const sessionsListStore = ctx.get('sessions')?.list ?? EMPTY_SNAPSHOT_STORE;
+        let selectionFrame = 0;
+        let selectionObserver = null;
+
+        const workspacesSnapshot = () => workspacesListStore.getSnapshot?.() ?? undefined;
+        const sessionSummary = (id) => sessionsListStore.getSnapshot?.()?.byId?.[id];
+        const sessionIdOfRow = (row) => row.getAttribute('data-row-key').slice('session:'.length);
+        const selectionRoot = () => document.querySelector('[data-sidebar-scrollport]') ?? null;
+
+        /** Session rows and workspace headers in visual order, which scopes a range to one workspace. */
+        function orderedSelectionRows() {
+          const root = selectionRoot();
+          if (root === null) return [];
+          return [...root.querySelectorAll('[data-row-key]')].filter((el) => el.matches(`${SESSION_ROW}, ${WORKSPACE_ROW}`));
+        }
+
+        function groupMap() {
+          const map = new Map();
+          let group = null;
+          for (const el of orderedSelectionRows()) {
+            const key = el.getAttribute('data-row-key');
+            if (key.startsWith('workspace:')) {
+              group = key.slice('workspace:'.length);
+              continue;
+            }
+            if (group === null) continue;
+            map.set(sessionIdOfRow(el), group);
+          }
+          return map;
+        }
+
+        const groupOf = (sessionId) => groupMap().get(sessionId) ?? null;
+
+        function isArchivedRow(row) {
+          return String(row.className).split(/\s+/).some((name) => name.endsWith('_archived'));
+        }
+
+        function isEligibleRow(row) {
+          if (row === null || row === undefined) return false;
+          if (isArchivedRow(row)) return false;
+          // A blank session renders no actions strip and cannot be archived.
+          if (row.querySelector('[class*="_rowActions"]') === null) return false;
+          return true;
+        }
+
+        function canSelect(id, row) {
+          const summary = sessionSummary(id);
+          if (summary?.blank === true) return false;
+          const snapshot = workspacesSnapshot();
+          if (Array.isArray(snapshot?.archivedSessionIds) && snapshot.archivedSessionIds.includes(id)) return false;
+          return isEligibleRow(row ?? document.querySelector(`[data-row-key="session:${id}"]`));
+        }
+
+        function eligibleIdsInGroup(group) {
+          const map = groupMap();
+          const ids = [];
+          for (const el of orderedSelectionRows()) {
+            if (!el.matches(SESSION_ROW)) continue;
+            const id = sessionIdOfRow(el);
+            if (map.get(id) !== group || !canSelect(id, el)) continue;
+            ids.push(id);
+          }
+          return ids;
+        }
+
+        /** Repaint the row tint from the selection set; React never owns this attribute. */
+        function paintSelection() {
+          const ids = selectionStore.get().ids;
+          for (const row of document.querySelectorAll(SESSION_ROW)) {
+            if (ids.has(sessionIdOfRow(row))) row.setAttribute('data-dstc-selected', 'true');
+            else row.removeAttribute('data-dstc-selected');
+          }
+        }
+
+        function schedulePaint() {
+          if (selectionFrame !== 0) return;
+          selectionFrame = requestAnimationFrame(() => {
+            selectionFrame = 0;
+            paintSelection();
+          });
+        }
+
+        const resetSelectionAction = () => selectionAction.set(IDLE_SELECTION_ACTION());
+
+        function putSelection(ids, anchor, scope) {
+          selectionStore.set({
+            ids: ids instanceof Set ? ids : new Set(ids),
+            anchor: anchor ?? null,
+            scope: scope ?? null,
+          });
+          resetSelectionAction();
+          paintSelection();
+        }
+
+        function clearSelection() {
+          selectionStore.set(EMPTY_SELECTION());
+          resetSelectionAction();
+          paintSelection();
+        }
+
+        function startSelection(sessionId) {
+          if (!canSelect(sessionId, document.querySelector(`[data-row-key="session:${sessionId}"]`))) return;
+          putSelection([sessionId], sessionId, groupOf(sessionId));
+        }
+
+        function toggleSelection(sessionId) {
+          const state = selectionStore.get();
+          const group = groupOf(sessionId);
+          if (state.ids.size === 0 || state.scope !== group) {
+            putSelection([sessionId], sessionId, group);
+            return;
+          }
+          const ids = new Set(state.ids);
+          if (ids.has(sessionId)) ids.delete(sessionId);
+          else ids.add(sessionId);
+          if (ids.size === 0) {
+            clearSelection();
+            return;
+          }
+          putSelection(ids, sessionId, group);
+        }
+
+        function rangeSelection(sessionId) {
+          const state = selectionStore.get();
+          const group = groupOf(sessionId);
+          if (state.anchor === null || state.scope !== group) {
+            putSelection([sessionId], sessionId, group);
+            return;
+          }
+          const ids = eligibleIdsInGroup(group);
+          const from = ids.indexOf(state.anchor);
+          const to = ids.indexOf(sessionId);
+          if (from < 0 || to < 0) {
+            putSelection([sessionId], sessionId, group);
+            return;
+          }
+          const low = Math.min(from, to);
+          const high = Math.max(from, to);
+          putSelection(ids.slice(low, high + 1), state.anchor, group);
+        }
+
+        function selectAllInGroup(group) {
+          if (group === null) return;
+          const ids = eligibleIdsInGroup(group);
+          if (ids.length === 0) return;
+          const state = selectionStore.get();
+          putSelection(ids, state.anchor !== null && ids.includes(state.anchor) ? state.anchor : ids[0], group);
+        }
+
+        function selectAllInScope() {
+          const state = selectionStore.get();
+          let scope = state.scope;
+          if (scope === null) {
+            const active = document.querySelector(`${SESSION_ROW}[aria-selected="true"]`);
+            if (active !== null) scope = groupOf(sessionIdOfRow(active));
+          }
+          if (scope === null) return;
+          selectAllInGroup(scope);
+        }
+
+        /** Drop selected ids that no longer belong to any workspace. */
+        function pruneSelection() {
+          const state = selectionStore.get();
+          if (state.ids.size === 0) return;
+          const snapshot = workspacesSnapshot();
+          if (snapshot === undefined) return;
+          const alive = new Set();
+          for (const workspace of Array.isArray(snapshot.items) ? snapshot.items : []) {
+            for (const id of Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []) alive.add(id);
+          }
+          const ids = [...state.ids].filter((id) => alive.has(id));
+          if (ids.length === state.ids.size) return;
+          selectionStore.set({
+            ids: new Set(ids),
+            anchor: state.anchor !== null && ids.includes(state.anchor) ? state.anchor : (ids[0] ?? null),
+            scope: ids.length === 0 ? null : state.scope,
+          });
+          paintSelection();
+        }
+
+        /** The Host refuses to archive a session that still owns running work. */
+        function isActiveRefusal(error) {
+          return error instanceof Error
+            && error.name === 'WorkspaceArchiveError'
+            && error.rpcError?.code === 'workspace/session-active';
+        }
+
+        async function archiveSessions(ids, stopActivity = false) {
+          const total = ids.length;
+          if (total === 0) return;
+          if (selectionAction.get().phase === 'archiving' || selectionAction.get().phase === 'undoing') return;
+          const current = selectionAction.get();
+          const archived = [...(current.archived ?? [])];
+          const failed = [...(current.failed ?? [])];
+          selectionAction.set({ phase: 'archiving', archived, blocked: [], failed, done: 0, total, at: Date.now() });
+          const blocked = [];
+          let done = 0;
+          for (const id of ids) {
+            try {
+              await ctx.uiWorkspace.archiveSession(id, { stopActivity });
+              archived.push(id);
+            } catch (error) {
+              if (isActiveRefusal(error)) {
+                blocked.push(id);
+              } else {
+                failed.push(id);
+                console.warn('[dsh-total-config] session archive rejected', id, error);
+              }
+            }
+            done += 1;
+            selectionAction.set({ phase: 'archiving', archived: [...archived], blocked: [], failed: [...failed], done, total, at: Date.now() });
+          }
+          if (blocked.length > 0) {
+            selectionAction.set({ phase: 'blocked', archived, blocked, failed, done: total, total, at: Date.now() });
+            return;
+          }
+          finishArchive(archived, failed, total);
+        }
+
+        function finishArchive(archived, failed, total) {
+          selectionStore.set(EMPTY_SELECTION());
+          paintSelection();
+          selectionAction.set({ phase: 'done', archived, blocked: [], failed, done: total, total, at: Date.now() });
+        }
+
+        async function undoArchived() {
+          const archived = [...(selectionAction.get().archived ?? [])];
+          if (archived.length === 0) return;
+          const total = archived.length;
+          selectionAction.set({ phase: 'undoing', archived, blocked: [], failed: [], done: 0, total, at: Date.now() });
+          let done = 0;
+          for (const id of archived) {
+            try {
+              await ctx.uiWorkspace.unarchiveSession(id);
+            } catch (error) {
+              console.warn('[dsh-total-config] session unarchive rejected', id, error);
+            }
+            done += 1;
+            selectionAction.set({ phase: 'undoing', archived, blocked: [], failed: [], done, total, at: Date.now() });
+          }
+          selectionAction.set({ phase: 'restored', archived: [], blocked: [], failed: [], done, total, at: Date.now() });
+        }
+
+        /** Compact bar above the sidebar foot: count, archive, progress, undo. */
+        function SelectionBar() {
+          const selection = useStore(selectionStore);
+          const action = useStore(selectionAction);
+          const [box, setBox] = React.useState(null);
+          const visible = selection.ids.size > 0 || action.phase !== 'idle';
+
+          React.useEffect(() => {
+            if (!visible) return undefined;
+            const measure = () => {
+              const scroll = document.querySelector('[data-sidebar-scrollport]');
+              if (scroll === null) {
+                setBox(null);
+                return;
+              }
+              const rect = scroll.getBoundingClientRect();
+              if (rect.width < 120) {
+                setBox(null);
+                return;
+              }
+              const bottom = Math.max(8, window.innerHeight - rect.bottom + 8);
+              setBox({ left: rect.left + 8, width: Math.min(380, Math.max(200, rect.width - 16)), bottom });
+            };
+            measure();
+            window.addEventListener('resize', measure);
+            const scroll = document.querySelector('[data-sidebar-scrollport]');
+            const observer = typeof ResizeObserver === 'function' && scroll !== null ? new ResizeObserver(measure) : null;
+            if (observer !== null) observer.observe(scroll);
+            return () => {
+              window.removeEventListener('resize', measure);
+              observer?.disconnect();
+            };
+          }, [visible]);
+
+          React.useEffect(() => {
+            if (action.phase !== 'done' && action.phase !== 'restored') return undefined;
+            const timer = window.setTimeout(() => {
+              selectionAction.set(IDLE_SELECTION_ACTION());
+            }, 12000);
+            return () => window.clearTimeout(timer);
+          }, [action.phase, action.at]);
+
+          if (!visible || box === null) return null;
+
+          const archived = action.archived ?? [];
+          const failed = action.failed ?? [];
+          const blocked = action.blocked ?? [];
+          const busy = action.phase === 'archiving' || action.phase === 'undoing';
+          const count = selection.ids.size;
+          const countLabel = count === 1 ? t('select.countOne') : t('select.count', { count });
+          const archivedLabel = archived.length === 1 ? t('select.doneOne') : t('select.done', { count: archived.length });
+          const closeButton = h('button', {
+            key: 'close',
+            type: 'button',
+            className: 'dstc-selection-btn dstc-selection-btn-ghost',
+            onClick: () => selectionAction.set(IDLE_SELECTION_ACTION()),
+          }, t('select.close'));
+          const undoButton = h('button', {
+            key: 'undo',
+            type: 'button',
+            className: 'dstc-selection-btn',
+            onClick: () => {
+              void undoArchived();
+            },
+          }, t('select.undo'));
+
+          let head = countLabel;
+          let text = null;
+          const buttons = [];
+          if (action.phase === 'idle') {
+            buttons.push(h('button', {
+              key: 'archive',
+              type: 'button',
+              className: 'dstc-selection-btn dstc-selection-btn-primary',
+              onClick: () => {
+                void archiveSessions([...selectionStore.get().ids]);
+              },
+            }, h(SelectionGlyph, { size: 12 }), t('select.archive')));
+            buttons.push(h('button', {
+              key: 'cancel',
+              type: 'button',
+              className: 'dstc-selection-btn dstc-selection-btn-ghost',
+              onClick: clearSelection,
+            }, t('select.cancel')));
+            text = t('select.hint');
+          } else if (action.phase === 'archiving') {
+            head = t('select.working', { done: action.done, total: action.total });
+          } else if (action.phase === 'undoing') {
+            head = t('select.undoing', { done: action.done, total: action.total });
+          } else if (action.phase === 'blocked') {
+            head = blocked.length === 1 ? t('select.blockedOne') : t('select.blocked', { count: blocked.length });
+            if (archived.length > 0) {
+              text = archivedLabel;
+              if (failed.length > 0) text = `${text} · ${t('select.failed', { count: failed.length })}`;
+            }
+            buttons.push(h('button', {
+              key: 'stop',
+              type: 'button',
+              className: 'dstc-selection-btn dstc-selection-btn-danger',
+              onClick: () => {
+                void archiveSessions([...selectionAction.get().blocked], true);
+              },
+            }, t('select.stopAndArchive')));
+            buttons.push(h('button', {
+              key: 'skip',
+              type: 'button',
+              className: 'dstc-selection-btn',
+              onClick: () => {
+                const state = selectionAction.get();
+                finishArchive(state.archived ?? [], state.failed ?? [], (state.archived ?? []).length + (state.failed ?? []).length);
+              },
+            }, t('select.skip')));
+            if (archived.length > 0) buttons.push(undoButton);
+          } else if (action.phase === 'done') {
+            head = archived.length > 0 ? archivedLabel : t('select.failed', { count: failed.length });
+            if (archived.length > 0 && failed.length > 0) text = t('select.failed', { count: failed.length });
+            if (archived.length > 0) buttons.push(undoButton);
+            buttons.push(closeButton);
+          } else if (action.phase === 'restored') {
+            head = t('select.restored');
+            buttons.push(closeButton);
+          }
+
+          return h('div', {
+            className: 'dstc-selection-bar',
+            style: { left: `${box.left}px`, width: `${box.width}px`, bottom: `${box.bottom}px` },
+            role: 'region',
+            'aria-label': t('select.ariaBar'),
+          },
+          h('div', { className: 'dstc-selection-head' },
+            h('span', { className: 'dstc-selection-count', role: 'status' }, head)),
+          text === null ? null : h('p', { className: 'dstc-selection-text' }, text),
+          busy ? h('div', { className: 'dstc-selection-busy' }, h('span', { className: 'dstc-selection-spin', 'aria-hidden': true })) : null,
+          buttons.length === 0 ? null : h('div', { className: 'dstc-selection-actions' }, buttons));
+        }
+
+        function onSelectionMouseDown(event) {
+          if (!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) return;
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('button') !== null) return;
+          const row = target.closest(SESSION_ROW);
+          if (row === null) return;
+          if (!canSelect(sessionIdOfRow(row), row)) return;
+          // Keep the modifier press from starting a text selection or row drag.
+          event.preventDefault();
+        }
+
+        function onSelectionClick(event) {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('.dstc-selection-bar') !== null) return;
+          const row = target.closest(SESSION_ROW);
+          if (row !== null) {
+            if (target.closest('button') !== null) return;
+            const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+            if (!modified) {
+              // A plain click keeps the row's own open action and drops the selection.
+              if (selectionStore.get().ids.size > 0 || selectionAction.get().phase !== 'idle') clearSelection();
+              return;
+            }
+            const id = sessionIdOfRow(row);
+            if (!canSelect(id, row)) return;
+            if (event.shiftKey || event.altKey) {
+              event.preventDefault();
+              event.stopPropagation();
+              rangeSelection(id);
+              return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            toggleSelection(id);
+            return;
+          }
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          if (selectionStore.get().ids.size === 0 && selectionAction.get().phase === 'idle') return;
+          if (target.closest(SELECTION_SAFE) !== null) return;
+          clearSelection();
+        }
+
+        function onSelectionDoubleClick(event) {
+          if (!(event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)) return;
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest(SESSION_ROW) === null) return;
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        function onSelectionKeyDown(event) {
+          if (event.key === 'Escape') {
+            if (document.querySelector('[role="dialog"], [data-shortcut-modal], [data-context-menu], [role="menu"]') !== null) return;
+            if (selectionStore.get().ids.size === 0 && selectionAction.get().phase === 'idle') return;
+            clearSelection();
+            return;
+          }
+          if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'a') {
+            if (selectionStore.get().ids.size === 0) return;
+            if (document.querySelector('[role="dialog"], [data-shortcut-modal], [data-context-menu], [role="menu"]') !== null) return;
+            const active = document.activeElement;
+            if (active !== null && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable === true)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            selectAllInScope();
+          }
+        }
+
+        function setupSessionSelection() {
+          const disposers = [];
+
+          const style = document.createElement('style');
+          style.id = 'dsh-total-config-selection-style';
+          style.textContent = SELECTION_CSS;
+          document.head.append(style);
+          disposers.push(() => style.remove());
+
+          disposers.push(ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+            name: 'shell.overlay',
+            id: 'dsh-total-selection-bar',
+            order: 90,
+          }, SelectionBar)));
+
+          disposers.push(ctx.effect(() => ctx.contextMenus.register({
+            id: 'dsh-total-config.selection',
+            target: 'session',
+            order: 40,
+            resolve: ({ sessionId }) => {
+              if (!canSelect(sessionId, document.querySelector(`[data-row-key="session:${sessionId}"]`))) return [];
+              const state = selectionStore.get();
+              if (state.ids.size > 1 && state.ids.has(sessionId)) {
+                return [{
+                  id: 'archive-selection',
+                  label: t('select.menuArchive', { count: state.ids.size }),
+                  icon: { key: 'dsh-total-config.selection' },
+                  separatorBefore: true,
+                  run: () => {
+                    void archiveSessions([...selectionStore.get().ids]);
+                  },
+                }];
+              }
+              return [
+                {
+                  id: 'select',
+                  label: t('select.menuStart'),
+                  icon: { key: 'dsh-total-config.selection' },
+                  run: () => startSelection(sessionId),
+                },
+                {
+                  id: 'select-all',
+                  label: t('select.menuAll'),
+                  run: () => selectAllInGroup(groupOf(sessionId)),
+                },
+              ];
+            },
+          }), 'dsh-total-config: session selection menu'));
+
+          disposers.push(ctx.slots.inject('contextMenu.icon', () => ctx.slots.register({
+            name: 'contextMenu.icon',
+            key: 'dsh-total-config.selection',
+          }, SelectionGlyph)));
+
+          document.addEventListener('mousedown', onSelectionMouseDown, true);
+          document.addEventListener('click', onSelectionClick, true);
+          document.addEventListener('keydown', onSelectionKeyDown, true);
+          document.addEventListener('dblclick', onSelectionDoubleClick, true);
+          disposers.push(() => {
+            document.removeEventListener('mousedown', onSelectionMouseDown, true);
+            document.removeEventListener('click', onSelectionClick, true);
+            document.removeEventListener('keydown', onSelectionKeyDown, true);
+            document.removeEventListener('dblclick', onSelectionDoubleClick, true);
+          });
+
+          disposers.push(selectionStore.subscribe(paintSelection));
+
+          const root = selectionRoot();
+          if (root !== null) {
+            selectionObserver = new MutationObserver(schedulePaint);
+            selectionObserver.observe(root, { childList: true, subtree: true });
+          }
+          disposers.push(() => {
+            selectionObserver?.disconnect();
+            selectionObserver = null;
+            if (selectionFrame !== 0) {
+              cancelAnimationFrame(selectionFrame);
+              selectionFrame = 0;
+            }
+          });
+
+          const offList = workspacesListStore.subscribe?.(pruneSelection);
+          if (typeof offList === 'function') disposers.push(offList);
+
+          const dispose = combineDisposers(disposers);
+          return () => {
+            dispose();
+            clearSelection();
+            for (const row of document.querySelectorAll(SESSION_ROW)) row.removeAttribute('data-dstc-selected');
+          };
+        }
+
         bind('reorderSections', setupReorder);
         bind('hideDefaultEffort', setupCaption);
         bind('hideUpdates', setupUpdates);
         bind('defaultModel', setupDefaultModel);
         bind('workspaceContext', setupWorkspaceContext);
         bind('workspaceProjectPage', setupWorkspaceProjectPage);
+        bind('sessionMultiSelect', setupSessionSelection);
 
         // ------------------------------------------------------------------
         // Settings → DHS Total Config: one switch per behavior.
