@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
         'meta.description': 'Run a session inside a cage: only tools, no CLI, and files limited to the workspace and granted folders.',
         nav: 'DSH Sandbox',
         'page.title': 'DSH Sandbox',
-        'page.intro': 'The cage is enabled per session from the composer. While it is red, the agent runs on native tools only: no shell, no desktop control, and file reads or writes outside the session workspace or the folders below are denied.',
+        'page.intro': 'The cage is on by default in every session. While it is closed and red, the agent runs on native tools only: no shell, no desktop control, and file reads or writes outside the session workspace or the folders below are denied. Click the cage in the composer to open it and leave that session without the sandbox.',
         'page.how': 'The cage also forces the workspace-write policy and merges these folders into the writable roots, so the Harness file sandbox backs the tool-level checks.',
         'grants.title': 'Granted folders',
         'grants.intro': 'These directories are readable and writable from a caged session, in addition to its own workspace.',
@@ -30,6 +30,8 @@ window.__ModuleLoader__.load({
         'cage.onHint': 'This session is caged (red). The agent can only use tools, cannot run the CLI or code, and files are limited to the workspace and granted folders. Click to leave the cage.',
         'cage.offHint': 'Click to cage this session: native tools only, no CLI or code, and files limited to the workspace and granted folders.',
         'cage.error': 'The sandbox switch could not be saved.',
+        'cage.tipOn': 'Sandbox ON',
+        'cage.tipOff': 'Sandbox OFF',
         'cage.degraded': 'Sandbox degraded:',
         'page.degraded': 'The cage is running in degraded mode:',
         'cage.loading': 'Sandbox',
@@ -39,7 +41,7 @@ window.__ModuleLoader__.load({
         'meta.description': 'Ejecuta una sesión dentro de una jaula: solo herramientas, sin CLI y con archivos limitados al espacio de trabajo y a las carpetas autorizadas.',
         nav: 'DSH Sandbox',
         'page.title': 'DSH Sandbox',
-        'page.intro': 'La jaula se activa por sesión desde el compositor. Mientras está roja, el agente usa solo herramientas nativas: no hay terminal, no hay control del escritorio y se deniega cualquier lectura o escritura fuera del espacio de trabajo de la sesión o de las carpetas de abajo.',
+        'page.intro': 'La jaula está activada por defecto en todas las sesiones. Mientras está cerrada y roja, el agente usa solo herramientas nativas: no hay terminal, no hay control del escritorio y se deniega cualquier lectura o escritura fuera del espacio de trabajo de la sesión o de las carpetas de abajo. Pulsa la jaula del compositor para abrirla y dejar esa sesión sin sandbox.',
         'page.how': 'La jaula además fuerza la política workspace-write y añade estas carpetas a las raíces de escritura, de modo que el sandbox de archivos del Harness respalda las comprobaciones de las herramientas.',
         'grants.title': 'Carpetas autorizadas',
         'grants.intro': 'Estos directorios se pueden leer y escribir desde una sesión enjaulada, además de su propio espacio de trabajo.',
@@ -55,6 +57,8 @@ window.__ModuleLoader__.load({
         'cage.onHint': 'Esta sesión está enjaulada (roja). El agente solo puede usar herramientas, no puede ejecutar la CLI ni código, y los archivos se limitan al espacio de trabajo y a las carpetas autorizadas. Pulsa para salir de la jaula.',
         'cage.offHint': 'Pulsa para enjaular esta sesión: solo herramientas nativas, sin CLI ni código, y archivos limitados al espacio de trabajo y a las carpetas autorizadas.',
         'cage.error': 'No se pudo guardar el interruptor del sandbox.',
+        'cage.tipOn': 'Sandbox ON',
+        'cage.tipOff': 'Sandbox OFF',
         'cage.degraded': 'Sandbox degradado:',
         'page.degraded': 'La jaula está en modo degradado:',
         'cage.loading': 'Sandbox',
@@ -62,7 +66,8 @@ window.__ModuleLoader__.load({
     };
 
     const CSS = `
-      .dsb-slot { display: inline-flex; flex: none; align-items: center; order: 1; }
+      .dsb-slot { position: relative; display: inline-flex; flex: none; align-items: center; order: 1; }
+      .dsb-tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); padding: 4px 8px; border: 1px solid var(--dsw-alias-border-l2, #374151); border-radius: 6px; background: var(--dsw-alias-bg-layer-2, #1f2937); color: var(--dsw-alias-label-primary, #fff); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); font-size: 11px; font-weight: 500; line-height: 16px; white-space: nowrap; pointer-events: none; z-index: 40; }
       [class*="_tools"] > [data-slot="conversation.input.left"] > .dsb-slot { order: 1; }
       [class*="_tools"] > [class*="_modes"] { order: 2; }
       .dsb-cage { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }
@@ -125,50 +130,67 @@ window.__ModuleLoader__.load({
       return payload ? payload.data : null;
     }
 
-    /** Cage glyph: a rounded cage with bars and a handle. */
-    function CageIcon({ active, size = 18 }) {
-      return h('svg', {
+    /** Cage glyph: closed means sandbox on; open means sandbox off. */
+    function CageIcon({ closed = true, size = 18 }) {
+      const common = {
         width: size,
         height: size,
         viewBox: '0 0 24 24',
         fill: 'none',
         'aria-hidden': true,
-      },
+      };
+      if (closed) {
+        return h('svg', common,
+          h('rect', {
+            x: 4, y: 4.5, width: 16, height: 16.5, rx: 2.8,
+            stroke: 'currentColor', strokeWidth: 1.7,
+          }),
+          h('path', { d: 'M4 8.5h16', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
+          h('path', { d: 'M8 8.5V18M12 8.5V18M16 8.5V18', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }));
+      }
+      return h('svg', common,
         h('rect', {
-          x: 4, y: 7, width: 16, height: 13, rx: 2.5,
-          stroke: 'currentColor', strokeWidth: 1.6,
-          fill: active ? 'currentColor' : 'none', fillOpacity: active ? 0.16 : 0,
+          x: 4, y: 4.5, width: 16, height: 16.5, rx: 2.8,
+          stroke: 'currentColor', strokeWidth: 1.7,
         }),
-        h('path', { d: 'M8 10.5v6M12 10.5v6M16 10.5v6', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' }),
-        h('path', { d: 'M9 7V5.5A3 3 0 0 1 15 5.5V7', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }));
+        h('path', { d: 'M4 8.5h11.5', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
+        h('path', { d: 'M8 8.5V18M12 8.5V18', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
+        h('path', { d: 'M15.5 8.5l4.5-3M15.5 18l4.5 3M20 6v12', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }));
     }
 
-    /** Composer cage switch for the current session. */
+    /** Composer cage switch for the current session (on by default). */
     function CageButton(props) {
       const t = typeof props.t === 'function' ? props.t : activeT;
       const sessionId = typeof props.sessionId === 'string' ? props.sessionId : undefined;
-      const [on, setOn] = React.useState(false);
+      const [on, setOn] = React.useState(true);
       const [busy, setBusy] = React.useState(false);
       const [failed, setFailed] = React.useState(false);
       const [warning, setWarning] = React.useState(null);
-      const [ready, setReady] = React.useState(false);
+      const [tip, setTip] = React.useState(false);
+      const tipTimer = React.useRef(undefined);
+
+      const hideTip = () => {
+        window.clearTimeout(tipTimer.current);
+        setTip(false);
+      };
+      const showTip = () => {
+        window.clearTimeout(tipTimer.current);
+        tipTimer.current = window.setTimeout(() => setTip(true), 2000);
+      };
+
+      React.useEffect(() => () => window.clearTimeout(tipTimer.current), []);
 
       React.useEffect(() => {
         let alive = true;
-        if (sessionId === undefined) {
-          setReady(false);
-          return () => { alive = false; };
-        }
-        setReady(false);
+        if (sessionId === undefined) return () => { alive = false; };
         request('/state?sessionId=' + encodeURIComponent(sessionId))
           .then((data) => {
             if (!alive || data === null) return;
             setOn(data.enabled === true);
             setWarning(typeof data.lastError === 'string' ? data.lastError : null);
-            setReady(true);
           })
           .catch(() => {
-            if (alive) setReady(true);
+            // Keep the secure default (closed) when the Host cannot answer.
           });
         return () => { alive = false; };
       }, [sessionId]);
@@ -191,18 +213,25 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const label = on ? t('cage.on') : t('cage.off');
+      const label = on ? t('cage.tipOn') : t('cage.tipOff');
       return h('div', { className: 'dsb-slot' },
         h('style', null, CSS),
+        tip ? h('span', { className: 'dsb-tip', role: 'tooltip' }, label) : null,
         h('button', {
           type: 'button',
           className: 'dsb-cage' + (on ? ' is-on' : '') + (failed || warning !== null ? ' is-failed' : ''),
           'aria-label': label,
           'aria-pressed': on,
-          title: failed ? t('cage.error') : warning !== null ? t('cage.degraded') + ' ' + warning : !ready ? t('cage.loading') : on ? t('cage.onHint') : t('cage.offHint'),
           disabled: busy || sessionId === undefined,
-          onClick: toggle,
-        }, h(CageIcon, { active: on })));
+          onClick: () => {
+            hideTip();
+            void toggle();
+          },
+          onPointerEnter: showTip,
+          onPointerLeave: hideTip,
+          onFocus: showTip,
+          onBlur: hideTip,
+        }, h(CageIcon, { closed: on })));
     }
 
     /** Settings page: granted folders and an explanation of the cage. */

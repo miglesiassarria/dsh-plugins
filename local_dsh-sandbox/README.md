@@ -1,15 +1,19 @@
 # DSH Sandbox
 
 Una **jaula por sesión** para el compositor de DeepSeek Harness. La jaula vive
-en el botón con forma de jaula situado entre el **+** y el chip de permisos del
-espacio de trabajo.
+en el botón situado entre el **+** y el chip de permisos del espacio de trabajo,
+y **está activada por defecto en todas las sesiones**.
 
-- **Apagada** (icono neutro): la sesión se comporta como siempre.
-- **Encendida** (icono rojo): el agente de esa sesión pasa a ejecutarse con el
-  **executor nativo de herramientas**. Desaparece `run_code`, se ocultan
-  `bash`, los trabajos en segundo plano y CUA, y las herramientas de archivos
-  solo pueden leer o escribir en el espacio de trabajo de la sesión y en las
-  carpetas autorizadas.
+- **Cerrada y roja** (icono de jaula cerrada): el agente de esa sesión se
+  ejecuta con el **executor nativo de herramientas**. Desaparece `run_code`, se
+  ocultan `bash`, los trabajos en segundo plano y CUA, y las herramientas de
+  archivos solo pueden leer o escribir en el espacio de trabajo de la sesión y
+  en las carpetas autorizadas.
+- **Abierta** (icono neutro): la sesión se comporta como siempre. Se abre
+  expresamente pulsando la jaula.
+
+Al dejar el ratón quieto **2 segundos** sobre el icono aparece el estado:
+`Sandbox ON` (cerrada) o `Sandbox OFF` (abierta).
 
 ## Qué garantiza
 
@@ -26,25 +30,32 @@ espacio de trabajo.
   fuerza `workspace-write` (nunca `danger-full-access`) y añade las carpetas
   autorizadas a las raíces de escritura, de modo que el sandbox de archivos del
   Harness respalda el guard.
-- **Herencia**: un subagente creado por un agente enjaulado hereda la jaula.
+- **Todas las sesiones**: la jaula se aplica por defecto a cualquier sesión,
+  también a las que se abran después de arrancar; solo se desactiva con una
+  elección explícita.
 - **Sin puertas laterales**: la jaula también oculta y deniega `subagent`,
   `subagent_fork`, `send_message`, `schedule_create`, `schedule_edit`,
   `working_directory` y las herramientas `office_*`; cambiar el directorio de
   trabajo o delegar en otra sesión ampliaría el perímetro.
-- **Persistencia**: el estado por sesión y las carpetas autorizadas viven en
-  `$DSH_HOME/dsh-sandbox/state.json` (0600).
+- **Persistencia**: las carpetas autorizadas y las sesiones abiertas
+  explícitamente viven en `$DSH_HOME/dsh-sandbox/state.json` (0600). El resto
+  está cerrado por defecto.
 
 Las herramientas MCP siguen disponibles: son herramientas. Sus efectos externos
 (Kubernetes, Grafana, n8n, GitHub…) no los controla este complemento.
 
-## Cómo se activa
+## Cómo se usa
 
-1. Abre una sesión con agente.
-2. Pulsa el icono de jaula a la derecha del **+**.
-3. El icono se pinta de rojo. El **siguiente paso** del agente ya usa el
-   executor nativo; si la jaula se enciende a mitad de turno, el paso en curso
-   termina con el executor anterior.
-4. Vuelve a pulsarlo para salir de la jaula y recuperar `run_code`.
+La jaula está cerrada por defecto, sin hacer nada.
+
+1. Abre una sesión con agente; el icono aparece **cerrado y rojo** y el
+   **siguiente paso** del agente usa el executor nativo.
+2. Pulsa la jaula para **abrirla** (icono de jaula abierta, neutro). Esa sesión
+   recupera el comportamiento normal (`run_code`) y queda marcada como abierta.
+3. Vuelve a pulsarla para cerrarla; vuelve al estado por defecto.
+
+Si se abre o cierra a mitad de un turno, el paso en curso termina con el
+executor anterior; el cambio se aplica al siguiente paso.
 
 ## Carpetas autorizadas
 

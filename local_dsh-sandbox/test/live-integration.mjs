@@ -25,7 +25,7 @@ const grant = mkdtempSync(join(tmpdir(), 'dsh-sandbox-live-grant-'))
 const outside = mkdtempSync(join(tmpdir(), 'dsh-sandbox-live-out-'))
 process.env.DSH_HOME = home
 mkdirSync(join(home, 'dsh-sandbox'), { recursive: true })
-writeFileSync(join(home, 'dsh-sandbox', 'state.json'), JSON.stringify({ version: 1, sessions: { a1: true }, grants: [grant] }))
+writeFileSync(join(home, 'dsh-sandbox', 'state.json'), JSON.stringify({ version: 1, sessions: { a1: true, a2: false }, grants: [grant] }))
 writeFileSync(join(cwd, 'inside.txt'), 'inside')
 writeFileSync(join(grant, 'granted.txt'), 'granted')
 writeFileSync(join(outside, 'secret.txt'), 'secret')
@@ -60,13 +60,14 @@ async function makeAgent(id, parent) {
 }
 const a1 = await makeAgent('a1')
 const a2 = await makeAgent('a2')
+const a3 = await makeAgent('a3')
 class FakePtc {
   describe() { return { schemas: [{ name: 'run_code', description: 'ptc', parameters: { type: 'object', properties: {} } }] } }
   async execute(input) { return { results: (input?.calls ?? []).map((call) => ({ id: call.id, result: { isError: false, value: { ptc: true } } })) } }
 }
 const fakePtc = new FakePtc()
 a1.ctx.tools.setExecutor(fakePtc)
-const agents = [a1, a2]
+const agents = [a1, a2, a3]
 ctx.provide('agents', {
   list: () => agents,
   isOwnedBy: (id, owner) => agents.some((agent) => agent.id === id && agent.parent === owner),

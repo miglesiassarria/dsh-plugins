@@ -244,7 +244,7 @@ export function readState() {
     const sessions = {}
     if (typeof parsed?.sessions === 'object' && parsed.sessions !== null && !Array.isArray(parsed.sessions)) {
       for (const [id, value] of Object.entries(parsed.sessions)) {
-        if (typeof id === 'string' && id.length > 0 && value === true) sessions[id] = true
+        if (typeof id === 'string' && id.length > 0 && (value === true || value === false)) sessions[id] = value
       }
     }
     const grants = Array.isArray(parsed?.grants)
@@ -303,7 +303,7 @@ class SandboxManager {
   constructor(ctx) {
     this.ctx = ctx
     const state = readState()
-    this.enabled = new Map(Object.entries(state.sessions).filter(([, value]) => value === true))
+    this.states = new Map(Object.entries(state.sessions).filter(([, value]) => value === true || value === false))
     this.grants = state.grants
     /** @type {Map<Record<string, any>, { disposeExecutor: () => void, disposeRestrictions: () => void, previous: Record<string, any> | undefined }>} */
     this.records = new Map()
@@ -332,41 +332,18 @@ class SandboxManager {
 
   /**
    * @param {string} sessionId Session id.
-   * @returns {boolean} Explicitly caged.
+   * @returns {boolean} The operator opened this session's cage.
    */
-  explicit(sessionId) {
-    return this.enabled.get(sessionId) === true
+  isOpen(sessionId) {
+    return this.states.get(sessionId) === false
   }
 
   /**
    * @param {string} sessionId Session id.
-   * @returns {boolean} Caged, explicitly or by inheritance.
+   * @returns {boolean} Caged (the default for every session).
    */
   isCaged(sessionId) {
-    return this.explicit(sessionId) || this.effective.has(sessionId)
-  }
-
-  /**
-   * @param {Record<string, any>} agent Live agent.
-   * @returns {boolean} Owned by an already caged agent.
-   */
-  ownedByCaged(agent) {
-    try {
-      const parent = this.ctx.agents.currentInitiator?.()
-      if (parent !== undefined && (this.explicit(String(parent.id)) || this.effective.has(String(parent.id)))) {
-        return true
-      }
-    } catch {
-      // No initiator boundary in this dispatch.
-    }
-    for (const parent of this.records.keys()) {
-      try {
-        if (typeof this.ctx.agents.isOwnedBy === 'function' && this.ctx.agents.isOwnedBy(agent.id, parent)) return true
-      } catch {
-        // The child may have been unregistered in the meantime.
-      }
-    }
-    return false
+    return !this.isOpen(sessionId)
   }
 
   /**
@@ -495,28 +472,15 @@ class SandboxManager {
    */
   syncAgent(agent) {
     const id = String(agent?.id)
-    if (this.explicit(id) || this.ownedByCaged(agent)) this.activate(agent)
-    else this.deactivate(agent)
+    if (this.isOpen(id)) this.deactivate(agent)
+    else this.activate(agent)
   }
 
   /** Recompute every live agent, parents before children, from the explicit session set. */
   syncAll() {
     for (const agent of [...this.records.keys()]) this.deactivate(agent)
     for (const agent of this.ctx.agents.list()) {
-      if (this.explicit(String(agent.id))) this.activate(agent)
-    }
-    // Children inherit from a caged parent; registration order is parents first,
-    // but a second pass covers a child announced before its parent record.
-    for (let pass = 0; pass < 3; pass += 1) {
-      let changed = false
-      for (const agent of this.ctx.agents.list()) {
-        if (this.records.has(agent)) continue
-        if (this.ownedByCaged(agent)) {
-          this.activate(agent)
-          changed = true
-        }
-      }
-      if (!changed) break
+      if (!this.isOpen(String(agent.id))) this.activate(agent)
     }
   }
 
@@ -707,18 +671,20 @@ class SandboxManager {
    * @param {boolean} on New state.
    */
   toggle(sessionId, on) {
-    if (on) this.enabled.set(sessionId, true)
-    else this.enabled.delete(sessionId)
+    // On is the default; only the explicit open state needs to be stored.
+    if (on) this.states.delete(sessionId)
+    else this.states.set(sessionId, false)
     this.persist()
     this.syncAll()
   }
 
   /** Persist the explicit session set and the grants. */
   persist() {
-    writeState({
-      sessions: Object.fromEntries(this.enabled),
-      grants: [...this.grants],
-    })
+    const sessions = {}
+    for (const [id, value] of this.states) {
+      if (value === false) sessions[id] = false
+    }
+    writeState({ sessions, grants: [...this.grants] })
   }
 
   /**
@@ -748,7 +714,7 @@ class SandboxManager {
   /** @returns {Record<string, unknown>} Diagnostics for tests and bug reports. */
   debug() {
     return {
-      enabled: [...this.enabled.keys()],
+      open: [...this.states.entries()].filter(([, value]) => value === false).map(([id]) => id),
       effective: [...this.effective],
       native: [...this.nativeByAgent.keys()],
       wrapped: this.selectTarget !== undefined,
@@ -758,9 +724,10 @@ class SandboxManager {
 
   view(sessionId) {
     return {
-      enabled: sessionId === undefined ? false : this.explicit(sessionId),
+      enabled: sessionId === undefined ? false : this.isCaged(sessionId),
       effective: sessionId === undefined ? false : this.isCaged(sessionId),
-      sessions: Object.keys(Object.fromEntries(this.enabled)),
+      sessions: [...this.states.entries()].filter(([, value]) => value === false).map(([id]) => id),
+      open: [...this.states.entries()].filter(([, value]) => value === false).map(([id]) => id),
       grants: [...this.grants],
       cached: [...this.effective],
       degraded: [...this.degraded],
