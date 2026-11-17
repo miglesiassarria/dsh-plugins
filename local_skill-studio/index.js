@@ -17,6 +17,17 @@ function validPath(path) {
   if (typeof path !== 'string' || path.length > 240 || !path || path.includes('\\') || path.split('/').some(x => !x || x === '.' || x === '..' || x.startsWith('.')) || path === 'SKILL.md' || path.split('/').some(x => !/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/.test(x))) fail(`Ruta auxiliar inválida ${JSON.stringify(String(path).slice(0, 240))}: usa rutas relativas como scripts/check.sh; sin SKILL.md, puntos iniciales ni segmentos . o ..`)
   return path
 }
+function fileBytes(content) {
+  if (typeof content === 'string') return Buffer.from(content, 'utf8')
+  if (!content || typeof content !== 'object' || Array.isArray(content) || Object.keys(content).sort().join(',') !== 'data,encoding' || content.encoding !== 'base64' || typeof content.data !== 'string' || content.data.length > Math.ceil(1024 * 1024 / 3) * 4 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(content.data)) fail('Archivo binario inválido')
+  const bytes = Buffer.from(content.data, 'base64')
+  if (bytes.toString('base64') !== content.data) fail('Base64 no canónico')
+  return bytes
+}
+function fileValue(bytes) {
+  const text = bytes.toString('utf8')
+  return !bytes.includes(0) && Buffer.from(text, 'utf8').equals(bytes) ? text : { encoding: 'base64', data: bytes.toString('base64') }
+}
 function validate(draft) {
   if (!draft || typeof draft !== 'object') fail('Skill inválida')
   validName(draft.name)
@@ -26,10 +37,20 @@ function validate(draft) {
   const files = draft.files ?? {}
   if (!files || typeof files !== 'object' || Array.isArray(files) || Object.keys(files).length > 100) fail('Archivos inválidos')
   let total = 0
+  const nodes = new Set()
+  const paths = new Set(Object.keys(files))
   for (const [path, content] of Object.entries(files)) {
     validPath(path)
-    if (typeof content !== 'string' || Buffer.byteLength(content) > 1024 * 1024) fail('Archivo inválido o demasiado grande')
-    total += Buffer.byteLength(content)
+    const parts = path.split('/')
+    for (let i = 1; i <= parts.length; i++) {
+      const node = parts.slice(0, i).join('/')
+      if (i < parts.length && (paths.has(node) || node === 'SKILL.md')) fail('Colisión entre archivo y directorio')
+      nodes.add(node)
+    }
+    if (nodes.size > 200) fail('Demasiados archivos o directorios')
+    const bytes = fileBytes(content)
+    if (bytes.length > 1024 * 1024) fail('Archivo inválido o demasiado grande')
+    total += bytes.length
     if (total > MAX_TOTAL_BYTES) fail('El conjunto de archivos supera 4 MiB')
   }
   return { name: draft.name, description: draft.description, instructions: draft.instructions, files }
@@ -66,7 +87,7 @@ async function readTree(dir, prefix = '', budget = { count: 0, bytes: 0 }) {
       budget.bytes += st.size
       if (budget.bytes > MAX_TOTAL_BYTES) fail('El conjunto de archivos supera 4 MiB')
       const handle = await open(full, constants.O_RDONLY | (constants.O_NOFOLLOW || 0))
-      try { out[path] = await handle.readFile('utf8') } finally { await handle.close() }
+      try { out[path] = fileValue(await handle.readFile()) } finally { await handle.close() }
     } else fail('Archivo inseguro')
   }
   return out
@@ -130,7 +151,7 @@ export function createStudio({ root = join(process.env.DSH_HOME || join(homedir(
       for (const [path, content] of Object.entries(draft.files)) {
         const parts = path.split('/'); let parent = stage
         for (const part of parts.slice(0, -1)) { parent = join(parent, part); await safeDir(parent, true) }
-        await writeExclusive(join(parent, parts.at(-1)), content)
+        await writeExclusive(join(parent, parts.at(-1)), fileBytes(content))
       }
       if (exists) {
         // A rename swap cannot atomically replace a nonempty directory. Preserve the old copy until commit.
@@ -180,6 +201,20 @@ export function createStudio({ root = join(process.env.DSH_HOME || join(homedir(
     })
     queue = job.catch(() => {}); return job
   }
+  async function deleteSerial(name, revision) {
+    validName(name)
+    if (typeof revision !== 'string' || !revision) fail('Conflicto: se requiere la revisión de la skill')
+    const job = queue.then(() => withReadLock(async () => {
+      const current = await get(name, true)
+      if (current.revision !== revision) fail('Conflicto: la skill cambió desde su lectura')
+      const backupPattern = /^\.backup-([a-z0-9]+(?:-[a-z0-9]+)*)--[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+      if ((await readdir(root)).some(entry => backupPattern.exec(entry)?.[1] === name)) fail(`Recuperación manual necesaria para ${name}: existe una copia pendiente`)
+      // Even a failed recursive removal may have changed the provider's contents.
+      try { await rm(join(root, name), { recursive: true }) } finally { invalidate() }
+      return { name, deleted: true }
+    }))
+    queue = job.catch(() => {}); return job
+  }
   async function generate(request, signal) {
     const prompt = typeof request === 'string' ? request : request?.prompt
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 20000) fail('Petición inválida')
@@ -194,7 +229,7 @@ export function createStudio({ root = join(process.env.DSH_HOME || join(homedir(
     let draft; try { draft = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')) } catch { fail('El modelo no devolvió JSON válido') }
     try { return validate(draft) } catch (error) { fail(`Borrador del modelo inválido: ${error.message}. No se ha guardado; reformula la petición y vuelve a intentarlo.`) }
   }
-  return { list, get, save: saveSerial, evaluate, generate, root }
+  return { list, get, save: saveSerial, delete: deleteSerial, evaluate, generate, root }
 }
 async function writeExclusive(path, content) {
   const fd = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW || 0), 0o600)
@@ -216,6 +251,7 @@ export function apply(ctx) {
       case 'list': return studio.list()
       case 'get': return studio.get(data.name)
       case 'save': return studio.save(data.draft)
+      case 'delete': return studio.delete(data.name, data.revision)
       case 'evaluate': return studio.evaluate(data.draft)
       case 'generate': return studio.generate(data.prompt, signal)
       default: fail('Operación desconocida')
@@ -223,11 +259,11 @@ export function apply(ctx) {
   }
   ctx.effect(() => ctx.tools.register({
     name: 'skill_studio',
-    description: 'Gestiona skills de Studio: listar, leer, guardar con revisión, evaluar o generar borradores. No ejecuta scripts.',
-    parameters: { type: 'object', properties: { operation: { type: 'string', enum: ['list', 'get', 'save', 'evaluate', 'generate'] }, name: { type: 'string' }, prompt: { type: 'string' }, draft: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, instructions: { type: 'string' }, files: { type: 'object' }, revision: { type: 'string' } }, additionalProperties: false } }, required: ['operation'], additionalProperties: false },
+    description: 'Gestiona skills de Studio: listar, leer, guardar o eliminar con revisión, evaluar o generar borradores. No ejecuta scripts.',
+    parameters: { type: 'object', properties: { operation: { type: 'string', enum: ['list', 'get', 'save', 'delete', 'evaluate', 'generate'] }, name: { type: 'string' }, revision: { type: 'string' }, prompt: { type: 'string' }, draft: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, instructions: { type: 'string' }, files: { type: 'object' }, revision: { type: 'string' } }, additionalProperties: false } }, required: ['operation'], additionalProperties: false },
     output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
     async execute(args, exec) { return { data: await dispatch(args, exec.signal) } },
-    isConcurrencySafe: args => args?.operation !== 'save',
+    isConcurrencySafe: args => !['save', 'delete'].includes(args?.operation),
   }), 'skill-studio tool')
   ctx.effect(() => ctx.connection.fetch.register({ path: '/api/skill-studio', methods: ['POST'], requestBody: 'buffered', async fetch(request) {
     try {
