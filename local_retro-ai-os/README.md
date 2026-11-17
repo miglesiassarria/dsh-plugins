@@ -12,6 +12,7 @@ Un tema visual reversible para DeepSeek Harness inspirado en los escritorios pix
   - turno terminado (fin de ejecución, durante unos segundos),
   - preparado (sesión abierta sin actividad).
 - **Barra de estado** con nombre del estilo, estado y testigo luminoso.
+- **Contraste sobre los acentos**: los textos que van encima de un relleno de marca o de estado usan `--dsw-alias-label-primary-foreground` (tinta oscura en las paletas oscuras, papel claro en las claras) y `--dsw-alias-button-primary-fill` apunta a la marca del tema. Así los botones primarios, las píldoras y los interruptores se leen en los cinco estilos, en lugar de dejar texto blanco sobre verde claro.
 - **Aviso de sesión terminada**: en Matrix, una sesión que termina un turno sin abrirse marca su fila con el punto verde del anfitrión, pero con el núcleo algo más grueso y un halo del mismo verde para que se lea sobre la lluvia de fondo. El resto de estilos conserva el marcador original.
 - **Opciones** para mostrar u ocultar el compañero y para desactivar las animaciones discretas.
 - **Marca propia** (04 / Marca propia):

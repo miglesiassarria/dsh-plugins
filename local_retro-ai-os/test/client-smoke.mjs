@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
  */
 
 const warnings = []
+const tokenLayers = []
 const registered = []
 const registeredKeys = []
 
@@ -138,7 +139,7 @@ const ctx = {
     register() { return () => {} },
     bind() { return (key) => key },
   },
-  theme: { overrideTokens() { return () => {} } },
+  theme: { overrideTokens(_source, tokens) { tokenLayers.push(tokens); return () => {} } },
   logger: { warn(message) { warnings.push(message) } },
   slots: {
     inject(key, callback) {
@@ -180,12 +181,19 @@ const settle = async () => {
 }
 await flush()
 
+// The token layer keeps labels readable on bright accent fills: paper on the
+// dark-brand light palettes, ink on the light-brand dark palettes.
+const tokenLayer = tokenLayers[0]
+assert.ok(tokenLayer, 'token layer installed')
+assert.deepEqual(tokenLayer['--dsw-alias-label-primary-foreground'], { light: '#f4f2df', dark: '#06120c' })
+assert.deepEqual(tokenLayer['--dsw-alias-button-primary-fill'], tokenLayer['--dsw-alias-brand-primary'])
+
 // The stylesheet ships the Matrix-only visibility boost for the green marker.
 const stylesheet = appendedStyles.map((element) => element.textContent).join('\n')
 assert.match(stylesheet, /\[data-row-key\^="session:"\] \[data-state="done"\]::after\{inset:8%;box-shadow:0 0 0 1px rgba\(3,11,6,\.85\),0 0 7px currentColor\}/)
 
-// Slots: marks and name are registered because the brand is on and the two
-// marks are explicitly hidden while the name has text.
+// Slots: the two marks and the name are registered because the brand is on and
+// both surfaces point at the uploaded image.
 const names = registered.map((entry) => entry.options.name)
 assert.ok(names.includes('sidebar.brand.mark'), 'sidebar mark registered')
 assert.ok(names.includes('sidebar.brand.name'), 'sidebar name registered')
@@ -193,7 +201,7 @@ assert.ok(names.includes('conversation.hero.brand.mark'), 'hero mark registered'
 
 const byName = (name) => registered.find((entry) => entry.options.name === name).component
 
-// The name occupant renders the custom text, the marks render nothing.
+// The name occupant renders the custom text in the chosen typeface.
 const nameTree = byName('sidebar.brand.name')({})
 assert.equal(nameTree.type, 'span')
 assert.equal(nameTree.children[0], 'Retro Lab')

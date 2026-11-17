@@ -25,6 +25,10 @@ window.__ModuleLoader__.load({
       '--dsw-alias-state-success-primary',
       '--dsw-alias-state-warn-primary',
       '--dsw-specific-sidebar-fill',
+      /* Text drawn on top of a brand or state fill (primary buttons, badges,
+       * switch thumbs). Light palettes use paper, dark palettes use ink, so the
+       * label never disappears into the bright accent. */
+      '--dsw-alias-label-primary-foreground',
     ];
 
     /**
@@ -39,8 +43,8 @@ window.__ModuleLoader__.load({
         descKey: 'style.classic.desc',
         artwork: { shell: '#193b43', screen: '#a4e8b5', bulb: '#5bd9be' },
         swatches: ['#e6e8d8', '#006d68', '#226d3d', '#152d35'],
-        light: ['#e6e8d8', '#f4f2df', '#d6deca', '#fffced', '#a1ad9c', '#586b69', '#006d68', '#152d35', '#435b5c', '#9f2935', '#586b69', '#226d3d', '#8a5300', '#c9d8c8'],
-        dark: ['#0e1a17', '#14241f', '#1b3029', '#182a24', '#2e4a40', '#4e7064', '#5bd9be', '#ddf3e8', '#a7c6b8', '#f07a86', '#6e8f82', '#62d394', '#e3a34a', '#10211c'],
+        light: ['#e6e8d8', '#f4f2df', '#d6deca', '#fffced', '#a1ad9c', '#586b69', '#006d68', '#152d35', '#435b5c', '#9f2935', '#586b69', '#226d3d', '#8a5300', '#c9d8c8', '#f4f2df'],
+        dark: ['#0e1a17', '#14241f', '#1b3029', '#182a24', '#2e4a40', '#4e7064', '#5bd9be', '#ddf3e8', '#a7c6b8', '#f07a86', '#6e8f82', '#62d394', '#e3a34a', '#10211c', '#06120c'],
       },
       {
         id: 'amber',
@@ -48,8 +52,8 @@ window.__ModuleLoader__.load({
         descKey: 'style.amber.desc',
         artwork: { shell: '#3a2a12', screen: '#f3cd86', bulb: '#e8a33d' },
         swatches: ['#f3e6c8', '#9a5b00', '#4a6b1e', '#2e2108'],
-        light: ['#f3e6c8', '#fbf1d9', '#e8d6ae', '#fff7e2', '#c3a66e', '#7a5a1e', '#9a5b00', '#2e2108', '#5e4a22', '#a62b2b', '#8a6a32', '#4a6b1e', '#8a5300', '#ead8b2'],
-        dark: ['#140f06', '#20180a', '#2c210d', '#241a0b', '#4c3a16', '#8a6a2a', '#e8a33d', '#f6e3b0', '#c7a96b', '#f07a7a', '#8c7440', '#b6d46a', '#e8a33d', '#1a1308'],
+        light: ['#f3e6c8', '#fbf1d9', '#e8d6ae', '#fff7e2', '#c3a66e', '#7a5a1e', '#9a5b00', '#2e2108', '#5e4a22', '#a62b2b', '#8a6a32', '#4a6b1e', '#8a5300', '#ead8b2', '#fff7e2'],
+        dark: ['#140f06', '#20180a', '#2c210d', '#241a0b', '#4c3a16', '#8a6a2a', '#e8a33d', '#f6e3b0', '#c7a96b', '#f07a7a', '#8c7440', '#b6d46a', '#e8a33d', '#1a1308', '#140f06'],
       },
       {
         id: 'vapor',
@@ -57,8 +61,8 @@ window.__ModuleLoader__.load({
         descKey: 'style.vapor.desc',
         artwork: { shell: '#3a2158', screen: '#f4c6ff', bulb: '#ff6bd6' },
         swatches: ['#f1e6f7', '#a2268f', '#2e7d6b', '#2a1338'],
-        light: ['#f1e6f7', '#fbf4ff', '#e4d1f0', '#fff7ff', '#b79bd6', '#6b4a9e', '#a2268f', '#2a1338', '#5a3c6e', '#b3264a', '#8a6aa6', '#2e7d6b', '#9a5b00', '#e4d1f0'],
-        dark: ['#150c24', '#211436', '#2e1c4c', '#241540', '#523573', '#8f63c4', '#ff6bd6', '#f0e2ff', '#bfa3de', '#ff7a94', '#7e5fa0', '#59e0c4', '#ffc15e', '#1a0f2b'],
+        light: ['#f1e6f7', '#fbf4ff', '#e4d1f0', '#fff7ff', '#b79bd6', '#6b4a9e', '#a2268f', '#2a1338', '#5a3c6e', '#b3264a', '#8a6aa6', '#2e7d6b', '#9a5b00', '#e4d1f0', '#fbf4ff'],
+        dark: ['#150c24', '#211436', '#2e1c4c', '#241540', '#523573', '#8f63c4', '#ff6bd6', '#f0e2ff', '#bfa3de', '#ff7a94', '#7e5fa0', '#59e0c4', '#ffc15e', '#1a0f2b', '#150c24'],
       },
       {
         id: 'cobalt',
@@ -66,8 +70,8 @@ window.__ModuleLoader__.load({
         descKey: 'style.cobalt.desc',
         artwork: { shell: '#123047', screen: '#bfe9ff', bulb: '#4fc3f7' },
         swatches: ['#e4eef6', '#0b5e8a', '#1f6b4a', '#0e2230'],
-        light: ['#e4eef6', '#f2f8fc', '#cfe0ec', '#f7fbff', '#9fb6c6', '#4a6478', '#0b5e8a', '#0e2230', '#3e5a6c', '#a6293a', '#6a8394', '#1f6b4a', '#8a5300', '#d3e2ec'],
-        dark: ['#08131c', '#0e1f2c', '#142b3c', '#102432', '#234356', '#3e6780', '#4fc3f7', '#ddf0fa', '#9dbccf', '#ff7d8a', '#6a8fa3', '#5ee0a0', '#ffc15e', '#0a1822'],
+        light: ['#e4eef6', '#f2f8fc', '#cfe0ec', '#f7fbff', '#9fb6c6', '#4a6478', '#0b5e8a', '#0e2230', '#3e5a6c', '#a6293a', '#6a8394', '#1f6b4a', '#8a5300', '#d3e2ec', '#f2f8fc'],
+        dark: ['#08131c', '#0e1f2c', '#142b3c', '#102432', '#234356', '#3e6780', '#4fc3f7', '#ddf0fa', '#9dbccf', '#ff7d8a', '#6a8fa3', '#5ee0a0', '#ffc15e', '#0a1822', '#08131c'],
       },
       {
         id: 'matrix',
@@ -76,8 +80,8 @@ window.__ModuleLoader__.load({
         artwork: { shell: '#073016', screen: '#b9ffca', bulb: '#50ff82' },
         swatches: ['#020a05', '#123c20', '#62ef85', '#dcffe4'],
         // Matrix intentionally stays dark in both host appearance modes.
-        light: ['#030b06', '#08180d', '#102719', '#08180d', '#315d3b', '#538363', '#80ef9b', '#e2ffe9', '#b4d9bc', '#ff9191', '#97bba0', '#8df5aa', '#f2d082', '#06120a'],
-        dark: ['#030b06', '#08180d', '#102719', '#08180d', '#315d3b', '#538363', '#80ef9b', '#e2ffe9', '#b4d9bc', '#ff9191', '#97bba0', '#8df5aa', '#f2d082', '#06120a'],
+        light: ['#030b06', '#08180d', '#102719', '#08180d', '#315d3b', '#538363', '#80ef9b', '#e2ffe9', '#b4d9bc', '#ff9191', '#97bba0', '#8df5aa', '#f2d082', '#06120a', '#030b06'],
+        dark: ['#030b06', '#08180d', '#102719', '#08180d', '#315d3b', '#538363', '#80ef9b', '#e2ffe9', '#b4d9bc', '#ff9191', '#97bba0', '#8df5aa', '#f2d082', '#06120a', '#030b06'],
       },
     ];
 
@@ -414,6 +418,7 @@ window.__ModuleLoader__.load({
       tokens['--dsw-alias-interactive-bg-hover'] = alias('--dsw-alias-bg-layer-2');
       tokens['--dsw-alias-label-tertiary'] = alias('--dsw-alias-label-secondary');
       tokens['--dsw-alias-state-business-primary'] = alias('--dsw-alias-brand-primary');
+      tokens['--dsw-alias-button-primary-fill'] = alias('--dsw-alias-brand-primary');
       tokens['--dsw-alias-switch-thumb'] = alias('--dsw-alias-bg-layer-1');
       tokens['--dsw-alias-menu-icon'] = alias('--dsw-alias-label-primary');
       return tokens;

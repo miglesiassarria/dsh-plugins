@@ -129,7 +129,9 @@ que también permite desactivarlos desde su propia página.
   `$DSH_HOME/retro-ai-os/preferences.json` y el logo en
   `$DSH_HOME/retro-ai-os/brand/`. En Matrix, la sesión que termina un turno
   sin abrirse muestra el punto verde habitual con algo más de cuerpo y un halo
-  del mismo color, visible sobre la lluvia.
+  del mismo color, visible sobre la lluvia. Los textos sobre botones de acento
+  usan tinta oscura (o papel en las paletas claras), así que se leen en los
+  cinco estilos.
 - **Dictado con Groq**: en **Ajustes → General → Dictado con Groq**, pega tu
   clave de Groq, elige el modelo de Whisper y guarda. En el compositor aparece
   un micrófono entre el selector de modelo y Enviar: pulsa para grabar, habla

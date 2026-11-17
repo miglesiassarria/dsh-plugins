@@ -163,7 +163,7 @@ window.__ModuleLoader__.load({
 .tms-headtext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .tms-title{margin:0;font-size:15px;font-weight:600;line-height:22px}
 .tms-sub{margin:0;font-size:13px;line-height:18px;color:var(--dsw-alias-label-secondary)}
-.tms-add{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 14px;border-radius:999px;border:1px solid transparent;background:var(--dsw-alias-brand-primary);color:#fff;font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.tms-add{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 14px;border-radius:999px;border:1px solid transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground,#fff);font:inherit;font-size:13px;font-weight:500;cursor:pointer}
 .tms-add:hover{filter:brightness(1.05)}
 .tms-add:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
 .tms-list{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -234,11 +234,11 @@ window.__ModuleLoader__.load({
 .tms-formerror{flex:1;min-width:0;font-size:12.5px;color:var(--dsw-alias-state-error-primary);overflow-wrap:anywhere}
 .tms-btn{height:34px;padding:0 14px;border-radius:9px;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
 .tms-btn:disabled{opacity:.55;cursor:default}
-.tms-btn-primary{border:1px solid transparent;background:var(--dsw-alias-brand-primary);color:#fff}
+.tms-btn-primary{border:1px solid transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground,#fff)}
 .tms-btn-ghost{border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-primary)}
 .tms-btn-ghost:hover{background:color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent)}
-.tms-btn-danger{border:1px solid transparent;background:var(--dsw-alias-state-error-primary);color:#fff}
-.tms-spinner{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;animation:tms-spin .8s linear infinite}
+.tms-btn-danger{border:1px solid transparent;background:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-label-primary-foreground,#fff)}
+.tms-spinner{width:13px;height:13px;border-radius:50%;border:2px solid color-mix(in srgb,currentColor 35%,transparent);border-top-color:currentColor;animation:tms-spin .8s linear infinite}
 @keyframes tms-spin{to{transform:rotate(360deg)}}
 .tms-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 @media (prefers-reduced-motion: reduce){.tms-dot.is-connecting{animation:none}.tms-spinner{animation-duration:2s}}

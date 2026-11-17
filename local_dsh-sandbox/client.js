@@ -91,7 +91,7 @@ window.__ModuleLoader__.load({
       .dsb-empty { padding: 14px 16px; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
       .dsb-form { display: flex; gap: 8px; padding: 12px 16px; }
       .dsb-input { flex: 1; min-width: 0; height: 30px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 7px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; }
-      .dsb-btn { flex: none; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 7px; background: var(--dsw-alias-brand-primary); color: #fff; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+      .dsb-btn { flex: none; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 7px; background: var(--dsw-alias-brand-primary); color: var(--dsw-alias-label-primary-foreground, #fff); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
       .dsb-btn:hover:not(:disabled) { filter: brightness(1.05); }
       .dsb-btn:disabled { opacity: .55; cursor: default; }
       .dsb-btn-danger { background: transparent; border-color: transparent; color: var(--dsw-alias-state-error-primary); }

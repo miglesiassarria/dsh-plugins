@@ -228,7 +228,7 @@ window.__ModuleLoader__.load({
       .grd-btn{height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer;}
       .grd-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);}
       .grd-btn:disabled{opacity:.55;cursor:default;}
-      .grd-btn-primary{border-color:transparent;background:var(--dsw-alias-brand-primary);color:#fff;}
+      .grd-btn-primary{border-color:transparent;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground,#fff);}
       .grd-btn-primary:hover:not(:disabled){filter:brightness(1.05);}
       .grd-btn:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;}
       .grd-btn-small{height:26px;padding:0 9px;font-size:11px;}
