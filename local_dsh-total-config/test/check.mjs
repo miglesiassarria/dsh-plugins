@@ -81,6 +81,9 @@ check('client registers the DHS Total Config page', clientSource.includes("id: '
 check('client has no leftover workspace-context module id', !clientSource.includes("'@local/workspace-context'"))
 check('client has no leftover dsh-config module id', !clientSource.includes("'@local/dsh-config'"))
 check('client declares the session selection feature', clientSource.includes('sessionMultiSelect: true'))
+check('settings fullscreen style targets only the settings modal', clientSource.includes('const DIALOG = \'[data-shortcut-modal="settings"]\'') && clientSource.includes('${DIALOG} {'))
+check('settings fullscreen style fills the viewport without size caps', /width: 100vw !important/.test(clientSource) && /height: 100dvh !important/.test(clientSource) && /max-width: none !important/.test(clientSource) && /max-height: none !important/.test(clientSource))
+check('settings fullscreen style is removed on disposal', clientSource.includes("'dsh-total-config fullscreen settings'") && clientSource.includes('return () => style.remove()'))
 
 // ---------------------------------------------------------------------------
 // Host behavior in an isolated DSH_HOME

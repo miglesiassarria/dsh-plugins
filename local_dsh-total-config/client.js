@@ -2480,6 +2480,27 @@ window.__ModuleLoader__.load({
           };
         }, 'dsh-total-config locale');
 
+        // Expand the host Settings modal itself, not the nested plugin dialogs.
+        // Keep this scoped to the host's Settings marker so other modals are untouched.
+        ctx.effect(() => {
+          const style = document.createElement('style');
+          style.dataset.plugin = NS;
+          style.dataset.settingsFullscreen = '';
+          style.textContent = `
+${DIALOG} {
+  box-sizing: border-box;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+}
+`;
+          document.head.appendChild(style);
+          return () => style.remove();
+        }, 'dsh-total-config fullscreen settings');
+
         // ------------------------------------------------------------------
         // Feature state: one switch per behavior, persisted by the Host.
         // ------------------------------------------------------------------
