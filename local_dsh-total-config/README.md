@@ -19,8 +19,10 @@ ediciones del perfil y reinicios.
 | Interfaz | Sí: página de Ajustes, control de modelo, página de proyecto, pestaña Contexto, menús |
 
 Al abrir **Ajustes**, la ventana ocupa todo el ancho y el alto disponibles de la
-aplicación, dejando más espacio para secciones como Skill Studio. Este ajuste se
-aplica mientras el complemento está activo y no modifica los demás diálogos.
+aplicación, dejando más espacio para secciones como Skill Studio. La cabecera y
+la barra lateral reservan además la franja superior de la ventana para no quedar
+debajo de los botones nativos de macOS. Este ajuste se aplica mientras el
+complemento está activo y no modifica los demás diálogos.
 
 ## Interruptores
 

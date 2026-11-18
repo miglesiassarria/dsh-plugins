@@ -83,6 +83,7 @@ check('client has no leftover dsh-config module id', !clientSource.includes("'@l
 check('client declares the session selection feature', clientSource.includes('sessionMultiSelect: true'))
 check('settings fullscreen style targets only the settings modal', clientSource.includes('const DIALOG = \'[data-shortcut-modal="settings"]\'') && clientSource.includes('${DIALOG} {'))
 check('settings fullscreen style fills the viewport without size caps', /width: 100vw !important/.test(clientSource) && /height: 100dvh !important/.test(clientSource) && /max-width: none !important/.test(clientSource) && /max-height: none !important/.test(clientSource))
+check('settings fullscreen style clears the window titlebar controls', clientSource.includes('${DIALOG} > * {') && /padding-top: max\(34px, env\(safe-area-inset-top, 0px\)\) !important/.test(clientSource))
 check('settings fullscreen style is removed on disposal', clientSource.includes("'dsh-total-config fullscreen settings'") && clientSource.includes('return () => style.remove()'))
 
 // ---------------------------------------------------------------------------

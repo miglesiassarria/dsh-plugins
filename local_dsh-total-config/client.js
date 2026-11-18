@@ -2482,6 +2482,9 @@ window.__ModuleLoader__.load({
 
         // Expand the host Settings modal itself, not the nested plugin dialogs.
         // Keep this scoped to the host's Settings marker so other modals are untouched.
+        // The full-bleed panel reaches the window top, where the macOS traffic
+        // lights float over the page: reserve that strip inside both columns so
+        // the "Settings" caption and the content toolbar start below them.
         ctx.effect(() => {
           const style = document.createElement('style');
           style.dataset.plugin = NS;
@@ -2495,6 +2498,10 @@ ${DIALOG} {
   max-width: none !important;
   max-height: none !important;
   border-radius: 0 !important;
+}
+${DIALOG} > * {
+  box-sizing: border-box;
+  padding-top: max(34px, env(safe-area-inset-top, 0px)) !important;
 }
 `;
           document.head.appendChild(style);

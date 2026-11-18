@@ -4,7 +4,7 @@ Un tema visual reversible para DeepSeek Harness inspirado en los escritorios pix
 
 ## Qué añade
 
-- **Cinco estilos**: Menta clásica, CRT ámbar, Vaporwave, Azul medianoche y Matrix. Matrix conserva su estética oscura en ambos modos de apariencia y añade lluvia digital tenue en los laterales y tipografía monoespaciada. Los demás estilos ofrecen paletas claras y oscuras.
+- **Cinco estilos**: Menta clásica, CRT ámbar, Vaporwave, Azul medianoche y Matrix. Matrix conserva su estética oscura en ambos modos de apariencia y añade lluvia digital y tipografía monoespaciada. La lluvia se atenúa gradualmente hacia la derecha y puede verse tenuemente sobre las previsualizaciones. Los demás estilos ofrecen paletas claras y oscuras.
 - **Interruptor de activación** con `role="switch"` y estado `aria-checked`.
 - **Compañero pixelado** en la zona inferior del compositor. Refleja cuatro estados reales:
   - trabajando (sesión en ejecución),

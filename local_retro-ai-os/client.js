@@ -484,14 +484,14 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-html:has(.retro-matrix-rain) body{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace}
+html[data-retro-matrix="true"] body{font-family:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace}
 /* Matrix: a finished turn marks the session row with a 6px success-green
  * dot that vanishes into the green rain. Keep the host's green but thicken the
  * core and add a dark rim plus a glow in the same colour, so the completed
  * session stays visible at a glance. Scoped to the session rows
  * (data-row-key="session:<id>") and to the Matrix theme. */
-html:has(.retro-matrix-rain) [data-row-key^="session:"] [data-state="done"]::after{inset:8%;box-shadow:0 0 0 1px rgba(3,11,6,.85),0 0 7px currentColor}
-.retro-matrix-rain{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:.52;mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 35%,transparent 65%,#000 88%,#000 100%);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 12%,transparent 35%,transparent 65%,#000 88%,#000 100%)}
+html[data-retro-matrix="true"] [data-row-key^="session:"] [data-state="done"]::after{inset:8%;box-shadow:0 0 0 1px rgba(3,11,6,.85),0 0 7px currentColor}
+.retro-matrix-rain{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;opacity:.52;mask-image:linear-gradient(90deg,#000 0%,#000 12%,rgba(0,0,0,.45) 35%,rgba(0,0,0,.25) 60%,rgba(0,0,0,.10) 100%);-webkit-mask-image:linear-gradient(90deg,#000 0%,#000 12%,rgba(0,0,0,.45) 35%,rgba(0,0,0,.25) 60%,rgba(0,0,0,.10) 100%)}
 .retro-matrix-column{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;font:500 15px/1.12 'Courier New',monospace;white-space:nowrap;animation:matrix-fall var(--duration) linear var(--delay) infinite}
 .retro-matrix-tail{writing-mode:vertical-rl;text-orientation:upright;letter-spacing:.08em;color:#19eb54;background:linear-gradient(to bottom,transparent,#087e30 25%,#19ed58 85%,#a0ffb3);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 7px rgba(0,255,72,.3)}
 .retro-matrix-head{color:#e2ffe9;text-shadow:0 0 4px #baffcc,0 0 12px #29ff67}
@@ -765,6 +765,8 @@ html:has(.retro-matrix-rain) [data-row-key^="session:"] [data-state="done"]::aft
             layer = null;
           }
           const prefs = store.get();
+          if (prefs.enabled && prefs.style === 'matrix') document.documentElement.setAttribute('data-retro-matrix', 'true');
+          else document.documentElement.removeAttribute('data-retro-matrix');
           if (!prefs.enabled) return;
           const style = STYLES.find((candidate) => candidate.id === prefs.style) || STYLES[0];
           layer = ctx.theme.overrideTokens(SOURCE, tokensOf(style));
@@ -1009,6 +1011,7 @@ html:has(.retro-matrix-rain) [data-row-key^="session:"] [data-state="done"]::aft
           });
           return () => {
             active = false;
+            document.documentElement.removeAttribute('data-retro-matrix');
             if (layer !== null) {
               layer();
               layer = null;
