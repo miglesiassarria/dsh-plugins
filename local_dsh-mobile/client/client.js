@@ -562,7 +562,7 @@ function startFileGuard(readFile) {
     event.stopImmediatePropagation();
     showToast(GUARD_MSG);
   };
-  document.addEventListener("click", onClick, true);
+  // Do not classify arbitrary controls (including model selectors) as file links.
   const injectCopyButtons = () => {
     const links = document.querySelectorAll("button, a");
     links.forEach((el) => {
@@ -604,9 +604,7 @@ function startFileGuard(readFile) {
       el.parentElement?.insertBefore(btn, el.nextSibling);
     });
   };
-  injectCopyButtons();
-  const copyObserver = new MutationObserver(() => injectCopyButtons());
-  copyObserver.observe(document.body, { childList: true, subtree: true });
+  const copyObserver = { disconnect() {} };
   const hideWsEntries = () => {
     const checkOne = (node) => {
       if (node.nodeType !== 1) return;
